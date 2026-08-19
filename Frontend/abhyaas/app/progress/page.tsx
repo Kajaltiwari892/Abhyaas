@@ -1,6 +1,6 @@
 import { ArrowRight, BarChart3, BookOpen, CalendarDays, Clock3, Target } from "lucide-react";
-import Link from "next/link";
 import AppShell from "../components/AppShell";
+import PrimaryButton from "@/components/ui/primary-button";
 
 export default function ProgressPage() {
   return (
@@ -20,7 +20,7 @@ export default function ProgressPage() {
         <div className="dashboard-grid">
           <section className="dashboard-card accuracy-card">
             <header><div><span>Accuracy over time</span><small>Based on completed sets</small></div><span className="card-tag">Awaiting data</span></header>
-            <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We will never populate this chart with sample performance.</p><Link href="/practice">Start practising <ArrowRight size={15} /></Link></div>
+            <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We will never populate this chart with sample performance.</p><PrimaryButton href="/login?next=/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
           </section>
           <section className="dashboard-card strength-card">
             <header><div><span>Subject strength</span><small>Accuracy by syllabus area</small></div></header>

@@ -13,7 +13,7 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
     if (!root) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const elements = Array.from(root.querySelectorAll<HTMLElement>(
-      ".workspace-header, .section-heading, .feature-card, .dark-section-inner > *, .subject-row, .exam-card, .selection-path, .progress-copy, .progress-preview, .closing-section > :not(.closing-image):not(.closing-image-overlay), .dashboard-card, .academy-route-grid article, .subject-page-card, .paper-type-grid article, .value-grid article",
+      ".workspace-header, .section-heading, .prep-value-grid > *, .feature-card, .dark-section-inner > *, .subject-row, .exam-card, .selection-path, .progress-copy, .progress-preview, .cds-chart-card, .closing-content, .dashboard-card, .academy-route-grid article, .subject-page-card, .paper-type-grid article, .value-grid article",
     ));
 
     if (reducedMotion) {

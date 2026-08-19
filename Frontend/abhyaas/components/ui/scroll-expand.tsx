@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -54,6 +54,10 @@ export default function ScrollExpand({
   className = "",
   style,
 }: ScrollExpandProps) {
+  const initialTrackHeight = useWindowScroll
+    ? `${(1 + Math.max(0, scrollDistance) + Math.max(0, holdDistance)) * 100}vh`
+    : "100%";
+  const initialStageHeight = useWindowScroll ? "100vh" : "100%";
   const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -85,7 +89,10 @@ export default function ScrollExpand({
     const radius = config.startRadius + (config.endRadius - config.startRadius) * eased;
     frame.style.clipPath = `inset(${insetY}% ${insetX}% ${insetY}% ${insetX}% round ${radius}px)`;
     media.style.transform = `scale(${config.mediaZoom + (1 - config.mediaZoom) * eased})`;
-    if (scrimRef.current) scrimRef.current.style.opacity = `${config.overlayScrim * eased}`;
+    if (scrimRef.current) {
+      const dim = smoothstep(0, 0.48, progress);
+      scrimRef.current.style.opacity = `${config.overlayScrim * dim}`;
+    }
     if (titleRef.current) {
       const exit = smoothstep(0.38, 0.82, progress);
       titleRef.current.style.opacity = `${1 - exit}`;
@@ -103,7 +110,7 @@ export default function ScrollExpand({
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = rootRef.current;
     const track = trackRef.current;
     const stage = stageRef.current;
@@ -162,8 +169,8 @@ export default function ScrollExpand({
 
   return (
     <div ref={rootRef} className={`scroll-expand-root relative w-full ${useWindowScroll ? "" : "h-full overflow-y-auto overflow-x-hidden overscroll-contain"} ${className}`} style={style}>
-      <div ref={trackRef} className="relative w-full">
-        <div ref={stageRef} className="scroll-expand-stage sticky top-0 w-full overflow-hidden [--se-title-size:4rem]">
+      <div ref={trackRef} className="relative w-full" style={{ height: initialTrackHeight }}>
+        <div ref={stageRef} className="scroll-expand-stage sticky top-0 w-full overflow-hidden [--se-title-size:4rem]" style={{ height: initialStageHeight }}>
           <div ref={frameRef} className="absolute inset-0 [will-change:clip-path]">
             {mediaType === "video" ? (
               <video ref={mediaRef as React.RefObject<HTMLVideoElement>} className="absolute inset-0 h-full w-full origin-center select-none object-cover [will-change:transform]" src={src} poster={poster} autoPlay muted loop playsInline />
@@ -173,9 +180,9 @@ export default function ScrollExpand({
             )}
             <div ref={scrimRef} className="scroll-expand-scrim pointer-events-none absolute inset-0 opacity-0" />
             {title ? <div ref={titleRef} className="scroll-expand-title pointer-events-auto absolute inset-0 z-10 flex items-center justify-center px-[8%] text-center [font-size:var(--se-title-size)] [will-change:opacity,transform]">{title}</div> : null}
-            {scrollHint ? <div ref={hintRef} className="pointer-events-none absolute inset-x-0 bottom-[7%] z-10 px-4 text-center text-[.65rem] uppercase tracking-[.14em] text-white/65 [will-change:opacity,transform]">{scrollHint}</div> : null}
             {children ? <div ref={overlayRef} className="absolute inset-0 z-10 flex flex-col items-center justify-center p-[6%] text-center opacity-0 [will-change:opacity,transform]">{children}</div> : null}
           </div>
+          {scrollHint ? <div ref={hintRef} className="scroll-expand-hint pointer-events-none absolute inset-x-0 top-[78%] z-10 px-4 text-center [will-change:opacity,transform]"><span>{scrollHint}</span><i aria-hidden="true" /></div> : null}
         </div>
       </div>
     </div>
