@@ -12,6 +12,7 @@ import academyCollage from "../assets/img1.jpg";
 import honourBackdrop from "../assets/img3.jpg";
 import heroBackdrop from "../assets/img4.jpg";
 import ExamSwitcher from "./components/ExamSwitcher";
+import { MinimalistTextEffect } from "@/components/ui/reveal-text";
 
 const navItems = [
   ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Practice", "/practice"],
@@ -59,7 +60,10 @@ export default function Home() {
         <div className="hero-grid" />
         <div className="hero-copy">
           <div className="eyebrow"><span /> IMA · INA · AFA · OTA</div>
-          <h1 className="hero-title"><span>Everything you need for CDS.</span><em>One place. Zero cost.</em></h1>
+          <h1 className="hero-title">
+            <MinimalistTextEffect text="Everything you need for CDS." duration={0.48} />
+            <MinimalistTextEffect className="hero-title-accent" text="One place. Zero cost." duration={0.48} delay={0.12} />
+          </h1>
           <p className="hero-lede">Daily practice, previous papers and clear doubt-solving—built for serious CDS preparation.</p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/practice">Start practising <ArrowRight size={17} /></Link>
@@ -68,24 +72,26 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="motivation-strip" aria-label="Motivational note">
-        <span className="strip-icon"><Target size={18} /></span>
-        <p>“You do not need a perfect plan. You need a plan you can return to tomorrow.”</p>
-        <span className="strip-rule" /><small>NOTE 01 / CONSISTENCY</small>
-      </section>
+      <div className="home-stack-panel stack-panel-1 prep-stack">
+        <section className="motivation-strip" aria-label="Motivational note">
+          <span className="strip-icon"><Target size={18} /></span>
+          <p>“You do not need a perfect plan. You need a plan you can return to tomorrow.”</p>
+          <span className="strip-rule" /><small>NOTE 01 / CONSISTENCY</small>
+        </section>
 
-      <section className="section features-section" id="practice">
-        <div className="section-heading">
-          <div><span className="kicker">Your preparation system</span><h2>Less searching.<br />More studying.</h2></div>
-          <p>Everything here has one job: help you understand, practise and improve without switching between scattered resources.</p>
-        </div>
-        <div className="feature-grid">
-          {features.map(({ number, icon: Icon, title, copy, label, href }) => <article className="feature-card" key={title}>
-            <span className="card-number">{number}</span><span className="feature-icon"><Icon size={25} strokeWidth={1.7} /></span>
-            <h3>{title}</h3><p>{copy}</p><Link href={href}>{label} <ArrowRight size={15} /></Link>
-          </article>)}
-        </div>
-      </section>
+        <section className="section features-section" id="practice">
+          <div className="section-heading">
+            <div><span className="kicker">Your preparation system</span><h2>Less searching.<br />More studying.</h2></div>
+            <p>Everything here has one job: help you understand, practise and improve without switching between scattered resources.</p>
+          </div>
+          <div className="feature-grid">
+            {features.map(({ number, icon: Icon, title, copy, label, href }) => <article className="feature-card" key={title}>
+              <span className="card-number">{number}</span><span className="feature-icon"><Icon size={25} strokeWidth={1.7} /></span>
+              <h3>{title}</h3><p>{copy}</p><Link href={href}>{label} <ArrowRight size={15} /></Link>
+            </article>)}
+          </div>
+        </section>
+      </div>
 
       <section className="dark-section" id="doubt-solver">
         <div className="dark-section-inner">
