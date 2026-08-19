@@ -13,6 +13,7 @@ import honourBackdrop from "../assets/img3.jpg";
 import heroBackdrop from "../assets/img4.jpg";
 import ExamSwitcher from "./components/ExamSwitcher";
 import { MinimalistTextEffect } from "@/components/ui/reveal-text";
+import ScrollExpand from "@/components/ui/scroll-expand";
 
 const navItems = [
   ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Practice", "/practice"],
@@ -54,22 +55,33 @@ export default function Home() {
         </nav>}
       </header>
 
-      <section className="hero" id="top">
-        <Image className="hero-image" src={heroBackdrop} alt="CDS cadets celebrating together" fill priority sizes="100vw" />
-        <div className="hero-image-overlay" />
-        <div className="hero-grid" />
-        <div className="hero-copy">
-          <div className="eyebrow"><span /> IMA · INA · AFA · OTA</div>
-          <h1 className="hero-title">
-            <MinimalistTextEffect text="Everything you need for CDS." duration={0.48} />
-            <MinimalistTextEffect className="hero-title-accent" text="One place. Zero cost." duration={0.48} delay={0.12} />
-          </h1>
-          <p className="hero-lede">Daily practice, previous papers and clear doubt-solving—built for serious CDS preparation.</p>
-          <div className="hero-actions">
-            <Link className="button button-primary" href="/practice">Start practising <ArrowRight size={17} /></Link>
-            <Link className="button button-quiet" href="/exam-info">Explore the platform <ChevronRight size={17} /></Link>
+      <section className="scroll-hero-section" id="top">
+        <ScrollExpand
+          src={heroBackdrop.src}
+          alt="CDS cadets celebrating together"
+          title={<MinimalistTextEffect text="capture the selfless spirit" duration={0.45} />}
+          scrollHint="Scroll to enter Abhyaas"
+          startWidth={36}
+          startHeight={48}
+          startRadius={22}
+          endRadius={0}
+          mediaZoom={1.24}
+          scrollDistance={1.08}
+          holdDistance={0.28}
+          smoothing={0.1}
+          overlayScrim={0.64}
+          useWindowScroll
+        >
+          <div className="scroll-hero-content">
+            <span>IMA · INA · AFA · OTA</span>
+            <h1><span>Everything you need for CDS.</span><em>One place. Zero cost.</em></h1>
+            <p>Daily practice, previous papers and clear doubt-solving—built for serious CDS preparation.</p>
+            <div className="scroll-hero-actions">
+              <Link className="button button-primary" href="/practice">Start practising <ArrowRight size={17} /></Link>
+              <Link className="button button-quiet" href="/exam-info">Explore the platform <ChevronRight size={17} /></Link>
+            </div>
           </div>
-        </div>
+        </ScrollExpand>
       </section>
 
       <div className="home-stack-panel stack-panel-1 prep-stack">
