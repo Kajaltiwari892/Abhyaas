@@ -1,14 +1,21 @@
+"use client";
+
 import { ArrowRight, BarChart3, BookOpen, CalendarDays, Clock3, Target } from "lucide-react";
 import AppShell from "../components/AppShell";
+import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 
 export default function ProgressPage() {
+  const { user } = useAuth();
+
+  const firstName = user?.name.trim().split(/\s+/)[0];
+
   return (
     <AppShell active="Progress">
       <main className="workspace progress-workspace">
         <header className="workspace-header">
-          <div><span className="workspace-kicker">Your preparation, honestly measured</span><h1>Progress</h1><p>Your practice history will turn into useful direction here.</p></div>
-          <div className="workspace-badge"><CalendarDays size={15} /> No activity yet</div>
+          <div><span className="workspace-kicker">{user ? `Signed in as ${user.email}` : "Your preparation, honestly measured"}</span><h1>{firstName ? `Welcome, ${firstName}.` : "Progress"}</h1><p>{user ? `${user.name}, your practice history and progress will appear here.` : "Loading your preparation space…"}</p></div>
+          <div className="workspace-badge"><CalendarDays size={15} /> {user?.is_verified ? "Verified account" : "No activity yet"}</div>
         </header>
 
         <section className="progress-stat-grid">
@@ -20,7 +27,7 @@ export default function ProgressPage() {
         <div className="dashboard-grid">
           <section className="dashboard-card accuracy-card">
             <header><div><span>Accuracy over time</span><small>Based on completed sets</small></div><span className="card-tag">Awaiting data</span></header>
-            <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We will never populate this chart with sample performance.</p><PrimaryButton href="/login?next=/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
+            <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We will never populate this chart with sample performance.</p><PrimaryButton href="/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
           </section>
           <section className="dashboard-card strength-card">
             <header><div><span>Subject strength</span><small>Accuracy by syllabus area</small></div></header>

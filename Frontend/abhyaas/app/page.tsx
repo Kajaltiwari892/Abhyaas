@@ -58,7 +58,7 @@ export default function Home() {
         <nav className="desktop-nav" aria-label="Main navigation">
           {navItems.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <PrimaryButton className="nav-cta" href="/login?next=/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton>
+        <PrimaryButton className="nav-cta" href="/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton>
         <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
           {menuOpen ? <X /> : <Menu />}
         </button>
@@ -89,8 +89,8 @@ export default function Home() {
             <h1><span>Everything you need for CDS.</span><em>One place. Zero cost.</em></h1>
             <p>Daily practice, previous papers and clear doubt-solving—built for serious CDS preparation.</p>
             <div className="scroll-hero-actions">
-              <PrimaryButton href="/login?next=/practice" size="lg">Start practising <ArrowRight size={17} /></PrimaryButton>
-              <Link className="button button-quiet" href="/login?next=/exam-info">Explore the platform <ChevronRight size={17} /></Link>
+              <PrimaryButton href="/practice" size="lg">Start practising <ArrowRight size={17} /></PrimaryButton>
+              <Link className="button button-quiet" href="/exam-info">Explore the platform <ChevronRight size={17} /></Link>
             </div>
           </div>
         </ScrollExpand>
@@ -168,7 +168,7 @@ export default function Home() {
         <div className="exam-card">
           <div className="exam-copy"><span className="kicker">Know the path</span><h2>One exam.<br />Five academy tracks.</h2>
             <p>Understand eligibility, paper pattern and the full selection process before you begin.</p>
-            <PrimaryButton href="/login?next=/exam-info">Explore exam information <ArrowRight size={16} /></PrimaryButton>
+            <PrimaryButton href="/exam-info">Explore exam information <ArrowRight size={16} /></PrimaryButton>
           </div>
           <div className="academy-tracks" id="academy-tracks">
             {["IMA", "INA", "AFA", "OTA · MEN", "OTA · WOMEN"].map((item, index) => <div className="academy-item" key={item}><span>0{index + 1}</span><strong>{item}</strong><ChevronRight size={17} /></div>)}
@@ -198,7 +198,7 @@ export default function Home() {
         <div className="closing-content">
           <h2>Preparation should depend on your discipline—<em>not your ability to pay.</em></h2>
           <p>Start small. Return tomorrow. Let the work compound.</p>
-          <PrimaryButton href="/login?next=/practice" size="lg">Begin your preparation <ArrowRight size={17} /></PrimaryButton>
+          <PrimaryButton href="/practice" size="lg">Begin your preparation <ArrowRight size={17} /></PrimaryButton>
         </div>
       </section>
 
@@ -206,7 +206,7 @@ export default function Home() {
         <div className="footer-main">
           <div className="footer-brand"><span className="brand-mark"><Swords size={19} /></span><div><strong>ABHYAAS</strong><small>Focused preparation for those who choose to serve.</small></div></div>
           <div className="footer-links"><span className="footer-label">Explore</span><Link href="/exam-info">Exam info</Link><Link href="/subjects">Subjects</Link><Link href="/practice">Practice</Link><Link href="/doubt-solver">Doubt solver</Link></div>
-          <div className="footer-links"><span className="footer-label">Platform</span><Link href="/papers">Previous papers</Link><Link href="/progress">Progress</Link><Link href="/about">About</Link></div>
+          <div className="footer-links"><span className="footer-label">Platform</span><Link href="/papers">Previous papers</Link><Link href="/progress">Progress</Link><Link href="/about">About</Link><Link href="/privacy">Privacy policy</Link></div>
           <div className="footer-contact"><span className="footer-label">Questions or doubts?</span><p>Write to us anytime. We will get back to you as soon as possible.</p><a href="mailto:kanjal55567@gmail.com"><Mail size={16} />kanjal55567@gmail.com</a></div>
         </div>
         <a className="footer-wordmark" href="#top" aria-label="Back to the top">

@@ -2,71 +2,255 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Swords } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, CircleAlert, Eye, EyeOff, Swords, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import authImage from "../../assets/img5.png";
+import {
+  ApiError,
+  getGoogleSignInUrl,
+  loginAccount,
+  registerAccount,
+  requestPasswordReset,
+  resetPassword,
+  verifyEmail,
+} from "@/lib/auth-api";
+import { useAuth } from "../components/AuthProvider";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot" | "reset";
+type FormStatus = { kind: "success" | "error" | "info"; message: string } | null;
+type AuthNotice = { title: string; message: string; action?: "login" } | null;
+
+const headings: Record<AuthMode, { eyebrow: string; title: string; description: string }> = {
+  login: {
+    eyebrow: "YOUR PREPARATION SPACE",
+    title: "Welcome back.",
+    description: "Continue from where you left off and keep your preparation moving.",
+  },
+  signup: {
+    eyebrow: "FREE CDS PREPARATION",
+    title: "Begin your preparation.",
+    description: "Create one free account for practice, papers, progress and doubt-solving.",
+  },
+  forgot: {
+    eyebrow: "ACCOUNT RECOVERY",
+    title: "Reset your password.",
+    description: "Enter your email and we will create a secure password-reset link.",
+  },
+  reset: {
+    eyebrow: "SECURE YOUR ACCOUNT",
+    title: "Choose a new password.",
+    description: "Use at least eight characters with a letter and a number.",
+  },
+};
+
+function getFormValue(form: FormData, name: string) {
+  return String(form.get(name) ?? "").trim();
+}
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { completeAuthentication } = useAuth();
+  const verificationStarted = useRef(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<FormStatus>(null);
+  const [notice, setNotice] = useState<AuthNotice>(null);
+  const [resetToken, setResetToken] = useState("");
   const isLogin = mode === "login";
+  const isSignup = mode === "signup";
+  const heading = headings[mode];
+
+  useEffect(() => {
+    if (verificationStarted.current) return;
+    verificationStarted.current = true;
+    const parameters = new URLSearchParams(window.location.search);
+    const verificationToken = parameters.get("verify");
+    const passwordResetToken = parameters.get("reset");
+    const googleError = parameters.get("google_error");
+
+    if (googleError) {
+      queueMicrotask(() => setNotice({
+        title: googleError === "not_configured" ? "Google sign-in needs one setup step" : "Google sign-in was not completed",
+        message: googleError === "not_configured"
+          ? "Add your free Google OAuth credentials to the backend, then this option will be ready."
+          : "You can try Google again or continue with your email and password.",
+      }));
+      window.history.replaceState(null, "", "/login");
+      return;
+    }
+
+    if (passwordResetToken) {
+      queueMicrotask(() => {
+        setResetToken(passwordResetToken);
+        setMode("reset");
+      });
+      return;
+    }
+    if (!verificationToken) return;
+
+    queueMicrotask(() => {
+      setPending(true);
+      setStatus({ kind: "info", message: "Verifying your email address…" });
+    });
+    verifyEmail(verificationToken)
+      .then(() => {
+        setMode("login");
+        setStatus({ kind: "success", message: "Your email is verified. You can sign in now." });
+        window.history.replaceState(null, "", "/login");
+      })
+      .catch(() => {
+        setStatus({ kind: "error", message: "This verification link is invalid or has expired." });
+      })
+      .finally(() => setPending(false));
+  }, []);
 
   function changeMode(nextMode: AuthMode) {
     setMode(nextMode);
-    setSubmitted(false);
+    setStatus(null);
+    setNotice(null);
     setShowPassword(false);
+    setShowConfirmPassword(false);
   }
 
-  function submitAuthentication(event: FormEvent<HTMLFormElement>) {
+  async function submitAuthentication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(true);
+    const form = new FormData(event.currentTarget);
+    const email = getFormValue(form, "email");
+    const password = getFormValue(form, "password");
+    const confirmPassword = getFormValue(form, "confirm-password");
+
+    if ((isSignup || mode === "reset") && password !== confirmPassword) {
+      setNotice({ title: "Passwords do not match", message: "Please enter the same password in both fields." });
+      return;
+    }
+
+    setPending(true);
+    setStatus(null);
+    try {
+      if (isSignup) {
+        const session = await registerAccount({
+          name: getFormValue(form, "name"),
+          email,
+          password,
+        });
+        completeAuthentication(session);
+        router.replace("/progress");
+        return;
+      }
+
+      if (mode === "forgot") {
+        await requestPasswordReset(email);
+        setStatus({ kind: "success", message: "If that email is registered, a reset link has been created." });
+        return;
+      }
+
+      if (mode === "reset") {
+        if (!resetToken) throw new ApiError("The password-reset link is missing.", 400);
+        await resetPassword(resetToken, password);
+        setMode("login");
+        setResetToken("");
+        setStatus({ kind: "success", message: "Your password has been updated. You can sign in now." });
+        window.history.replaceState(null, "", "/login");
+        return;
+      }
+
+      const session = await loginAccount({
+        email,
+        password,
+      });
+      completeAuthentication(session);
+      router.replace(getSafeDestination());
+    } catch (error: unknown) {
+      if (isSignup && error instanceof ApiError && error.status === 409) {
+        setNotice({
+          title: "You already have an account",
+          message: "This email is already connected to Abhyaas. Please sign in to continue your preparation.",
+          action: "login",
+        });
+      } else {
+        setNotice({ title: "Something needs attention", message: getFailureMessage(mode) });
+      }
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
     <main className="auth-page">
+      {notice && (
+        <aside className="auth-notice" role="alert" aria-live="assertive">
+          <span className="auth-notice-icon"><CircleAlert size={18} /></span>
+          <div><strong>{notice.title}</strong><p>{notice.message}</p>{notice.action === "login" && <button type="button" onClick={() => changeMode("login")}>Go to sign in <ArrowRight size={14} /></button>}</div>
+          <button className="auth-notice-close" type="button" onClick={() => setNotice(null)} aria-label="Close message"><X size={16} /></button>
+        </aside>
+      )}
       <section className="auth-form-panel">
         <div className="auth-form-shell">
           <Link className="auth-brand" href="/"><span><Swords size={19} /></span>ABHYAAS</Link>
 
           <div className="auth-heading">
-            <span>YOUR PREPARATION SPACE</span>
-            <h1>{isLogin ? "Welcome back." : "Begin your preparation."}</h1>
-            <p>{isLogin ? "Continue from where you left off and keep your preparation moving." : "Create one free account for practice, papers, progress and doubt-solving."}</p>
+            <span>{heading.eyebrow}</span>
+            <h1>{heading.title}</h1>
+            <p>{heading.description}</p>
           </div>
 
           <div className="auth-mode-switch" aria-label="Authentication mode">
             <button type="button" className={isLogin ? "active" : ""} onClick={() => changeMode("login")}>Sign in</button>
-            <button type="button" className={!isLogin ? "active" : ""} onClick={() => changeMode("signup")}>Create account</button>
+            <button type="button" className={isSignup ? "active" : ""} onClick={() => changeMode("signup")}>Create account</button>
           </div>
 
           <form className="auth-form" onSubmit={submitAuthentication}>
-            {!isLogin && <label><span>Full name</span><input name="name" type="text" autoComplete="name" placeholder="Your full name" required /></label>}
-            <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></label>
-            <label>
-              <span>Password</span>
-              <span className="auth-password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete={isLogin ? "current-password" : "new-password"} placeholder={isLogin ? "Enter your password" : "Create a password"} minLength={8} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span>
-            </label>
-            {!isLogin && <label><span>Confirm password</span><input name="confirm-password" type="password" autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /></label>}
+            {isSignup && <label><span>Full name</span><input name="name" type="text" autoComplete="name" placeholder="Your full name" minLength={2} required /></label>}
+            {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></label>}
+            {mode !== "forgot" && <label>
+              <span>{mode === "reset" ? "New password" : "Password"}</span>
+              <span className="auth-password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete={isLogin ? "current-password" : "new-password"} placeholder={isLogin ? "Enter your password" : "Create a password"} minLength={8} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span>
+            </label>}
+            {(isSignup || mode === "reset") && <label><span>Confirm password</span><span className="auth-password-field"><input name="confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /><button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}>{showConfirmPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span></label>}
 
-            {isLogin && <div className="auth-form-options"><label><input type="checkbox" name="remember" /> <span>Remember me</span></label><button type="button">Forgot password?</button></div>}
+            {isLogin && <div className="auth-form-options auth-forgot-only"><button type="button" onClick={() => changeMode("forgot")}>Forgot password?</button></div>}
 
-            <button className="auth-submit-static" type="submit">{isLogin ? "Sign in" : "Create free account"}<ArrowRight size={16} /></button>
-            {submitted && <p className="auth-status" role="status">The interface is ready. Secure account authentication will be connected during the backend phase.</p>}
+            <button className="auth-submit-static" type="submit" disabled={pending}>
+              {pending ? "Please wait…" : getSubmitLabel(mode)}{!pending && <ArrowRight size={16} />}
+            </button>
+            {(isLogin || isSignup) && <><div className="auth-divider"><span>or continue with</span></div><button className="auth-google" type="button" onClick={() => window.location.assign(getGoogleSignInUrl())}><span aria-hidden="true">G</span>Sign in with Google</button></>}
+            {status && <p className={`auth-status ${status.kind}`} role={status.kind === "error" ? "alert" : "status"}>{status.message}</p>}
           </form>
 
-          <p className="auth-alternate">{isLogin ? "New to Abhyaas?" : "Already have an account?"}<button type="button" onClick={() => changeMode(isLogin ? "signup" : "login")}>{isLogin ? "Create an account" : "Sign in"}</button></p>
-          <Link className="auth-back" href="/"><ArrowLeft size={15} /> Return to home</Link>
+          <p className="auth-alternate">
+            {isLogin ? "New to Abhyaas?" : "Already have an account?"}
+            <button type="button" onClick={() => changeMode(isLogin ? "signup" : "login")}>{isLogin ? "Create an account" : "Sign in"}</button>
+          </p>
+          <p className="auth-privacy-note">By continuing, you acknowledge the <Link href="/privacy">Privacy policy</Link>.</p>
         </div>
       </section>
 
       <aside className="auth-visual-panel">
         <Image src={authImage} alt="Indian defence officer with a message about pursuing a dream" fill priority sizes="(max-width: 900px) 100vw, 52vw" />
         <div className="auth-image-overlay" />
-        {/* <div className="auth-image-copy"><span>CDS PREPARATION · FREE ACCESS</span><h2>The work is yours.<br />The path should be clear.</h2><p>One focused place to learn, practise and return stronger tomorrow.</p></div> */}
       </aside>
     </main>
   );
+}
+
+function getSubmitLabel(mode: AuthMode) {
+  if (mode === "signup") return "Create free account";
+  if (mode === "forgot") return "Create reset link";
+  if (mode === "reset") return "Update password";
+  return "Sign in";
+}
+
+function getSafeDestination() {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next?.startsWith("/") && !next.startsWith("//") ? next : "/progress";
+}
+
+function getFailureMessage(mode: AuthMode) {
+  if (mode === "signup") return "Your account is almost ready, but we could not finish signing you in. Please try once more.";
+  if (mode === "forgot") return "That reset request did not go through. Please wait a moment and try again.";
+  if (mode === "reset") return "That password change did not go through. Please request a fresh reset link.";
+  return "Those details did not match an account. Please check your email and password.";
 }
