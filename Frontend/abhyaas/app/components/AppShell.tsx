@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BookOpen, Bot, FileText, GraduationCap, Home, Info, LogOut, Menu, Swords, Target, X } from "lucide-react";
+import { BarChart3, BookOpen, Bot, FileText, GraduationCap, Home, Info, LogOut, Menu, ShieldCheck, Swords, Target, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
@@ -15,6 +15,7 @@ const desktopItems = [
   { label: "Previous papers", href: "/papers", icon: FileText },
   { label: "Progress", href: "/progress", icon: BarChart3 },
   { label: "About", href: "/about", icon: BookOpen },
+  { label: "Privacy", href: "/privacy", icon: ShieldCheck },
 ];
 
 const mobileItems = desktopItems.filter(({ label }) => ["Home", "Practice", "Doubt solver", "Previous papers", "Progress"].includes(label));
