@@ -13,7 +13,7 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
     if (!root) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const elements = Array.from(root.querySelectorAll<HTMLElement>(
-      "main > section:not(.hero), .workspace-header, .feature-card, .subject-row, .dashboard-card, .academy-route-grid article, .subject-page-card, .paper-type-grid article, .value-grid article",
+      ".workspace-header, .section-heading, .prep-value-grid > *, .feature-card, .dark-section-inner > *, .subject-row, .exam-card, .selection-path, .progress-copy, .progress-preview, .cds-chart-card, .closing-content, .dashboard-card, .academy-route-grid article, .subject-page-card, .paper-type-grid article, .value-grid article",
     ));
 
     if (reducedMotion) {
@@ -31,6 +31,12 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
     }, { threshold: 0.08, rootMargin: "-5% 0px -7% 0px" });
 
     elements.forEach((element) => observer.observe(element));
+
+    const glowPanels = Array.from(root.querySelectorAll<HTMLElement>(".prep-stack"));
+    const glowObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => entry.target.classList.toggle("is-glowing", entry.isIntersecting));
+    }, { threshold: 0.03, rootMargin: "-2% 0px -8% 0px" });
+    glowPanels.forEach((panel) => glowObserver.observe(panel));
 
     let navigationTimer = 0;
     const handleNavigation = (event: MouseEvent) => {
@@ -51,6 +57,7 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
 
     return () => {
       observer.disconnect();
+      glowObserver.disconnect();
       root.removeEventListener("click", handleNavigation);
       window.clearTimeout(navigationTimer);
     };

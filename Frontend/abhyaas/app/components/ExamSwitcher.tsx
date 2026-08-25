@@ -1,4 +1,7 @@
+"use client";
+
 import { Check, ChevronDown, LockKeyhole, Shield } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const upcomingExams = [
   { name: "NEET", description: "Medical entrance" },
@@ -7,8 +10,30 @@ const upcomingExams = [
 ];
 
 export default function ExamSwitcher({ compact = false }: { compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const switcherRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function closeFromOutside(event: PointerEvent) {
+      if (!switcherRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    function closeFromEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeFromOutside);
+    document.addEventListener("keydown", closeFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeFromOutside);
+      document.removeEventListener("keydown", closeFromEscape);
+    };
+  }, [open]);
+
   return (
-    <details className={`exam-switcher ${compact ? "compact" : ""}`}>
+    <details ref={switcherRef} open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className={`exam-switcher ${compact ? "compact" : ""}`}>
       <summary aria-label="Choose an exam">
         <span className="exam-shield"><Shield size={14} /></span>
         <span className="exam-current"><small>Preparing for</small><strong>CDS</strong></span>

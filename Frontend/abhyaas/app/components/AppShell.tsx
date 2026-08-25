@@ -1,9 +1,10 @@
 "use client";
 
-import { BarChart3, BookOpen, Bot, FileText, GraduationCap, Home, Info, Menu, Swords, Target, X } from "lucide-react";
+import { BarChart3, BookOpen, Bot, FileText, GraduationCap, Home, Info, LogOut, Menu, Swords, Target, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
+import { useAuth } from "./AuthProvider";
 
 const desktopItems = [
   { label: "Home", href: "/", icon: Home },
@@ -20,13 +21,25 @@ const mobileItems = desktopItems.filter(({ label }) => ["Home", "Practice", "Dou
 
 export default function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const initials = user?.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 
   return (
     <div className="app-shell">
       <header className="app-topbar">
         <Link href="/" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
         <ExamSwitcher compact />
-        <div className="app-context"><span className="status-dot" /> Study workspace</div>
+        <div className="app-context app-user-context">
+          {user ? <span className="app-user-avatar">{initials}</span> : <span className="status-dot" />}
+          <span className="app-user-copy"><strong>{user?.name ?? "Study workspace"}</strong><small>{user?.email ?? "CDS preparation"}</small></span>
+          {user && <button className="app-signout" type="button" onClick={() => void signOut()} aria-label="Sign out"><LogOut size={15} /></button>}
+        </div>
         <button className="app-menu-toggle" onClick={() => setOpen(!open)} aria-label="Toggle navigation">{open ? <X /> : <Menu />}</button>
       </header>
       <aside className={`app-sidebar ${open ? "is-open" : ""}`}>
