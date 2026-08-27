@@ -7,9 +7,11 @@ from alembic import context
 from app import models  # noqa: F401
 from app.core.config import get_settings
 from app.db.base import Base
+from app.db.url import build_async_database_config
 
 config = context.config
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+database_url, database_connect_args = build_async_database_config(get_settings().database_url)
+config.set_main_option("sqlalchemy.url", database_url.render_as_string(hide_password=False))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -40,6 +42,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=database_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
