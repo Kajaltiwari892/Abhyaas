@@ -615,6 +615,34 @@ footer { position: relative; z-index: 3; }
   background: rgba(181,196,120,.1);
 }
 
+/* Live practice and progress data */
+.workspace-message { max-width: 1050px; margin: 0 auto 16px; padding: 13px 15px; color: #a7b28f; background: #11160f; border: 1px solid var(--line); font-size: 10px; }
+.workspace-message.is-error { color: #e3a994; border-color: rgba(215,112,80,.3); background: rgba(87,35,22,.16); }
+.practice-controls > select { min-width: 165px; height: 42px; padding: 0 36px 0 13px; color: #aab49e; background: #11160f; border: 1px solid var(--line); font: 9px var(--font-geist-mono); outline: none; }
+.practice-controls > select:focus { border-color: rgba(168,187,109,.48); }
+.practice-controls > select:disabled { opacity: .55; }
+.practice-summary .practice-again { color: #a8b96d; background: transparent; border: 0; font-size: 10px; text-decoration: underline; text-underline-offset: 4px; }
+.real-trend { min-height: 318px; padding: 42px 28px 28px; display: flex; align-items: flex-end; gap: 13px; }
+.real-trend > div { flex: 1; height: 220px; display: grid; grid-template-rows: 1fr auto auto; gap: 6px; align-items: end; text-align: center; }
+.real-trend span { width: min(34px, 70%); min-height: 4px; margin: auto auto 0; display: block; background: linear-gradient(180deg, #b9c878, #59672f); box-shadow: 0 0 22px rgba(185,200,120,.12); }
+.real-trend small { color: #b9c878; font: 8px var(--font-geist-mono); }
+.real-trend time { color: #5f6b63; font: 7px var(--font-geist-mono); }
+.practice-history-list { padding: 8px 20px 18px; }
+.practice-history-list article { min-height: 62px; display: grid; grid-template-columns: 1fr 55px 58px 48px; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
+.practice-history-list article:last-child { border-bottom: 0; }
+.practice-history-list strong { display: block; font-family: Georgia, serif; font-size: 13px; font-weight: 500; }
+.practice-history-list small { display: block; margin-top: 4px; color: #64716a; font-size: 8px; }
+.practice-history-list article > span, .practice-history-list b, .practice-history-list time { color: #94a06f; font: 9px var(--font-geist-mono); text-align: right; }
+.practice-history-list b { color: #c8d487; }
+
+@media (max-width: 700px) {
+  .practice-controls > select { flex: 1; min-width: 130px; }
+  .real-trend { padding-inline: 13px; gap: 6px; overflow-x: auto; }
+  .real-trend > div { min-width: 45px; }
+  .practice-history-list article { grid-template-columns: 1fr 44px 50px; }
+  .practice-history-list article > time { display: none; }
+}
+
 button,
 .button,
 .nav-cta,
