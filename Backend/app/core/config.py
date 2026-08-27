@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8001/api/v1/auth/google/callback"
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def strip_environment_whitespace(cls, value: object) -> object:
+        """Normalize whitespace introduced by environment-variable CLIs."""
+        return value.strip() if isinstance(value, str) else value
 
     @property
     def google_auth_enabled(self) -> bool:

@@ -33,6 +33,12 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[tool.vercel.scripts]
+build = "alembic upgrade head"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
