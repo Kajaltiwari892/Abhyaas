@@ -32,6 +32,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   try {
     response = await fetch(`${API_ROOT}${path}`, {
       ...init,
+      cache: "no-store",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init.headers },
     });
@@ -71,14 +72,25 @@ export function loginAccount(input: { email: string; password: string }) {
 
 let refreshPromise: Promise<AuthSession | null> | null = null;
 
+async function requestRestoredSession(): Promise<AuthSession | null> {
+  return apiRequest<AuthSession>("/auth/refresh", { method: "POST" })
+    .then(validateAuthSession)
+    .catch((error: unknown) => {
+      if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
+    });
+}
+
+async function restoreWithCrossTabLock(): Promise<AuthSession | null> {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return await navigator.locks.request("abhyaas-session-refresh", requestRestoredSession);
+  }
+  return requestRestoredSession();
+}
+
 export function restoreAuthSession(): Promise<AuthSession | null> {
   if (!refreshPromise) {
-    refreshPromise = apiRequest<AuthSession>("/auth/refresh", { method: "POST" })
-      .then(validateAuthSession)
-      .catch((error: unknown) => {
-        if (error instanceof ApiError && error.status === 401) return null;
-        throw error;
-      })
+    refreshPromise = restoreWithCrossTabLock()
       .finally(() => {
         refreshPromise = null;
       });

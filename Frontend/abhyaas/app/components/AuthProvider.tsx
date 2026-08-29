@@ -58,6 +58,29 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [refreshSession, session]);
 
   useEffect(() => {
+    if (!session) return;
+
+    const refreshExpiredAccessToken = () => {
+      const refreshThreshold = Date.now() + 60_000;
+      if (new Date(session.expires_at).getTime() <= refreshThreshold) {
+        void refreshSession();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshExpiredAccessToken();
+    };
+
+    window.addEventListener("focus", refreshExpiredAccessToken);
+    window.addEventListener("pageshow", refreshExpiredAccessToken);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshExpiredAccessToken);
+      window.removeEventListener("pageshow", refreshExpiredAccessToken);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshSession, session]);
+
+  useEffect(() => {
     if (status === "loading") return;
 
     if (status === "authenticated" && ["/", "/login", "/auth/callback"].includes(pathname)) {

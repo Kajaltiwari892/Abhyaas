@@ -73,10 +73,8 @@ export default function LoginPage() {
 
     if (googleError) {
       queueMicrotask(() => setNotice({
-        title: googleError === "not_configured" ? "Google sign-in needs one setup step" : "Google sign-in was not completed",
-        message: googleError === "not_configured"
-          ? "Add your free Google OAuth credentials to the backend, then this option will be ready."
-          : "You can try Google again or continue with your email and password.",
+        title: "Google sign-in was not completed",
+        message: "Please try Google again or continue with your email and password.",
       }));
       window.history.replaceState(null, "", "/login");
       return;
