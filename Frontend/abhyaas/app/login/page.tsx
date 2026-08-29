@@ -141,7 +141,7 @@ export default function LoginPage() {
 
       if (mode === "forgot") {
         await requestPasswordReset(email);
-        setStatus({ kind: "success", message: "If that email is registered, a reset link has been created." });
+        setStatus({ kind: "success", message: "If that email is registered, check its inbox and spam folder for a reset link." });
         return;
       }
 

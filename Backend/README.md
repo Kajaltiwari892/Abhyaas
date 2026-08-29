@@ -6,6 +6,8 @@ New to Python? Read [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md) for a plain-language 
 
 To enable Google sign-in, follow [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md).
 
+To send real password-reset emails, follow [EMAIL_SETUP.md](EMAIL_SETUP.md).
+
 ## Quick local setup
 
 PostgreSQL 18.6 is installed on this computer. From the `Backend` folder, run:
@@ -33,7 +35,7 @@ Enter the private PostgreSQL password selected during installation. The script c
 - PostgreSQL-backed throttling after repeated failed sign-in attempts.
 - Logout and current-user endpoints.
 - Forgot/reset password flow.
-- Console email provider for free local development.
+- Console email provider for local development and authenticated SMTP delivery in production.
 - PostgreSQL migration and automated authentication tests.
 
 ## Manual setup reference

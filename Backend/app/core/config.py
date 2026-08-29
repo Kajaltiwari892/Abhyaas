@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     login_attempt_window_minutes: int = 15
     email_token_minutes: int = 30
     email_provider: str = "console"
+    email_from_address: str = ""
+    email_from_name: str = "Abhyaas"
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 465
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_ssl: bool = True
     cookie_secure: bool = False
     google_client_id: str = ""
     google_client_secret: str = ""
