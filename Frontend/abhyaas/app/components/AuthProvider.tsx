@@ -83,7 +83,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (status === "loading") return;
 
-    if (status === "authenticated" && ["/", "/login", "/auth/callback"].includes(pathname)) {
+    if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
       router.replace("/progress");
       return;
     }
@@ -122,7 +122,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   );
 
   const redirectingAuthenticatedUser =
-    status === "authenticated" && ["/", "/login", "/auth/callback"].includes(pathname);
+    status === "authenticated" && ["/login", "/auth/callback"].includes(pathname);
   const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
 
   if (status === "loading" || redirectingAuthenticatedUser || redirectingAnonymousUser) {
