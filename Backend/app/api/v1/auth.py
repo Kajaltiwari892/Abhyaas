@@ -90,14 +90,14 @@ def set_oauth_cookie(response: Response, key: str, value: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
         max_age=600,
-        path=f"{settings.api_v1_prefix}/auth/google",
+        path="/",
     )
 
 
 def clear_oauth_cookies(response: Response) -> None:
-    path = f"{settings.api_v1_prefix}/auth/google"
     for key in (OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE, OAUTH_VERIFIER_COOKIE):
-        response.delete_cookie(key=key, path=path)
+        response.delete_cookie(key=key, path="/")
+        response.delete_cookie(key=key, path=f"{settings.api_v1_prefix}/auth/google")
 
 
 def frontend_auth_redirect(error: str | None = None) -> RedirectResponse:

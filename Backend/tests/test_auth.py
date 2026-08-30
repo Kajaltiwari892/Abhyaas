@@ -130,6 +130,29 @@ def test_google_sign_in_reports_missing_local_credentials(client: TestClient) ->
     assert response.headers["location"].endswith("/auth/callback?google_error=not_configured")
 
 
+def test_google_oauth_cookies_are_available_to_frontend_proxy_callback(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(auth_routes.settings, "google_client_id", "test-client-id")
+    monkeypatch.setattr(auth_routes.settings, "google_client_secret", "test-client-secret")
+    monkeypatch.setattr(
+        auth_routes,
+        "create_google_authorization_request",
+        lambda: ("https://accounts.google.com/authorize", "state", "nonce", "verifier"),
+    )
+
+    response = client.get("/api/v1/auth/google/start", follow_redirects=False)
+
+    assert response.status_code == 303
+    oauth_cookies = [
+        value
+        for value in response.headers.get_list("set-cookie")
+        if "abhyaas_oauth_" in value
+    ]
+    assert len(oauth_cookies) == 3
+    assert all("Path=/" in value for value in oauth_cookies)
+
+
 def test_repeated_failed_logins_are_throttled(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
