@@ -21,6 +21,29 @@ type AuthMode = "login" | "signup" | "forgot" | "reset";
 type FormStatus = { kind: "success" | "error" | "info"; message: string } | null;
 type AuthNotice = { title: string; message: string; action?: "login" } | null;
 
+const googleErrorNotices: Record<string, Exclude<AuthNotice, null>> = {
+  not_configured: {
+    title: "Google sign-in is unavailable",
+    message: "Google authentication is not configured for this environment yet.",
+  },
+  cancelled: {
+    title: "Google sign-in was cancelled",
+    message: "The secure sign-in session was not completed. Please start it again.",
+  },
+  invalid_state: {
+    title: "Google sign-in session expired",
+    message: "The browser could not verify the sign-in session. Please start it again in this tab.",
+  },
+  failed: {
+    title: "Google could not verify the account",
+    message: "Google returned an invalid or incomplete identity response. Please try once more.",
+  },
+  account_conflict: {
+    title: "This email is linked differently",
+    message: "Sign in with your existing method first before connecting this Google account.",
+  },
+};
+
 const headings: Record<AuthMode, { eyebrow: string; title: string; description: string }> = {
   login: {
     eyebrow: "YOUR PREPARATION SPACE",
@@ -72,9 +95,9 @@ export default function LoginPage() {
     const googleError = parameters.get("google_error");
 
     if (googleError) {
-      queueMicrotask(() => setNotice({
+      queueMicrotask(() => setNotice(googleErrorNotices[googleError] ?? {
         title: "Google sign-in was not completed",
-        message: "Please try Google again or continue with your email and password.",
+        message: `Please try Google again. Error reference: ${googleError}`,
       }));
       window.history.replaceState(null, "", "/login");
       return;
