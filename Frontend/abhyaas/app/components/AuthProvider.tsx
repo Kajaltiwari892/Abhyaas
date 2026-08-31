@@ -27,6 +27,11 @@ function isProtectedPath(pathname: string) {
   return !PUBLIC_PATHS.has(pathname);
 }
 
+function isExplicitHomeVisit(pathname: string) {
+  if (pathname !== "/" || typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("view") === "home";
+}
+
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -88,6 +93,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       return;
     }
 
+    if (status === "authenticated" && pathname === "/" && !isExplicitHomeVisit(pathname)) {
+      router.replace("/progress");
+      return;
+    }
+
     if (status === "anonymous" && isProtectedPath(pathname)) {
       const destination = encodeURIComponent(pathname);
       router.replace(`/login?next=${destination}`);
@@ -123,9 +133,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   const redirectingAuthenticatedUser =
     status === "authenticated" && ["/login", "/auth/callback"].includes(pathname);
+  const redirectingAuthenticatedRoot =
+    status === "authenticated" && pathname === "/" && !isExplicitHomeVisit(pathname);
   const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
 
-  if (status === "loading" || redirectingAuthenticatedUser || redirectingAnonymousUser) {
+  if (status === "loading" || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
     return <main className="auth-route-loading" aria-label="Checking your session"><span /><p>Opening Abhyaas…</p></main>;
   }
 
