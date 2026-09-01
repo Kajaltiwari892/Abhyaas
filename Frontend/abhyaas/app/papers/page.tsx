@@ -1,18 +1,148 @@
-import { ArrowRight, Calendar, ChevronDown, Clock3, FileCheck2, FileText, ShieldCheck } from "lucide-react";
-import AppShell from "../components/AppShell";
-import PrimaryButton from "@/components/ui/primary-button";
+"use client";
 
-const paperTypes = [
-  { title: "English paper", description: "Review questions, answers and concise language explanations.", track: "All CDS tracks" },
-  { title: "General Knowledge paper", description: "Study topic-linked solutions across the complete GK paper.", track: "All CDS tracks" },
-  { title: "Elementary Mathematics paper", description: "Work through solved questions or attempt the full timed paper.", track: "IMA · INA · AFA" },
-];
+import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AppShell from "../components/AppShell";
+import { useAuth } from "../components/AuthProvider";
+import PrimaryButton from "@/components/ui/primary-button";
+import { ApiError } from "@/lib/auth-api";
+import { completePaperAttempt, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
+
+type PaperMode = "review" | "mock" | "summary" | null;
+const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
 
 export default function PapersPage() {
+  const { accessToken } = useAuth();
+  const [papers, setPapers] = useState<PaperListItem[]>([]);
+  const [year, setYear] = useState("");
+  const [cycle, setCycle] = useState("");
+  const [subject, setSubject] = useState("");
+  const [mode, setMode] = useState<PaperMode>(null);
+  const [detail, setDetail] = useState<PaperDetail | null>(null);
+  const [attempt, setAttempt] = useState<PaperAttempt | null>(null);
+  const [summary, setSummary] = useState<PaperAttemptSummary | null>(null);
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [marked, setMarked] = useState<Record<string, boolean>>({});
+  const [remaining, setRemaining] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    getPapers({ year: year ? Number(year) : undefined, cycle: cycle || undefined, subject: subject || undefined })
+      .then(data => { if (!cancelled) { setPapers(data); setError(""); } })
+      .catch((reason: unknown) => { if (!cancelled) setError(messageFor(reason, "The paper archive could not be loaded.")); });
+    return () => { cancelled = true; };
+  }, [cycle, subject, year]);
+
+  const closeWorkspace = useCallback(() => {
+    if (busy) return;
+    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setMarked({}); setError("");
+  }, [busy]);
+
+  useEffect(() => {
+    if (!mode) return;
+    const handleKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeWorkspace(); };
+    document.body.classList.add("paper-dialog-open");
+    window.addEventListener("keydown", handleKey);
+    return () => { document.body.classList.remove("paper-dialog-open"); window.removeEventListener("keydown", handleKey); };
+  }, [closeWorkspace, mode]);
+
+  useEffect(() => {
+    if (mode !== "mock" || !attempt || remaining <= 0) return;
+    const timer = window.setInterval(() => setRemaining(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [attempt, mode, remaining]);
+
+  const openReview = async (paper: PaperListItem) => {
+    if (!accessToken) return;
+    setBusy(true); setError("");
+    try { setDetail(await getPaper(accessToken, paper.id)); setCurrent(0); setMode("review"); }
+    catch (reason) { setError(messageFor(reason, "Solutions could not be opened.")); }
+    finally { setBusy(false); }
+  };
+
+  const openMock = async (paper: PaperListItem) => {
+    if (!accessToken) return;
+    setBusy(true); setError("");
+    try {
+      const next = await startPaperAttempt(accessToken, paper.id);
+      setAttempt(next); setRemaining(next.duration_seconds); setAnswers({}); setMarked({}); setCurrent(0); setSummary(null); setMode("mock");
+    } catch (reason) { setError(messageFor(reason, "The timed paper could not be started.")); }
+    finally { setBusy(false); }
+  };
+
+  const submitMock = useCallback(async () => {
+    if (!accessToken || !attempt || busy) return;
+    setBusy(true); setError("");
+    try {
+      const elapsed = Math.max(0, attempt.duration_seconds - remaining);
+      setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed));
+      setMode("summary");
+    } catch (reason) { setError(messageFor(reason, "The paper could not be submitted.")); }
+    finally { setBusy(false); }
+  }, [accessToken, attempt, busy, remaining]);
+
+  const saveAndMove = async () => {
+    const question = attempt?.questions[current];
+    const selected = question ? answers[question.id] : undefined;
+    if (!accessToken || !attempt || !question || selected === undefined) return;
+    setBusy(true); setError("");
+    try {
+      await savePaperAnswer(accessToken, attempt.id, question.id, { selected_index: selected, marked_for_review: Boolean(marked[question.id]) });
+      if (current < attempt.questions.length - 1) setCurrent(index => index + 1);
+      else {
+        const elapsed = Math.max(0, attempt.duration_seconds - remaining);
+        setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed));
+        setMode("summary");
+      }
+    } catch (reason) { setError(messageFor(reason, "Your answer could not be saved.")); }
+    finally { setBusy(false); }
+  };
+
+  const years = useMemo(() => [...new Set(papers.map(paper => paper.year))].sort((a, b) => b - a), [papers]);
+  const reviewQuestion = mode === "review" ? detail?.questions[current] : undefined;
+  const activeQuestion = reviewQuestion ?? attempt?.questions[current];
+  const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
+
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
-    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Read structured solutions or attempt a complete paper under timed conditions.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Paper archive</div></header>
-    <section className="paper-filters"><button><Calendar size={15} /> Select year <ChevronDown size={14} /></button><button><ShieldCheck size={15} /> All academies <ChevronDown size={14} /></button><span>Choose filters to open a specific paper.</span></section>
-    <section className="paper-type-grid">{paperTypes.map((paper, index) => <article key={paper.title}><header><span>0{index + 1}</span><FileText size={23} /></header><small>{paper.track}</small><h2>{paper.title}</h2><p>{paper.description}</p><div className="paper-actions"><PrimaryButton href="/papers" size="sm">View solutions <ArrowRight size={15} /></PrimaryButton><button><Clock3 size={15} /> Timed mock</button></div></article>)}</section>
-    <section className="paper-method"><div><span className="workspace-kicker">Two ways to use a paper</span><h2>Study it. Then simulate it.</h2></div><div><article><strong>01 · Review mode</strong><p>Move question by question with the solved answer and a short explanation.</p></article><article><strong>02 · Mock mode</strong><p>Hide solutions, run the timer, and receive a summary after submission.</p></article></div></section>
+    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Official UPSC papers with human-verified answers, concise explanations and timed practice.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Verified archive</div></header>
+    <section className="paper-filters">
+      <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{years.map(value => <option key={value}>{value}</option>)}</select></label>
+      <label><ShieldCheck size={15} /><select aria-label="Filter by cycle" value={cycle} onChange={event => setCycle(event.target.value)}><option value="">Both cycles</option><option value="I">CDS I</option><option value="II">CDS II</option></select></label>
+      <label><FileText size={15} /><select aria-label="Filter by subject" value={subject} onChange={event => setSubject(event.target.value)}><option value="">All subjects</option><option value="english">English</option><option value="general-knowledge">General Knowledge</option><option value="elementary-mathematics">Elementary Mathematics</option></select></label>
+      <span>{papers.length} official {papers.length === 1 ? "paper" : "papers"}</span>
+    </section>
+    {error && !mode && <p className="workspace-message is-error">{error}</p>}
+    <section className="paper-type-grid">{papers.map((paper, index) => <article key={paper.id}>
+      <header><span>{String(index + 1).padStart(2, "0")}</span><FileText size={23} /></header>
+      <small>CDS {paper.cycle} · {paper.year} · {paper.academy_tracks.join(" · ")}</small>
+      <h2>{paper.subject_name}</h2>
+      <p>{paper.available_question_count} verified solutions are ready from the {paper.official_question_count}-question official paper. More are added only after review.</p>
+      <div className="paper-card-meta"><span><Clock3 size={13} /> {paper.duration_seconds / 3600} hours</span><span>{paper.total_marks} marks</span></div>
+      <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openReview(paper)} disabled={busy || !paper.solutions_available}>View solutions <ArrowRight size={15} /></PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openMock(paper)}><Clock3 size={15} /> Timed mock</button></div>
+      <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">Open official UPSC paper <ExternalLink size={12} /></a>
+    </article>)}</section>
+    {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>No paper matches these filters.</h2><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
+    <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Official questions. Verified explanations.</h2></div><div><article><strong>01 · Review mode</strong><p>See the answer and reasoning with the source attached to every question.</p></article><article><strong>02 · Mock mode</strong><p>Solutions stay hidden until submission. Your result is saved to Progress.</p></article></div></section>
+    {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
+      <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Paper solutions" : "Timed paper"}>
+        <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
+        {error && <p className="workspace-message is-error">{error}</p>}
+        {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <div className="paper-question-layout">
+          <aside>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <button key={question.id} className={`${current === index ? "active" : ""} ${answers[question.id] !== undefined ? "answered" : ""}`} onClick={() => setCurrent(index)}>{question.number}</button>)}</aside>
+          <div className="paper-question-panel"><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Review</button>}</div><h3>{activeQuestion.prompt}</h3>{activeQuestion.context && <p>{activeQuestion.context}</p>}
+            <div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const correct = reviewQuestion?.correct_index === index; return <button disabled={mode === "review"} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => setAnswers(values => ({ ...values, [activeQuestion.id]: index }))}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>
+            {reviewQuestion && <div className="paper-explanation"><small>Why this is correct</small><p>{reviewQuestion.explanation}</p><span><FileCheck2 size={13} /> {reviewQuestion.source_label}</span></div>}
+            <footer><button disabled={current === 0} onClick={() => setCurrent(index => index - 1)}><ArrowLeft size={15} /> Previous</button><span>{current + 1} / {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span>{mode === "review" ? <button disabled={current === (detail?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next <ArrowRight size={15} /></button> : <div><button onClick={() => void submitMock()} disabled={busy}>Submit</button><PrimaryButton size="sm" disabled={selected === undefined || busy} onClick={() => void saveAndMove()}>{current === (attempt?.questions.length ?? 1) - 1 ? "Save & submit" : "Save & next"}</PrimaryButton></div>}</footer>
+          </div></div>}
+      </section>
+    </div>}
   </main></AppShell>;
+}
+
+function PaperSummary({ summary, onClose }: { summary: PaperAttemptSummary; onClose: () => void }) {
+  return <div className="paper-summary"><span><Check size={26} /></span><h2>Paper submitted</h2><p>Your verified-question attempt is saved and now appears in Progress.</p><div><small>Score</small><strong>{summary.score}</strong><small>Accuracy</small><strong>{summary.accuracy}%</strong><small>Correct</small><strong>{summary.correct_answers}/{summary.total_questions}</strong><small>Time</small><strong>{formatTime(summary.duration_seconds)}</strong></div><PrimaryButton href="/progress">Open progress</PrimaryButton><button onClick={onClose}>Return to papers</button></div>;
 }

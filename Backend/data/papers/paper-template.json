@@ -1,0 +1,30 @@
+{
+  "year": 2024,
+  "cycle": "II",
+  "subject_slug": "english",
+  "title": "CDS II 2024 - English",
+  "exam_date": "2024-09-01",
+  "duration_seconds": 7200,
+  "total_marks": 100,
+  "official_question_count": 120,
+  "negative_mark_fraction": 0.3333333333,
+  "academy_tracks": ["IMA", "INA", "AFA", "OTA Men", "OTA Women"],
+  "source_url": "https://www.upsc.gov.in/path-to-official-question-paper.pdf",
+  "answer_key_url": null,
+  "source_checksum": null,
+  "is_published": false,
+  "questions": [
+    {
+      "number": 1,
+      "topic_slug": "grammar",
+      "prompt": "Replace this example with the reviewed official question.",
+      "context": null,
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_index": 0,
+      "explanation": "Replace this with a concise, independently checked explanation.",
+      "source_label": "Official UPSC CDS II 2024 paper; independently verified explanation",
+      "asset_url": null,
+      "is_verified": true
+    }
+  ]
+}

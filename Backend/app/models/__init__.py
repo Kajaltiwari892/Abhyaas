@@ -1,4 +1,5 @@
 from app.models.auth import EmailToken, LoginAttempt, RefreshSession, User
+from app.models.papers import PaperAnswer, PaperAttempt, PaperQuestion, PreviousPaper
 from app.models.practice import (
     AttemptQuestion,
     PracticeAnswer,
@@ -14,6 +15,10 @@ __all__ = [
     "LoginAttempt",
     "PracticeAnswer",
     "PracticeAttempt",
+    "PaperAnswer",
+    "PaperAttempt",
+    "PaperQuestion",
+    "PreviousPaper",
     "Question",
     "RefreshSession",
     "Subject",
