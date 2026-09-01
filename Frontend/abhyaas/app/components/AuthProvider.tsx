@@ -22,6 +22,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PUBLIC_PATHS = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
+const AUTHENTICATED_APP_VISITED_KEY = "abhyaas_authenticated_app_visited";
 
 function isProtectedPath(pathname: string) {
   return !PUBLIC_PATHS.has(pathname);
@@ -30,6 +31,15 @@ function isProtectedPath(pathname: string) {
 function isExplicitHomeVisit(pathname: string) {
   if (pathname !== "/" || typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).get("view") === "home";
+}
+
+function hasVisitedAuthenticatedApp() {
+  return typeof window !== "undefined"
+    && window.sessionStorage.getItem(AUTHENTICATED_APP_VISITED_KEY) === "true";
+}
+
+function shouldRedirectAuthenticatedRoot(pathname: string) {
+  return pathname === "/" && !isExplicitHomeVisit(pathname) && !hasVisitedAuthenticatedApp();
 }
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -88,12 +98,16 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (status === "loading") return;
 
+    if (status === "authenticated" && pathname !== "/" && isProtectedPath(pathname)) {
+      window.sessionStorage.setItem(AUTHENTICATED_APP_VISITED_KEY, "true");
+    }
+
     if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
       router.replace("/progress");
       return;
     }
 
-    if (status === "authenticated" && pathname === "/" && !isExplicitHomeVisit(pathname)) {
+    if (status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname)) {
       router.replace("/progress");
       return;
     }
@@ -134,7 +148,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const redirectingAuthenticatedUser =
     status === "authenticated" && ["/login", "/auth/callback"].includes(pathname);
   const redirectingAuthenticatedRoot =
-    status === "authenticated" && pathname === "/" && !isExplicitHomeVisit(pathname);
+    status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname);
   const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
 
   if (status === "loading" || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
