@@ -15,6 +15,7 @@ class PaperListItemResponse(BaseModel):
     total_marks: int
     official_question_count: int
     available_question_count: int
+    verified_question_count: int
     academy_tracks: list[str]
     source_url: str
     solutions_available: bool
@@ -28,11 +29,12 @@ class PaperQuestionResponse(BaseModel):
     context: str | None
     options: list[str]
     asset_url: str | None
+    is_verified: bool
 
 
 class PaperSolutionResponse(PaperQuestionResponse):
-    correct_index: int
-    explanation: str
+    correct_index: int | None
+    explanation: str | None
     source_label: str
 
 

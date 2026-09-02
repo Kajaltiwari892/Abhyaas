@@ -55,6 +55,20 @@ async def seed_paper() -> None:
                 for number in range(1, 4)
             ]
         )
+        db.add(
+            PaperQuestion(
+                paper_id=paper.id,
+                topic_id=topic.id,
+                number=4,
+                prompt="Official scanned question 4",
+                options=["Option (a)", "Option (b)", "Option (c)", "Option (d)"],
+                correct_index=0,
+                explanation="Answer verification pending.",
+                source_label="Official paper scan",
+                asset_url="/papers/example/page-2.webp",
+                is_verified=False,
+            )
+        )
         await db.commit()
 
 
@@ -77,17 +91,22 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     archive = client.get("/api/v1/papers?year=2024&cycle=I&subject=english")
     assert archive.status_code == 200
     paper = archive.json()[0]
-    assert paper["available_question_count"] == 3
+    assert paper["available_question_count"] == 4
+    assert paper["verified_question_count"] == 3
     assert paper["official_question_count"] == 120
 
     detail = client.get(f"/api/v1/papers/{paper['id']}", headers=headers)
     assert detail.status_code == 200
     assert detail.json()["questions"][0]["correct_index"] == 1
+    assert len(detail.json()["questions"]) == 4
+    assert detail.json()["questions"][-1]["correct_index"] is None
+    assert detail.json()["questions"][-1]["is_verified"] is False
 
     started = client.post(f"/api/v1/papers/{paper['id']}/attempts", headers=headers)
     assert started.status_code == 201
     attempt = started.json()
     first_question = attempt["questions"][0]
+    assert len(attempt["questions"]) == 3
     assert "correct_index" not in first_question
 
     saved = client.put(

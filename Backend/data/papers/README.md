@@ -1,14 +1,16 @@
 # Feeding previous-paper data
 
-Only add questions copied from the official UPSC paper. Every answer and explanation must be
-checked by a person before import; the importer deliberately rejects questions unless
-`is_verified` is `true`.
+Only add questions from the official UPSC paper. The archive can contain an official question
+before its answer has been verified, but it must include the exact source scan in `asset_url`.
+Unverified questions use `is_verified: false` and omit `correct_index` and `explanation`.
 
 1. Copy `paper-template.json` and rename it, for example `cds-ii-2024-english.json`.
-2. Fill the paper metadata and questions. `correct_index` is zero-based: `0` means option A.
+2. Fill the paper metadata and questions. For a verified answer, `correct_index` is zero-based:
+   `0` means option A.
 3. Keep the official UPSC PDF in `source_url`. Add `answer_key_url` only when an official key
    exists.
-4. Review every question, answer, formula and explanation.
+4. Check every question image against the official PDF. Set `is_verified: true` only after the
+   answer and explanation have also been independently checked.
 5. From the `Backend` folder, run:
 
    ```powershell
@@ -16,4 +18,5 @@ checked by a person before import; the importer deliberately rejects questions u
    ```
 
 Running the same file again updates existing question numbers instead of creating duplicates.
-Do not commit downloaded PDFs; retain the official URL and checksum in the JSON instead.
+Do not commit downloaded PDFs. Keep the official URL and checksum, and commit only optimized
+question/page images needed by the student-facing viewer.

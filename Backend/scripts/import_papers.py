@@ -46,20 +46,18 @@ def read_payload(path: Path) -> dict[str, Any]:
 
 
 def validate_question(question: dict[str, Any]) -> None:
-    required = {"number", "prompt", "options", "correct_index", "explanation"}
+    required = {"number", "prompt", "options"}
     missing = sorted(required - question.keys())
     if missing:
         raise ValueError(f"Question {question.get('number', '?')} is missing: {', '.join(missing)}")
     options = question["options"]
-    correct_index = question["correct_index"]
+    correct_index = question.get("correct_index")
     if not isinstance(options, list) or len(options) < 2:
         raise ValueError(f"Question {question['number']} needs at least two options")
-    if not isinstance(correct_index, int) or not 0 <= correct_index < len(options):
+    if question.get("is_verified") is True and (
+        not isinstance(correct_index, int) or not 0 <= correct_index < len(options)
+    ):
         raise ValueError(f"Question {question['number']} has an invalid correct_index")
-    if question.get("is_verified") is not True:
-        raise ValueError(
-            f"Question {question['number']} must be human-reviewed and set is_verified=true"
-        )
 
 
 async def import_payload(payload: dict[str, Any]) -> tuple[int, int]:
@@ -130,13 +128,13 @@ async def import_payload(payload: dict[str, Any]) -> tuple[int, int]:
             question.prompt = item["prompt"].strip()
             question.context = item.get("context") or None
             question.options = [str(option).strip() for option in item["options"]]
-            question.correct_index = int(item["correct_index"])
-            question.explanation = item["explanation"].strip()
+            question.correct_index = int(item.get("correct_index", 0))
+            question.explanation = (item.get("explanation") or "Answer verification pending.").strip()
             question.source_label = item.get(
                 "source_label", "Official UPSC paper; independently verified explanation"
             ).strip()
             question.asset_url = item.get("asset_url") or None
-            question.is_verified = True
+            question.is_verified = bool(item.get("is_verified", False))
 
         await db.commit()
         return created, updated

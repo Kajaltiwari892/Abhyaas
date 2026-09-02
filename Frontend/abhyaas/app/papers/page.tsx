@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, X } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
@@ -60,7 +61,7 @@ export default function PapersPage() {
     if (!accessToken) return;
     setBusy(true); setError("");
     try { setDetail(await getPaper(accessToken, paper.id)); setCurrent(0); setMode("review"); }
-    catch (reason) { setError(messageFor(reason, "Solutions could not be opened.")); }
+    catch (reason) { setError(messageFor(reason, "The official paper could not be opened.")); }
     finally { setBusy(false); }
   };
 
@@ -108,7 +109,7 @@ export default function PapersPage() {
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
 
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
-    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Official UPSC papers with human-verified answers, concise explanations and timed practice.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Verified archive</div></header>
+    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Complete official UPSC papers, with verified answers clearly distinguished from questions still being reviewed.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
     <section className="paper-filters">
       <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{years.map(value => <option key={value}>{value}</option>)}</select></label>
       <label><ShieldCheck size={15} /><select aria-label="Filter by cycle" value={cycle} onChange={event => setCycle(event.target.value)}><option value="">Both cycles</option><option value="I">CDS I</option><option value="II">CDS II</option></select></label>
@@ -120,22 +121,23 @@ export default function PapersPage() {
       <header><span>{String(index + 1).padStart(2, "0")}</span><FileText size={23} /></header>
       <small>CDS {paper.cycle} · {paper.year} · {paper.academy_tracks.join(" · ")}</small>
       <h2>{paper.subject_name}</h2>
-      <p>{paper.available_question_count} verified solutions are ready from the {paper.official_question_count}-question official paper. More are added only after review.</p>
+      <p>{paper.available_question_count} of {paper.official_question_count} official questions are available. {paper.verified_question_count} currently include a verified answer and explanation.</p>
       <div className="paper-card-meta"><span><Clock3 size={13} /> {paper.duration_seconds / 3600} hours</span><span>{paper.total_marks} marks</span></div>
-      <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openReview(paper)} disabled={busy || !paper.solutions_available}>View solutions <ArrowRight size={15} /></PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openMock(paper)}><Clock3 size={15} /> Timed mock</button></div>
+      <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openReview(paper)} disabled={busy || !paper.solutions_available}>Review full paper <ArrowRight size={15} /></PrimaryButton><button disabled={busy || paper.verified_question_count === 0} onClick={() => void openMock(paper)}><Clock3 size={15} /> Verified mock</button></div>
       <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">Open official UPSC paper <ExternalLink size={12} /></a>
     </article>)}</section>
     {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>No paper matches these filters.</h2><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
-    <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Official questions. Verified explanations.</h2></div><div><article><strong>01 · Review mode</strong><p>See the answer and reasoning with the source attached to every question.</p></article><article><strong>02 · Mock mode</strong><p>Solutions stay hidden until submission. Your result is saved to Progress.</p></article></div></section>
+    <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Complete papers. Honest verification.</h2></div><div><article><strong>01 · Full review</strong><p>Browse every official question in its original UPSC scan and retain the exact paper numbering.</p></article><article><strong>02 · Verified mock</strong><p>Timed scoring uses only questions whose answer and explanation have been reviewed.</p></article></div></section>
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
-      <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Paper solutions" : "Timed paper"}>
+      <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
         {error && <p className="workspace-message is-error">{error}</p>}
         {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <div className="paper-question-layout">
           <aside>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <button key={question.id} className={`${current === index ? "active" : ""} ${answers[question.id] !== undefined ? "answered" : ""}`} onClick={() => setCurrent(index)}>{question.number}</button>)}</aside>
-          <div className="paper-question-panel"><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Review</button>}</div><h3>{activeQuestion.prompt}</h3>{activeQuestion.context && <p>{activeQuestion.context}</p>}
-            <div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const correct = reviewQuestion?.correct_index === index; return <button disabled={mode === "review"} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => setAnswers(values => ({ ...values, [activeQuestion.id]: index }))}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>
-            {reviewQuestion && <div className="paper-explanation"><small>Why this is correct</small><p>{reviewQuestion.explanation}</p><span><FileCheck2 size={13} /> {reviewQuestion.source_label}</span></div>}
+          <div className="paper-question-panel"><div className="paper-question-label"><span>Official question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Answer verified" : "Official scan"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Review</button>}</div><h3>{activeQuestion.prompt}</h3>{activeQuestion.context && <p>{activeQuestion.context}</p>}
+            {activeQuestion.asset_url && <figure className="paper-question-scan"><Image src={activeQuestion.asset_url} alt={`Official UPSC scan containing question ${activeQuestion.number}`} width={1286} height={1670} priority={current === 0} /><figcaption>Official UPSC CDS I 2024 paper page · locate question {activeQuestion.number}</figcaption></figure>}
+            {(!reviewQuestion || reviewQuestion.is_verified) && <div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const correct = reviewQuestion?.is_verified && reviewQuestion.correct_index === index; return <button disabled={mode === "review"} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => setAnswers(values => ({ ...values, [activeQuestion.id]: index }))}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>}
+            {reviewQuestion?.is_verified && reviewQuestion.explanation ? <div className="paper-explanation"><small>Why this is correct</small><p>{reviewQuestion.explanation}</p><span><FileCheck2 size={13} /> {reviewQuestion.source_label}</span></div> : reviewQuestion && <div className="paper-verification-note"><FileText size={15} /><div><strong>Answer review in progress</strong><p>The official question is available now. Its answer will appear only after it has been checked against a reliable key.</p></div></div>}
             <footer><button disabled={current === 0} onClick={() => setCurrent(index => index - 1)}><ArrowLeft size={15} /> Previous</button><span>{current + 1} / {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span>{mode === "review" ? <button disabled={current === (detail?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next <ArrowRight size={15} /></button> : <div><button onClick={() => void submitMock()} disabled={busy}>Submit</button><PrimaryButton size="sm" disabled={selected === undefined || busy} onClick={() => void saveAndMove()}>{current === (attempt?.questions.length ?? 1) - 1 ? "Save & submit" : "Save & next"}</PrimaryButton></div>}</footer>
           </div></div>}
       </section>

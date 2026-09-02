@@ -29,7 +29,9 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def list_item(paper: PreviousPaper, available: int) -> PaperListItemResponse:
+def list_item(
+    paper: PreviousPaper, available: int, verified: int
+) -> PaperListItemResponse:
     return PaperListItemResponse(
         id=paper.id,
         year=paper.year,
@@ -42,6 +44,7 @@ def list_item(paper: PreviousPaper, available: int) -> PaperListItemResponse:
         total_marks=paper.total_marks,
         official_question_count=paper.official_question_count,
         available_question_count=available,
+        verified_question_count=verified,
         academy_tracks=paper.academy_tracks,
         source_url=paper.source_url,
         solutions_available=available > 0,
@@ -73,7 +76,11 @@ async def list_papers(
         query = query.where(Subject.slug == subject)
     papers = (await db.execute(query)).scalars().all()
     return [
-        list_item(paper, sum(question.is_verified for question in paper.questions))
+        list_item(
+            paper,
+            len(paper.questions),
+            sum(question.is_verified for question in paper.questions),
+        )
         for paper in papers
     ]
 
@@ -103,6 +110,7 @@ def public_question(question: PaperQuestion) -> PaperQuestionResponse:
         context=question.context,
         options=question.options,
         asset_url=question.asset_url,
+        is_verified=question.is_verified,
     )
 
 
@@ -111,16 +119,20 @@ async def paper_detail(
     paper_id: str, _user: CurrentUser, db: DatabaseSession
 ) -> PaperDetailResponse:
     paper = await get_paper_or_404(db, paper_id)
-    questions = [question for question in paper.questions if question.is_verified]
-    item = list_item(paper, len(questions))
+    questions = list(paper.questions)
+    item = list_item(
+        paper,
+        len(questions),
+        sum(question.is_verified for question in questions),
+    )
     return PaperDetailResponse(
         **item.model_dump(),
         negative_mark_fraction=paper.negative_mark_fraction,
         questions=[
             PaperSolutionResponse(
                 **public_question(question).model_dump(),
-                correct_index=question.correct_index,
-                explanation=question.explanation,
+                correct_index=question.correct_index if question.is_verified else None,
+                explanation=question.explanation if question.is_verified else None,
                 source_label=question.source_label,
             )
             for question in questions

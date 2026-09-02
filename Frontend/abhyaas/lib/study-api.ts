@@ -78,6 +78,7 @@ export type PaperListItem = {
   total_marks: number;
   official_question_count: number;
   available_question_count: number;
+  verified_question_count: number;
   academy_tracks: string[];
   source_url: string;
   solutions_available: boolean;
@@ -91,11 +92,12 @@ export type PaperQuestion = {
   context: string | null;
   options: string[];
   asset_url: string | null;
+  is_verified: boolean;
 };
 
 export type PaperSolution = PaperQuestion & {
-  correct_index: number;
-  explanation: string;
+  correct_index: number | null;
+  explanation: string | null;
   source_label: string;
 };
 
