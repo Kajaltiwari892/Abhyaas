@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/auth-api";
 import { completePaperAttempt, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
+const PAPER_YEARS = [2026, 2025, 2024] as const;
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
 
@@ -103,7 +104,6 @@ export default function PapersPage() {
     finally { setBusy(false); }
   };
 
-  const years = useMemo(() => [...new Set(papers.map(paper => paper.year))].sort((a, b) => b - a), [papers]);
   const reviewQuestion = mode === "review" ? detail?.questions[current] : undefined;
   const activeQuestion = reviewQuestion ?? attempt?.questions[current];
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
@@ -111,7 +111,7 @@ export default function PapersPage() {
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Complete official UPSC papers, with verified answers clearly distinguished from questions still being reviewed.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
     <section className="paper-filters">
-      <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{years.map(value => <option key={value}>{value}</option>)}</select></label>
+      <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{PAPER_YEARS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
       <label><ShieldCheck size={15} /><select aria-label="Filter by cycle" value={cycle} onChange={event => setCycle(event.target.value)}><option value="">Both cycles</option><option value="I">CDS I</option><option value="II">CDS II</option></select></label>
       <label><FileText size={15} /><select aria-label="Filter by subject" value={subject} onChange={event => setSubject(event.target.value)}><option value="">All subjects</option><option value="english">English</option><option value="general-knowledge">General Knowledge</option><option value="elementary-mathematics">Elementary Mathematics</option></select></label>
       <span>{papers.length} official {papers.length === 1 ? "paper" : "papers"}</span>
@@ -126,7 +126,7 @@ export default function PapersPage() {
       <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openReview(paper)} disabled={busy || !paper.solutions_available}>Review full paper <ArrowRight size={15} /></PrimaryButton><button disabled={busy || paper.verified_question_count === 0} onClick={() => void openMock(paper)}><Clock3 size={15} /> Verified mock</button></div>
       <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">Open official UPSC paper <ExternalLink size={12} /></a>
     </article>)}</section>
-    {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>No paper matches these filters.</h2><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
+    {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>{year ? `The ${year} archive will appear here as its official papers are imported.` : "Try another year, cycle, or subject."}</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
     <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Complete papers. Honest verification.</h2></div><div><article><strong>01 · Full review</strong><p>Browse every official question in its original UPSC scan and retain the exact paper numbering.</p></article><article><strong>02 · Verified mock</strong><p>Timed scoring uses only questions whose answer and explanation have been reviewed.</p></article></div></section>
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
