@@ -22,7 +22,6 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PUBLIC_PATHS = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
-const AUTHENTICATED_APP_VISITED_KEY = "abhyaas_authenticated_app_visited";
 
 function isProtectedPath(pathname: string) {
   return !PUBLIC_PATHS.has(pathname);
@@ -33,13 +32,8 @@ function isExplicitHomeVisit(pathname: string) {
   return new URLSearchParams(window.location.search).get("view") === "home";
 }
 
-function hasVisitedAuthenticatedApp() {
-  return typeof window !== "undefined"
-    && window.sessionStorage.getItem(AUTHENTICATED_APP_VISITED_KEY) === "true";
-}
-
 function shouldRedirectAuthenticatedRoot(pathname: string) {
-  return pathname === "/" && !isExplicitHomeVisit(pathname) && !hasVisitedAuthenticatedApp();
+  return pathname === "/" && !isExplicitHomeVisit(pathname);
 }
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -97,10 +91,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (status === "loading") return;
-
-    if (status === "authenticated" && pathname !== "/" && isProtectedPath(pathname)) {
-      window.sessionStorage.setItem(AUTHENTICATED_APP_VISITED_KEY, "true");
-    }
 
     if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
       router.replace("/progress");

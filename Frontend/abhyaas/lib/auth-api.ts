@@ -73,12 +73,20 @@ export function loginAccount(input: { email: string; password: string }) {
 let refreshPromise: Promise<AuthSession | null> | null = null;
 
 async function requestRestoredSession(): Promise<AuthSession | null> {
-  return apiRequest<AuthSession>("/auth/refresh", { method: "POST" })
-    .then(validateAuthSession)
-    .catch((error: unknown) => {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return validateAuthSession(
+        await apiRequest<AuthSession>("/auth/refresh", { method: "POST" }),
+      );
+    } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null;
-      throw error;
-    });
+      const transientFailure = error instanceof ApiError
+        && (error.status === 0 || error.status >= 500);
+      if (!transientFailure || attempt === 1) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+    }
+  }
+  return null;
 }
 
 async function restoreWithCrossTabLock(): Promise<AuthSession | null> {
