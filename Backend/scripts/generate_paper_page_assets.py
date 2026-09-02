@@ -1,4 +1,4 @@
-"""Render the authoritative UPSC scans used by the CDS I 2024 question viewer.
+"""Render the authoritative UPSC scans used by the previous-paper viewer.
 
 Download the three PDFs into ``tmp/pdfs/cds-i-2024`` using the filenames below,
 then run this script from the repository root. Generated WebP files are written
@@ -13,23 +13,39 @@ from pathlib import Path
 import pymupdf
 from PIL import Image
 
-
 ROOT = Path(__file__).resolve().parents[2]
-PDF_DIR = ROOT / "tmp" / "pdfs" / "cds-i-2024"
-PUBLIC_DIR = ROOT / "Frontend" / "abhyaas" / "public" / "papers" / "cds-i-2024"
+PDF_ROOT = ROOT / "tmp" / "pdfs"
+PUBLIC_ROOT = ROOT / "Frontend" / "abhyaas" / "public" / "papers"
 
 PAPER_PAGES = {
-    "english": ("english.pdf", range(2, 29)),
-    "general-knowledge": ("general-knowledge.pdf", range(3, 46, 2)),
-    "elementary-mathematics": ("mathematics.pdf", range(3, 36, 2)),
+    "cds-i-2024": {
+        "english": ("english.pdf", range(2, 29)),
+        "general-knowledge": ("general-knowledge.pdf", range(3, 46, 2)),
+        "elementary-mathematics": ("mathematics.pdf", range(3, 36, 2)),
+    },
+    "cds-i-2025": {
+        "english": ("english.pdf", range(2, 29)),
+        "general-knowledge": ("general-knowledge.pdf", range(3, 36, 2)),
+        "elementary-mathematics": ("mathematics.pdf", range(3, 28, 2)),
+    },
+    "cds-ii-2025": {
+        "english": ("english.pdf", range(2, 25)),
+        "general-knowledge": ("general-knowledge.pdf", range(3, 44, 2)),
+        "elementary-mathematics": ("mathematics.pdf", range(3, 44, 2)),
+    },
+    "cds-i-2026": {
+        "english": ("english.pdf", range(2, 21)),
+        "general-knowledge": ("general-knowledge.pdf", range(3, 44, 2)),
+        "elementary-mathematics": ("mathematics.pdf", range(3, 44, 2)),
+    },
 }
 
 
-def render_paper(slug: str, pdf_name: str, pages: range) -> None:
-    source = PDF_DIR / pdf_name
+def render_paper(folder: str, slug: str, pdf_name: str, pages: range) -> None:
+    source = PDF_ROOT / folder / pdf_name
     if not source.exists():
         raise FileNotFoundError(f"Download the official paper first: {source}")
-    output = PUBLIC_DIR / slug
+    output = PUBLIC_ROOT / folder / slug
     output.mkdir(parents=True, exist_ok=True)
     document = pymupdf.open(source)
     for page_number in pages:
@@ -45,8 +61,9 @@ def render_paper(slug: str, pdf_name: str, pages: range) -> None:
 
 
 def main() -> None:
-    for slug, (pdf_name, pages) in PAPER_PAGES.items():
-        render_paper(slug, pdf_name, pages)
+    for folder, papers in PAPER_PAGES.items():
+        for slug, (pdf_name, pages) in papers.items():
+            render_paper(folder, slug, pdf_name, pages)
 
 
 if __name__ == "__main__":

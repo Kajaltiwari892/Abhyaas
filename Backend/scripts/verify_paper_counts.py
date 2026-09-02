@@ -18,6 +18,8 @@ async def main() -> None:
         rows = (
             await db.execute(
                 select(
+                    PreviousPaper.year,
+                    PreviousPaper.cycle,
                     Subject.slug,
                     PreviousPaper.official_question_count,
                     func.count(PaperQuestion.id),
@@ -25,13 +27,21 @@ async def main() -> None:
                 )
                 .join(PreviousPaper, PreviousPaper.subject_id == Subject.id)
                 .join(PaperQuestion, PaperQuestion.paper_id == PreviousPaper.id)
-                .group_by(Subject.slug, PreviousPaper.official_question_count)
-                .order_by(Subject.slug)
+                .group_by(
+                    PreviousPaper.year,
+                    PreviousPaper.cycle,
+                    Subject.slug,
+                    PreviousPaper.official_question_count,
+                )
+                .order_by(PreviousPaper.year, PreviousPaper.cycle, Subject.slug)
             )
         ).all()
-    for slug, official, imported, verified in rows:
+    for year, cycle, slug, official, imported, verified in rows:
         status = "OK" if official == imported else "MISMATCH"
-        print(f"{slug}: official={official}, imported={imported}, verified={verified} [{status}]")
+        print(
+            f"CDS {cycle} {year} {slug}: official={official}, imported={imported}, "
+            f"verified={verified} [{status}]"
+        )
 
 
 if __name__ == "__main__":
