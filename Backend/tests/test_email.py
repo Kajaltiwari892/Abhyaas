@@ -77,3 +77,19 @@ def test_console_provider_cannot_silently_run_in_production(
     )
     with pytest.raises(RuntimeError, match="not configured"):
         provider.get_email_provider()
+
+
+def test_gmail_app_password_grouping_is_removed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        provider,
+        "get_settings",
+        lambda: smtp_settings(
+            smtp_host="smtp.gmail.com",
+            smtp_password="abcd efgh ijkl mnop",
+        ),
+    )
+
+    email_provider = provider.get_email_provider()
+
+    assert isinstance(email_provider, provider.SmtpEmailProvider)
+    assert email_provider.password == "abcdefghijklmnop"

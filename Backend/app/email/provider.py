@@ -44,6 +44,10 @@ class SmtpEmailProvider:
         self.port = settings.smtp_port
         self.username = settings.smtp_username
         self.password = settings.smtp_password
+        # Google displays app passwords in four groups for readability, while
+        # Gmail SMTP expects the underlying 16-character credential.
+        if self.host.casefold() == "smtp.gmail.com":
+            self.password = "".join(self.password.split())
         self.use_ssl = settings.smtp_use_ssl
         self.sender = settings.email_from_address or settings.smtp_username
         self.sender_name = settings.email_from_name
