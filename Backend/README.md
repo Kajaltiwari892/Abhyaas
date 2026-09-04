@@ -24,6 +24,15 @@ Enter the private PostgreSQL password selected during installation. The script c
 .\scripts\start_backend.ps1
 ```
 
+To keep the local backend running after closing the terminal, use:
+
+```powershell
+.\scripts\start_backend_background.ps1
+```
+
+The command is safe to run again: it reports when a healthy backend is already
+listening instead of starting a duplicate process.
+
 ## Included now
 
 - Registration with normalized unique email addresses.

@@ -131,6 +131,7 @@ Tests deliberately use a temporary SQLite file so they cannot damage your real P
 | `scripts/setup_local_postgres.ps1` | Securely asks for your local PostgreSQL password, creates the `abhyaas` database, creates `.env`, and runs migrations. |
 | `scripts/setup_local_postgres.cmd` | Double-clickable Windows launcher for the PostgreSQL setup script. |
 | `scripts/start_backend.ps1` | Starts FastAPI using the project virtual environment and local `.env`. |
+| `scripts/start_backend_background.ps1` | Starts FastAPI as one persistent hidden local process and checks that it is healthy. |
 
 ### Frontend authentication files
 
