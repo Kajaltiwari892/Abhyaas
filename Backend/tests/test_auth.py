@@ -15,6 +15,11 @@ class CapturingEmailProvider:
         self.messages.append(message)
 
 
+class FailingEmailProvider:
+    async def send(self, message: EmailMessage) -> None:
+        raise RuntimeError("SMTP unavailable")
+
+
 def extract_query_token(message: EmailMessage, parameter: str) -> str:
     match = re.search(rf"[?&]{parameter}=([^\s]+)", message.text)
     assert match is not None
@@ -108,6 +113,24 @@ def test_forgot_and_reset_password(client: TestClient) -> None:
         json={"email": "student@example.com", "password": "Newstrong2"},
     )
     assert login.status_code == 200
+
+
+def test_forgot_password_email_failure_returns_cors_safe_response(client: TestClient) -> None:
+    provider = CapturingEmailProvider()
+    register_user(client, provider)
+    auth_routes.get_email_provider = lambda: FailingEmailProvider()
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        headers={"Origin": "http://localhost:3000"},
+        json={"email": "student@example.com"},
+    )
+
+    assert response.status_code == 503
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.json()["detail"] == (
+        "We could not send the reset email right now. Please try again shortly."
+    )
 
 
 def test_protected_route_and_origin_checks(client: TestClient) -> None:

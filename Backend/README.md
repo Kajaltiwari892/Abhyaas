@@ -30,6 +30,16 @@ To keep the local backend running after closing the terminal, use:
 .\scripts\start_backend_background.ps1
 ```
 
+After creating or replacing a Google App Password, update the local SMTP
+credential without displaying it in the terminal:
+
+```powershell
+.\scripts\set_local_smtp_password.ps1
+```
+
+This saves the credential in the ignored local `.env` file and restarts the
+background backend on port 8001.
+
 The command is safe to run again: it reports when a healthy backend is already
 listening instead of starting a duplicate process.
 

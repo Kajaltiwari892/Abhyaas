@@ -79,6 +79,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pending, setPending] = useState(false);
+  const [email, setEmail] = useState("");
   const [status, setStatus] = useState<FormStatus>(null);
   const [notice, setNotice] = useState<AuthNotice>(null);
   const [resetToken, setResetToken] = useState("");
@@ -136,6 +137,37 @@ export default function LoginPage() {
     setShowConfirmPassword(false);
   }
 
+  function showResetEmailConfirmation() {
+    setStatus(null);
+    setNotice({
+      title: "Check your email",
+      message: "Your password-reset link is on its way. It may take a minute, and please check your Spam folder too.",
+    });
+  }
+
+  async function handleForgotPasswordClick() {
+    changeMode("forgot");
+
+    const requestedEmail = email.trim();
+    if (!isValidEmail(requestedEmail)) {
+      setNotice({
+        title: "Enter your email address",
+        message: "Tell us which email you use for Abhyaas, then we’ll send your secure reset link.",
+      });
+      return;
+    }
+
+    setPending(true);
+    try {
+      await requestPasswordReset(requestedEmail);
+      showResetEmailConfirmation();
+    } catch {
+      setNotice({ title: "We couldn’t send the email yet", message: getFailureMessage("forgot") });
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function submitAuthentication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -164,7 +196,7 @@ export default function LoginPage() {
 
       if (mode === "forgot") {
         await requestPasswordReset(email);
-        setStatus({ kind: "success", message: "If that email is registered, check its inbox and spam folder for a reset link." });
+        showResetEmailConfirmation();
         return;
       }
 
@@ -225,14 +257,14 @@ export default function LoginPage() {
 
           <form className="auth-form" onSubmit={submitAuthentication}>
             {isSignup && <label><span>Full name</span><input name="name" type="text" autoComplete="name" placeholder="Your full name" minLength={2} required /></label>}
-            {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></label>}
+            {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>}
             {mode !== "forgot" && <label>
               <span>{mode === "reset" ? "New password" : "Password"}</span>
               <span className="auth-password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete={isLogin ? "current-password" : "new-password"} placeholder={isLogin ? "Enter your password" : "Create a password"} minLength={8} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span>
             </label>}
             {(isSignup || mode === "reset") && <label><span>Confirm password</span><span className="auth-password-field"><input name="confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /><button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}>{showConfirmPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span></label>}
 
-            {isLogin && <div className="auth-form-options auth-forgot-only"><button type="button" onClick={() => changeMode("forgot")}>Forgot password?</button></div>}
+            {isLogin && <div className="auth-form-options auth-forgot-only"><button type="button" onClick={handleForgotPasswordClick} disabled={pending}>Forgot password?</button></div>}
 
             <button className="auth-submit-static" type="submit" disabled={pending}>
               {pending ? "Please wait…" : getSubmitLabel(mode)}{!pending && <ArrowRight size={16} />}
@@ -259,9 +291,13 @@ export default function LoginPage() {
 
 function getSubmitLabel(mode: AuthMode) {
   if (mode === "signup") return "Create free account";
-  if (mode === "forgot") return "Create reset link";
+  if (mode === "forgot") return "Send reset email";
   if (mode === "reset") return "Update password";
   return "Sign in";
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function getSafeDestination() {
