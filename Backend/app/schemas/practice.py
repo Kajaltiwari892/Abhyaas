@@ -90,7 +90,8 @@ class HistoryItemResponse(BaseModel):
     completed_at: datetime
     correct_answers: int
     total_questions: int
-    accuracy: float
+    scored_questions: int
+    accuracy: float | None
     duration_seconds: int
 
 

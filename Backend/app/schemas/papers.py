@@ -70,9 +70,9 @@ class CompletePaperAttemptRequest(BaseModel):
 class PaperAnswerReviewResponse(BaseModel):
     question_id: str
     selected_index: int | None
-    correct_index: int
-    is_correct: bool
-    explanation: str
+    correct_index: int | None
+    is_correct: bool | None
+    explanation: str | None
     source_label: str
 
 
@@ -80,10 +80,13 @@ class PaperAttemptSummaryResponse(BaseModel):
     attempt_id: str
     total_questions: int
     answered_questions: int
+    scored_questions: int
+    unscored_questions: int
     correct_answers: int
     incorrect_answers: int
     unanswered_questions: int
-    score: float
-    accuracy: float
+    score: float | None
+    max_score: float | None
+    accuracy: float | None
     duration_seconds: int
     review: list[PaperAnswerReviewResponse]

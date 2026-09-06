@@ -149,9 +149,9 @@ async def start_paper_attempt(
     paper_id: str, user: CurrentUser, db: DatabaseSession
 ) -> PaperAttemptResponse:
     paper = await get_paper_or_404(db, paper_id)
-    questions = [question for question in paper.questions if question.is_verified]
+    questions = list(paper.questions)
     if not questions:
-        raise HTTPException(status_code=409, detail="Verified questions are not available yet")
+        raise HTTPException(status_code=409, detail="Questions are not available yet")
     attempt = PaperAttempt(
         paper_id=paper.id,
         user_id=user.id,
@@ -201,7 +201,6 @@ async def save_paper_answer(
             select(PaperQuestion).where(
                 PaperQuestion.id == question_id,
                 PaperQuestion.paper_id == attempt.paper_id,
-                PaperQuestion.is_verified.is_(True),
             )
         )
     ).scalar_one_or_none()
@@ -221,7 +220,8 @@ async def save_paper_answer(
         answer = PaperAnswer(attempt_id=attempt.id, question_id=question.id)
         db.add(answer)
     answer.selected_index = payload.selected_index
-    answer.is_correct = payload.selected_index == question.correct_index
+    # Unverified scan questions remain answerable, but are deliberately excluded from marks.
+    answer.is_correct = question.is_verified and payload.selected_index == question.correct_index
     answer.marked_for_review = payload.marked_for_review
     answer.answered_at = datetime.now(UTC)
     await db.commit()
@@ -244,19 +244,29 @@ async def complete_paper_attempt(
 ) -> PaperAttemptSummaryResponse:
     attempt = await owned_active_attempt(db, attempt_id, user.id)
     paper = await get_paper_or_404(db, attempt.paper_id)
-    questions = [question for question in paper.questions if question.is_verified]
+    questions = list(paper.questions)
+    scored_questions = [question for question in questions if question.is_verified]
+    scored_ids = {question.id for question in scored_questions}
     answers = {
         answer.question_id: answer
         for answer in (
             await db.execute(select(PaperAnswer).where(PaperAnswer.attempt_id == attempt.id))
         ).scalars()
     }
-    correct = sum(1 for answer in answers.values() if answer.is_correct)
-    incorrect = len(answers) - correct
+    scored_answers = [
+        answer for question_id, answer in answers.items() if question_id in scored_ids
+    ]
+    correct = sum(1 for answer in scored_answers if answer.is_correct)
+    incorrect = len(scored_answers) - correct
     unanswered = len(questions) - len(answers)
-    score = round(correct - incorrect * paper.negative_mark_fraction, 2)
+    marks_per_question = paper.total_marks / paper.official_question_count
+    score = round(
+        (correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2
+    ) if scored_questions else None
+    max_score = round(len(scored_questions) * marks_per_question, 2) if scored_questions else None
     attempt.status = "completed"
     attempt.correct_answers = correct
+    attempt.scored_questions = len(scored_questions)
     attempt.score = score
     attempt.duration_seconds = payload.duration_seconds
     attempt.completed_at = datetime.now(UTC)
@@ -265,11 +275,16 @@ async def complete_paper_attempt(
         attempt_id=attempt.id,
         total_questions=len(questions),
         answered_questions=len(answers),
+        scored_questions=len(scored_questions),
+        unscored_questions=len(questions) - len(scored_questions),
         correct_answers=correct,
         incorrect_answers=incorrect,
         unanswered_questions=unanswered,
         score=score,
-        accuracy=round(correct * 100 / len(questions), 1),
+        max_score=max_score,
+        accuracy=round(correct * 100 / len(scored_questions), 1)
+        if scored_questions
+        else None,
         duration_seconds=payload.duration_seconds,
         review=[
             PaperAnswerReviewResponse(
@@ -277,9 +292,11 @@ async def complete_paper_attempt(
                 selected_index=answers[question.id].selected_index
                 if question.id in answers
                 else None,
-                correct_index=question.correct_index,
-                is_correct=answers[question.id].is_correct if question.id in answers else False,
-                explanation=question.explanation,
+                correct_index=question.correct_index if question.is_verified else None,
+                is_correct=(answers[question.id].is_correct if question.id in answers else False)
+                if question.is_verified
+                else None,
+                explanation=question.explanation if question.is_verified else None,
                 source_label=question.source_label,
             )
             for question in questions

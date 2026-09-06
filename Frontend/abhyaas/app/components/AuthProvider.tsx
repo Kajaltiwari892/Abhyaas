@@ -141,7 +141,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname);
   const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
 
-  if (status === "loading" || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
+  const canRenderProtectedShellWhileRestoring = status === "loading" && isProtectedPath(pathname);
+
+  if ((status === "loading" && !canRenderProtectedShellWhileRestoring) || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
     return <main className="auth-route-loading" aria-label="Checking your session"><span /><p>Opening Abhyaas…</p></main>;
   }
 

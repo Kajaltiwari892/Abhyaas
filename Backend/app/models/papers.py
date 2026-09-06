@@ -82,6 +82,7 @@ class PaperAttempt(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(20), default="in_progress", index=True)
     total_questions: Mapped[int] = mapped_column(Integer)
+    scored_questions: Mapped[int] = mapped_column(Integer, default=0)
     correct_answers: Mapped[int | None] = mapped_column(Integer, nullable=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -34,6 +34,7 @@ class CompletedResult:
     completed_at: datetime
     correct_answers: int
     total_questions: int
+    scored_questions: int
     duration_seconds: int
 
 
@@ -75,6 +76,7 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
             completed_at=attempt.completed_at,
             correct_answers=attempt.correct_answers or 0,
             total_questions=attempt.total_questions,
+            scored_questions=attempt.total_questions,
             duration_seconds=attempt.duration_seconds or 0,
         )
         for attempt in attempts
@@ -88,6 +90,7 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
             completed_at=attempt.completed_at,
             correct_answers=attempt.correct_answers or 0,
             total_questions=attempt.total_questions,
+            scored_questions=attempt.scored_questions,
             duration_seconds=attempt.duration_seconds or 0,
         )
         for attempt in paper_attempts
@@ -95,6 +98,7 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
     ]
     results.sort(key=lambda result: result.completed_at, reverse=True)
     total_questions = sum(result.total_questions for result in results)
+    total_scored = sum(result.scored_questions for result in results)
     total_correct = sum(result.correct_answers for result in results)
     practice_seconds = sum(result.duration_seconds for result in results)
     grouped: dict[str, list[CompletedResult]] = defaultdict(list)
@@ -104,7 +108,7 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
     strengths = []
     for subject in subjects:
         items = grouped[subject.id]
-        attempted = sum(item.total_questions for item in items)
+        attempted = sum(item.scored_questions for item in items)
         correct = sum(item.correct_answers for item in items)
         strengths.append(
             SubjectStrengthResponse(
@@ -122,7 +126,10 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
             completed_at=result.completed_at,
             correct_answers=result.correct_answers,
             total_questions=result.total_questions,
-            accuracy=round(result.correct_answers * 100 / result.total_questions, 1),
+            scored_questions=result.scored_questions,
+            accuracy=round(result.correct_answers * 100 / result.scored_questions, 1)
+            if result.scored_questions
+            else None,
             duration_seconds=result.duration_seconds,
         )
         for result in results[:12]
@@ -131,14 +138,14 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
         completed_sets=len(results),
         questions_attempted=total_questions,
         correct_answers=total_correct,
-        overall_accuracy=round(total_correct * 100 / total_questions, 1)
-        if total_questions
+        overall_accuracy=round(total_correct * 100 / total_scored, 1)
+        if total_scored
         else None,
         practice_seconds=practice_seconds,
         subject_strengths=strengths,
         history=history,
         trend=[
             TrendPointResponse(date=item.completed_at.date().isoformat(), accuracy=item.accuracy)
-            for item in reversed(history[:7])
+            for item in reversed([item for item in history if item.accuracy is not None][:7])
         ],
     )

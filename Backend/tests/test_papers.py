@@ -106,7 +106,7 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert started.status_code == 201
     attempt = started.json()
     first_question = attempt["questions"][0]
-    assert len(attempt["questions"]) == 3
+    assert len(attempt["questions"]) == 4
     assert "correct_index" not in first_question
 
     saved = client.put(
@@ -116,6 +116,14 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     )
     assert saved.status_code == 200
 
+    unverified_question = attempt["questions"][-1]
+    unverified_saved = client.put(
+        f"/api/v1/paper-attempts/{attempt['id']}/answers/{unverified_question['id']}",
+        headers=headers,
+        json={"selected_index": 2, "marked_for_review": False},
+    )
+    assert unverified_saved.status_code == 200
+
     completed = client.post(
         f"/api/v1/paper-attempts/{attempt['id']}/complete",
         headers=headers,
@@ -124,12 +132,21 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert completed.status_code == 200
     assert completed.json()["correct_answers"] == 1
     assert completed.json()["unanswered_questions"] == 2
-    assert completed.json()["score"] == 1
+    assert completed.json()["answered_questions"] == 2
+    assert completed.json()["scored_questions"] == 3
+    assert completed.json()["unscored_questions"] == 1
+    assert completed.json()["score"] == 0.83
+    assert completed.json()["max_score"] == 2.5
+    assert completed.json()["accuracy"] == 33.3
+    assert completed.json()["review"][-1]["correct_index"] is None
+    assert completed.json()["review"][-1]["is_correct"] is None
 
     dashboard = client.get("/api/v1/progress/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["completed_sets"] == 1
     assert dashboard.json()["history"][0]["topic"] == "Previous paper"
+    assert dashboard.json()["questions_attempted"] == 4
+    assert dashboard.json()["history"][0]["scored_questions"] == 3
 
 
 def test_paper_solutions_and_attempts_require_authentication(client: TestClient) -> None:

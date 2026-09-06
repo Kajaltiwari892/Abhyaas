@@ -60,7 +60,8 @@ export type ProgressDashboard = {
     completed_at: string;
     correct_answers: number;
     total_questions: number;
-    accuracy: number;
+    scored_questions: number;
+    accuracy: number | null;
     duration_seconds: number;
   }>;
   trend: Array<{ date: string; accuracy: number }>;
@@ -119,18 +120,21 @@ export type PaperAttemptSummary = {
   attempt_id: string;
   total_questions: number;
   answered_questions: number;
+  scored_questions: number;
+  unscored_questions: number;
   correct_answers: number;
   incorrect_answers: number;
   unanswered_questions: number;
-  score: number;
-  accuracy: number;
+  score: number | null;
+  max_score: number | null;
+  accuracy: number | null;
   duration_seconds: number;
   review: Array<{
     question_id: string;
     selected_index: number | null;
-    correct_index: number;
-    is_correct: boolean;
-    explanation: string;
+    correct_index: number | null;
+    is_correct: boolean | null;
+    explanation: string | null;
     source_label: string;
   }>;
 };

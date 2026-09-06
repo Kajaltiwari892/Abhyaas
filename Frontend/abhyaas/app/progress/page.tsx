@@ -17,9 +17,33 @@ export default function ProgressPage() {
   const firstName = user?.name.trim().split(/\s+/)[0];
 
   useEffect(() => {
-    if (!accessToken) return;
-    getProgressDashboard(accessToken).then(setDashboard).catch((reason: unknown) => setError(reason instanceof ApiError ? reason.message : "Progress could not be loaded."));
-  }, [accessToken]);
+    if (!user) return;
+    let cancelled = false;
+    try {
+      const cached = window.localStorage.getItem(`abhyaas-progress-v1:${user.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached) as ProgressDashboard;
+        queueMicrotask(() => { if (!cancelled) setDashboard(parsed); });
+      }
+    } catch {
+      // A corrupt or unavailable cache should never block a fresh request.
+    }
+    return () => { cancelled = true; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    let cancelled = false;
+    getProgressDashboard(accessToken).then(data => {
+      if (cancelled) return;
+      setDashboard(data);
+      setError("");
+      try { window.localStorage.setItem(`abhyaas-progress-v1:${user.id}`, JSON.stringify(data)); } catch { /* storage can be unavailable */ }
+    }).catch((reason: unknown) => {
+      if (!cancelled) setError(reason instanceof ApiError ? reason.message : "Progress could not be loaded.");
+    });
+    return () => { cancelled = true; };
+  }, [accessToken, user]);
 
   const hasAttempts = Boolean(dashboard?.completed_sets);
 
@@ -39,7 +63,7 @@ export default function ProgressPage() {
       <section className="dashboard-card strength-card"><header><div><span>Subject strength</span><small>Accuracy by syllabus area</small></div></header><div className="subject-empty-list">{(dashboard?.subject_strengths ?? []).map(item => <div key={item.subject}><span>{item.subject}</span><div><i style={{ width: `${item.accuracy ?? 0}%` }} /></div><small>{item.accuracy == null ? "—" : `${item.accuracy}%`}</small></div>)}</div><p className="card-footnote">A subject receives a strength score only after relevant attempts.</p></section>
       <section className="dashboard-card history-card"><header><div><span>Practice history</span><small>Your recent completed sessions</small></div></header>
         {!hasAttempts ? <div className="history-empty"><CalendarDays size={25} /><strong>No practice history yet</strong><p>Completed sets will be logged here by date.</p></div>
-          : <div className="practice-history-list">{dashboard?.history.map(item => <article key={item.attempt_id}><div><strong>{item.subject}</strong><small>{item.topic ?? "Mixed topics"} · {new Date(item.completed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{item.correct_answers}/{item.total_questions}</span><b>{item.accuracy}%</b><time>{formatDuration(item.duration_seconds)}</time></article>)}</div>}
+          : <div className="practice-history-list">{dashboard?.history.map(item => <article key={item.attempt_id}><div><strong>{item.subject}</strong><small>{item.topic ?? "Mixed topics"} · {new Date(item.completed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{item.scored_questions ? `${item.correct_answers}/${item.scored_questions}` : `${item.total_questions} done`}</span><b>{item.accuracy == null ? "Key pending" : `${item.accuracy}%`}</b><time>{formatDuration(item.duration_seconds)}</time></article>)}</div>}
       </section>
     </div>
   </main></AppShell>;
