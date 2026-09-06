@@ -18,16 +18,17 @@ PostgreSQL 18.6 is installed on this computer. From the `Backend` folder, run:
 
 If you prefer, double-click `scripts\setup_local_postgres.cmd` in File Explorer instead of entering the PowerShell command.
 
-Enter the private PostgreSQL password selected during installation. The script creates the database, generates `.env`, and applies migrations. After that, start the API with:
+Enter the private PostgreSQL password selected during installation. The script creates the database, generates `.env`, and applies migrations. After that, start the persistent local API with:
 
 ```powershell
 .\scripts\start_backend.ps1
 ```
 
-To keep the local backend running after closing the terminal, use:
+The command starts the backend in the background, so it stays available after
+the terminal closes. For foreground debugging with automatic code reloads, use:
 
 ```powershell
-.\scripts\start_backend_background.ps1
+.\scripts\start_backend.ps1 -Foreground
 ```
 
 After creating or replacing a Google App Password, update the local SMTP

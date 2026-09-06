@@ -1,4 +1,5 @@
 param(
+    [switch]$Foreground,
     [switch]$NoReload,
     [int]$Port = 8001
 )
@@ -14,6 +15,11 @@ if (-not (Test-Path -LiteralPath $python)) {
 
 if (-not (Test-Path -LiteralPath (Join-Path $backendDirectory ".env"))) {
     throw "Backend\.env is missing. Run scripts\setup_local_postgres.ps1 first."
+}
+
+if (-not $Foreground) {
+    & (Join-Path $PSScriptRoot "start_backend_background.ps1") -Port $Port
+    exit $LASTEXITCODE
 }
 
 try {
