@@ -247,12 +247,32 @@ async def complete_paper_attempt(
     questions = list(paper.questions)
     scored_questions = [question for question in questions if question.is_verified]
     scored_ids = {question.id for question in scored_questions}
+    questions_by_id = {question.id: question for question in questions}
     answers = {
         answer.question_id: answer
         for answer in (
             await db.execute(select(PaperAnswer).where(PaperAnswer.attempt_id == attempt.id))
         ).scalars()
     }
+    for submitted in payload.answers:
+        question = questions_by_id.get(submitted.question_id)
+        if question is None:
+            raise HTTPException(
+                status_code=422, detail="Submitted question is not part of this paper"
+            )
+        if submitted.selected_index >= len(question.options):
+            raise HTTPException(status_code=422, detail="Selected option is invalid")
+        answer = answers.get(question.id)
+        if answer is None:
+            answer = PaperAnswer(attempt_id=attempt.id, question_id=question.id)
+            answers[question.id] = answer
+            db.add(answer)
+        answer.selected_index = submitted.selected_index
+        answer.is_correct = (
+            question.is_verified and submitted.selected_index == question.correct_index
+        )
+        answer.marked_for_review = submitted.marked_for_review
+        answer.answered_at = datetime.now(UTC)
     scored_answers = [
         answer for question_id, answer in answers.items() if question_id in scored_ids
     ]

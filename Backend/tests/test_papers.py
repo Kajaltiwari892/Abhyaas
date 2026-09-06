@@ -127,15 +127,25 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     completed = client.post(
         f"/api/v1/paper-attempts/{attempt['id']}/complete",
         headers=headers,
-        json={"duration_seconds": 120},
+        json={
+            "duration_seconds": 120,
+            "answers": [
+                {
+                    "question_id": attempt["questions"][1]["id"],
+                    "selected_index": 0,
+                    "marked_for_review": False,
+                }
+            ],
+        },
     )
     assert completed.status_code == 200
     assert completed.json()["correct_answers"] == 1
-    assert completed.json()["unanswered_questions"] == 2
-    assert completed.json()["answered_questions"] == 2
+    assert completed.json()["unanswered_questions"] == 1
+    assert completed.json()["answered_questions"] == 3
     assert completed.json()["scored_questions"] == 3
     assert completed.json()["unscored_questions"] == 1
-    assert completed.json()["score"] == 0.83
+    assert completed.json()["incorrect_answers"] == 1
+    assert completed.json()["score"] == 0.56
     assert completed.json()["max_score"] == 2.5
     assert completed.json()["accuracy"] == 33.3
     assert completed.json()["review"][-1]["correct_index"] is None

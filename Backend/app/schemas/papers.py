@@ -63,8 +63,15 @@ class SavedPaperAnswerResponse(BaseModel):
     marked_for_review: bool
 
 
+class PaperAnswerSubmission(BaseModel):
+    question_id: str
+    selected_index: int = Field(ge=0, le=9)
+    marked_for_review: bool = False
+
+
 class CompletePaperAttemptRequest(BaseModel):
     duration_seconds: int = Field(ge=0, le=21600)
+    answers: list[PaperAnswerSubmission] = Field(default_factory=list, max_length=200)
 
 
 class PaperAnswerReviewResponse(BaseModel):

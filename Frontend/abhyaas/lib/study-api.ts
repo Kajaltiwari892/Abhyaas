@@ -189,8 +189,13 @@ export const savePaperAnswer = (
   authorized(token, { method: "PUT", body: JSON.stringify(input) }),
 );
 
-export const completePaperAttempt = (token: string, attemptId: string, durationSeconds: number) =>
+export const completePaperAttempt = (
+  token: string,
+  attemptId: string,
+  durationSeconds: number,
+  answers: Array<{ question_id: string; selected_index: number; marked_for_review: boolean }> = [],
+) =>
   apiRequest<PaperAttemptSummary>(
     `/paper-attempts/${attemptId}/complete`,
-    authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds }) }),
+    authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }),
   );

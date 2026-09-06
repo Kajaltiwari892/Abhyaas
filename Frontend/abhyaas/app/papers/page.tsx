@@ -80,14 +80,13 @@ export default function PapersPage() {
     if (!accessToken || !attempt || busy) return;
     setBusy(true); setError("");
     try {
-      await Promise.all(Object.entries(answers).map(([questionId, selectedIndex]) =>
-        savePaperAnswer(accessToken, attempt.id, questionId, {
-          selected_index: selectedIndex,
-          marked_for_review: Boolean(marked[questionId]),
-        })
-      ));
       const elapsed = Math.max(0, attempt.duration_seconds - remaining);
-      setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed));
+      const submittedAnswers = Object.entries(answers).map(([questionId, selectedIndex]) => ({
+        question_id: questionId,
+        selected_index: selectedIndex,
+        marked_for_review: Boolean(marked[questionId]),
+      }));
+      setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed, submittedAnswers));
       setMode("summary");
     } catch (reason) { setError(messageFor(reason, "The paper could not be submitted.")); }
     finally { setBusy(false); }
