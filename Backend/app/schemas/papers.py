@@ -97,3 +97,9 @@ class PaperAttemptSummaryResponse(BaseModel):
     accuracy: float | None
     duration_seconds: int
     review: list[PaperAnswerReviewResponse]
+
+
+class PaperAIExplanationResponse(BaseModel):
+    correct_index: int = Field(ge=0, le=3)
+    explanation: str
+    confidence: str

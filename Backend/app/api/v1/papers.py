@@ -1,18 +1,23 @@
+import base64
+import json
 from datetime import UTC, datetime
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import get_current_user
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.auth import User
 from app.models.papers import PaperAnswer, PaperAttempt, PaperQuestion, PreviousPaper
 from app.models.practice import Subject
 from app.schemas.papers import (
     CompletePaperAttemptRequest,
+    PaperAIExplanationResponse,
     PaperAnswerReviewResponse,
     PaperAttemptResponse,
     PaperAttemptSummaryResponse,
@@ -29,9 +34,14 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def list_item(
-    paper: PreviousPaper, available: int, verified: int
-) -> PaperListItemResponse:
+def parse_ai_json(text: str) -> dict:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+    return json.loads(cleaned)
+
+
+def list_item(paper: PreviousPaper, available: int, verified: int) -> PaperListItemResponse:
     return PaperListItemResponse(
         id=paper.id,
         year=paper.year,
@@ -138,6 +148,73 @@ async def paper_detail(
             for question in questions
         ],
     )
+
+
+@router.post(
+    "/papers/{paper_id}/questions/{question_id}/ai-explanation",
+    response_model=PaperAIExplanationResponse,
+)
+async def generate_paper_explanation(
+    paper_id: str, question_id: str, _user: CurrentUser, db: DatabaseSession
+) -> PaperAIExplanationResponse:
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=503, detail="AI explanations are not configured yet")
+    paper = await get_paper_or_404(db, paper_id)
+    question = next((item for item in paper.questions if item.id == question_id), None)
+    if question is None or not question.asset_url:
+        raise HTTPException(status_code=404, detail="Question image not found")
+
+    frontend_origin = settings.cors_origins[0].rstrip("/")
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        image_response = await client.get(f"{frontend_origin}{question.asset_url}")
+        if image_response.status_code != 200 or len(image_response.content) > 8_000_000:
+            raise HTTPException(status_code=502, detail="The question image could not be read")
+        prompt = (
+            f"Act as a careful CDS exam tutor. Read only question {question.number} in this "
+            f"official {paper.title} page image. Determine the best answer among (a)-(d), then "
+            "give a concise learning-focused explanation. Return JSON only with correct_index "
+            "as 0 for A, 1 for B, 2 for C, or 3 for D; explanation; and confidence as high, "
+            "medium, or low. If the question is not fully visible, use low confidence and say so."
+        )
+        ai_response = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent",
+            headers={"x-goog-api-key": settings.gemini_api_key},
+            json={
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/webp",
+                                    "data": base64.b64encode(image_response.content).decode(
+                                        "ascii"
+                                    ),
+                                }
+                            },
+                            {"text": prompt},
+                        ]
+                    }
+                ],
+                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+            },
+        )
+    if ai_response.status_code != 200:
+        raise HTTPException(
+            status_code=502, detail="The AI explanation service is temporarily unavailable"
+        )
+    try:
+        text = ai_response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        result = parse_ai_json(text)
+        return PaperAIExplanationResponse(
+            correct_index=int(result["correct_index"]),
+            explanation=str(result["explanation"]).strip(),
+            confidence=str(result.get("confidence", "medium")).lower(),
+        )
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=502, detail="The AI returned an unreadable explanation"
+        ) from exc
 
 
 @router.post(
@@ -280,9 +357,11 @@ async def complete_paper_attempt(
     incorrect = len(scored_answers) - correct
     unanswered = len(questions) - len(answers)
     marks_per_question = paper.total_marks / paper.official_question_count
-    score = round(
-        (correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2
-    ) if scored_questions else None
+    score = (
+        round((correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2)
+        if scored_questions
+        else None
+    )
     max_score = round(len(scored_questions) * marks_per_question, 2) if scored_questions else None
     attempt.status = "completed"
     attempt.correct_answers = correct
@@ -302,9 +381,7 @@ async def complete_paper_attempt(
         unanswered_questions=unanswered,
         score=score,
         max_score=max_score,
-        accuracy=round(correct * 100 / len(scored_questions), 1)
-        if scored_questions
-        else None,
+        accuracy=round(correct * 100 / len(scored_questions), 1) if scored_questions else None,
         duration_seconds=payload.duration_seconds,
         review=[
             PaperAnswerReviewResponse(

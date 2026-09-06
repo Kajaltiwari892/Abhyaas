@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8001/api/v1/auth/google/callback"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.8-flash"
 
     @field_validator("*", mode="before")
     @classmethod

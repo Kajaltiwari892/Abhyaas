@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, X } from "lucide-react";
-import Image from "next/image";
+import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
-import { completePaperAttempt, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
+import paperCrops from "@/lib/paper-crops.json";
+import { completePaperAttempt, generatePaperExplanation, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
+type PaperCrop = { x: number; y: number; width: number; height: number; pixelWidth: number; pixelHeight: number };
 const PAPER_YEARS = [2026, 2025, 2024] as const;
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
@@ -28,6 +29,8 @@ export default function PapersPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [aiExplanations, setAiExplanations] = useState<Record<string, PaperAIExplanation>>({});
+  const [aiBusy, setAiBusy] = useState("");
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +45,7 @@ export default function PapersPage() {
 
   const closeWorkspace = useCallback(() => {
     if (busy) return;
-    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setMarked({}); setRevealed({}); setError("");
+    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setError("");
   }, [busy]);
 
   useEffect(() => {
@@ -118,11 +121,26 @@ export default function PapersPage() {
     finally { setBusy(false); }
   };
 
+  const askAI = async () => {
+    const paperId = attempt?.paper_id ?? detail?.id;
+    if (!accessToken || !paperId || !activeQuestion || aiBusy) return;
+    setAiBusy(activeQuestion.id); setError("");
+    try {
+      const result = await generatePaperExplanation(accessToken, paperId, activeQuestion.id);
+      setAiExplanations(values => ({ ...values, [activeQuestion.id]: result }));
+    } catch (reason) { setError(messageFor(reason, "An AI explanation could not be generated.")); }
+    finally { setAiBusy(""); }
+  };
+
   const reviewQuestion = mode === "review" ? detail?.questions[current] : undefined;
   const activeQuestion = reviewQuestion ?? attempt?.questions[current];
   const solutionQuestion = activeQuestion
     ? detail?.questions.find(question => question.id === activeQuestion.id)
     : undefined;
+  const activeCrop = activeQuestion?.asset_url
+    ? (paperCrops as Record<string, PaperCrop>)[`${activeQuestion.asset_url}#${activeQuestion.number}`]
+    : undefined;
+  const aiExplanation = activeQuestion ? aiExplanations[activeQuestion.id] : undefined;
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
   const answeredCount = Object.keys(answers).length;
   const totalAttemptQuestions = attempt?.questions.length ?? 0;
@@ -152,14 +170,16 @@ export default function PapersPage() {
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
         {error && <p className="workspace-message is-error">{error}</p>}
         {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} answered` : "Paper review"}</span><small>{mode === "mock" ? `${totalAttemptQuestions - answeredCount} remaining` : `${detail?.questions.length ?? 0} questions`}</small></div><i><b style={{ width: `${mode === "mock" && totalAttemptQuestions ? answeredCount * 100 / totalAttemptQuestions : 100}%` }} /></i></div><div className="paper-question-layout">
-          <aside aria-label="Question numbers">{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <button key={question.id} aria-label={`Open question ${question.number}`} className={`${current === index ? "active" : ""} ${answers[question.id] !== undefined ? "answered" : ""}`} onClick={() => setCurrent(index)}>{question.number}</button>)}</aside>
-          <div className="paper-question-panel"><div className="paper-question-label"><span>Official question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Verified key available" : "Official scan"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Mark for review</button>}</div><h3>{activeQuestion.prompt}</h3>{activeQuestion.context && <p>{activeQuestion.context}</p>}
+          <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Jump to question</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><small>Current question</small><strong>{activeQuestion.number}</strong><span>of {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span></div></nav>
+          <div className="paper-question-panel"><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Verified key available" : "AI review available"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Mark for review</button>}</div><h3>Question {activeQuestion.number}</h3>
             <div className={`paper-question-content ${activeQuestion.asset_url ? "has-scan" : ""}`}>
+              {activeQuestion.asset_url && activeCrop ? <figure className="paper-question-scan is-cropped"><div role="img" aria-label={`Official UPSC question ${activeQuestion.number}`} style={{ aspectRatio: `${activeCrop.pixelWidth} / ${activeCrop.pixelHeight}`, backgroundImage: `url(${activeQuestion.asset_url})`, backgroundSize: `${100 / activeCrop.width}% auto`, backgroundPosition: `${activeCrop.x * 100 / (1 - activeCrop.width)}% ${activeCrop.y * 100 / (1 - activeCrop.height)}%` }} /><figcaption><span>Exact official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>This full page is intentionally hidden until question {activeQuestion.number} has been separated and checked.</p></div></div>}
               <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><div><small>Answer for question {activeQuestion.number}</small><strong>Choose one option for this question only</strong></div><b>Select A, B, C or D</b></header><div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>
                 {solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
-                {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation ? <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span></div> : solutionQuestion && !solutionQuestion.is_verified && <div className="paper-verification-note"><FileText size={15} /><div><strong>Explanation awaiting an official answer key</strong><p>Your choice is saved for question {activeQuestion.number}. Its answer and explanation will only be shown after a reliable key is available.</p></div></div>}
+                {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation ? <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span></div> : solutionQuestion && !solutionQuestion.is_verified && !aiExplanation && <div className="paper-verification-note"><Sparkles size={15} /><div><strong>Get an AI study explanation</strong><p>The official key is not available. AI can inspect question {activeQuestion.number}, suggest an answer, and explain its reasoning.</p></div></div>}
+                <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={14} /> {aiBusy === activeQuestion.id ? "Analysing question..." : aiExplanation ? "Generate again" : "Generate AI answer & explanation"}</button>
+                {aiExplanation && <div className="paper-explanation is-ai"><small>AI suggests option {String.fromCharCode(65 + aiExplanation.correct_index)} · {aiExplanation.confidence} confidence</small><p>{aiExplanation.explanation}</p><span><Sparkles size={13} /> AI-generated guidance may be imperfect; verify important facts.</span></div>}
               </section>
-              {activeQuestion.asset_url && <figure className="paper-question-scan"><figcaption><span>Official scan reference for question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">Open full-size scan <ExternalLink size={11} /></a></figcaption><Image src={activeQuestion.asset_url} alt={`Official UPSC scan containing question ${activeQuestion.number}`} width={1286} height={1670} priority={current === 0} /></figure>}
             </div>
             <footer><button disabled={current === 0} onClick={() => setCurrent(index => index - 1)}><ArrowLeft size={15} /> Previous</button><span>{current + 1} / {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span>{mode === "review" ? <button disabled={current === (detail?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next <ArrowRight size={15} /></button> : <div><button onClick={() => void submitMock()} disabled={busy}>Submit</button><PrimaryButton size="sm" disabled={selected === undefined || busy} onClick={() => void saveAndMove()}>{current === (attempt?.questions.length ?? 1) - 1 ? "Save & submit" : "Save & next"}</PrimaryButton></div>}</footer>
           </div></div></>}

@@ -139,6 +139,12 @@ export type PaperAttemptSummary = {
   }>;
 };
 
+export type PaperAIExplanation = {
+  correct_index: number;
+  explanation: string;
+  confidence: "high" | "medium" | "low";
+};
+
 const authorized = (token: string, init: RequestInit = {}): RequestInit => ({
   ...init,
   headers: { Authorization: `Bearer ${token}`, ...init.headers },
@@ -178,6 +184,9 @@ export const getPaper = (token: string, paperId: string) =>
 
 export const startPaperAttempt = (token: string, paperId: string) =>
   apiRequest<PaperAttempt>(`/papers/${paperId}/attempts`, authorized(token, { method: "POST" }));
+
+export const generatePaperExplanation = (token: string, paperId: string, questionId: string) =>
+  apiRequest<PaperAIExplanation>(`/papers/${paperId}/questions/${questionId}/ai-explanation`, authorized(token, { method: "POST" }));
 
 export const savePaperAnswer = (
   token: string,

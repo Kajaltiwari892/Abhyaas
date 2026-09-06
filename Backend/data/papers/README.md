@@ -20,3 +20,12 @@ Unverified questions use `is_verified: false` and omit `correct_index` and `expl
 Running the same file again updates existing question numbers instead of creating duplicates.
 Do not commit downloaded PDFs. Keep the official URL and checksum, and commit only optimized
 question/page images needed by the student-facing viewer.
+
+For image-only UPSC scans, create one-question viewports with the OCR authoring utility:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\extract_paper_crops.py --folder cds-i-2026/english
+```
+
+Install `rapidocr-onnxruntime` in the backend virtual environment before running it. The command
+will refuse to silently publish a page when any expected question number cannot be located.
