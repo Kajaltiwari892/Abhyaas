@@ -4,6 +4,7 @@ import { ArrowRight, BarChart3, BookOpen, CalendarDays, Clock3, Target } from "l
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
+import StudentProgressChart from "../components/StudentProgressChart";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
@@ -60,7 +61,7 @@ export default function ProgressPage() {
     <div className="dashboard-grid">
       <section className="dashboard-card accuracy-card"><header><div><span>Accuracy over time</span><small>Based only on completed sets</small></div><span className="card-tag">{hasAttempts ? "Live data" : "Awaiting data"}</span></header>
         {!hasAttempts ? <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We never populate this chart with sample performance.</p><PrimaryButton href="/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
-          : <div className="real-trend" aria-label="Accuracy trend">{dashboard?.trend.map((point, index) => <div key={`${point.date}-${index}`}><span style={{ height: `${Math.max(4, point.accuracy)}%` }} /><small>{point.accuracy}%</small><time>{new Date(point.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</time></div>)}</div>}
+          : <StudentProgressChart trend={dashboard?.trend ?? []} />}
       </section>
       <section className="dashboard-card strength-card"><header><div><span>Subject strength</span><small>Accuracy by syllabus area</small></div></header><div className="subject-empty-list">{(dashboard?.subject_strengths ?? []).map(item => <div key={item.subject}><span>{item.subject}</span><div><i style={{ width: `${item.accuracy ?? 0}%` }} /></div><small>{item.accuracy == null ? "—" : `${item.accuracy}%`}</small></div>)}</div><p className="card-footnote">A subject receives a strength score only after relevant attempts.</p></section>
       <section className="dashboard-card history-card"><header><div><span>Practice history</span><small>Your recent completed sessions</small></div></header>

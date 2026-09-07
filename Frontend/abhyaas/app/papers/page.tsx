@@ -199,6 +199,9 @@ export default function PapersPage() {
   const progressPercent = mode === "mock" && totalAttemptQuestions
     ? Math.round(answeredCount * 100 / totalAttemptQuestions)
     : 100;
+  const papersByYear = PAPER_YEARS
+    .map((paperYear) => ({ year: paperYear, papers: papers.filter((paper) => paper.year === paperYear) }))
+    .filter((group) => group.papers.length > 0);
 
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Complete official UPSC papers, with verified answers clearly distinguished from questions still being reviewed.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
@@ -208,15 +211,17 @@ export default function PapersPage() {
       <label><FileText size={15} /><select aria-label="Filter by subject" value={subject} onChange={event => setSubject(event.target.value)}><option value="">All subjects</option><option value="english">English</option><option value="general-knowledge">General Knowledge</option><option value="elementary-mathematics">Elementary Mathematics</option></select></label>
       <span>{papers.length} official {papers.length === 1 ? "paper" : "papers"}</span>
     </section>
-    <section className="paper-type-grid">{papers.map((paper, index) => <article key={paper.id}>
-      <header><span>{String(index + 1).padStart(2, "0")}</span><FileText size={23} /></header>
-      <small>CDS {paper.cycle} · {paper.year} · {paper.academy_tracks.join(" · ")}</small>
-      <h2>{paper.subject_name}</h2>
-      <p>All {paper.available_question_count} official questions are available to solve. {paper.verified_question_count} currently have an official or verified answer key for scoring.</p>
-      <div className="paper-card-meta"><span><Clock3 size={13} /> {paper.duration_seconds / 3600} hours</span><span>{paper.total_marks} marks</span></div>
-      <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openMock(paper)} disabled={busy || paper.available_question_count === 0}><Clock3 size={15} /> Solve &amp; score</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openReview(paper)}>Review answers <ArrowRight size={15} /></button></div>
-      <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">Open official UPSC paper <ExternalLink size={12} /></a>
-    </article>)}</section>
+    <div className="papers-by-year">{papersByYear.map((group) => <section className="paper-year-group" key={group.year}>
+      <header className="paper-year-heading"><div><span>{group.year}</span><div><h2>{group.year} question papers</h2><p>Choose a subject and start the complete official paper.</p></div></div><strong>{group.papers.length} {group.papers.length === 1 ? "paper" : "papers"}</strong></header>
+      <div className="paper-type-grid">{group.papers.map((paper) => <article key={paper.id}>
+        <header className="paper-card-top"><span className="paper-year-badge">{paper.year}</span><span className="paper-cycle-badge">CDS {paper.cycle}</span><FileText size={21} /></header>
+        <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>Official CDS {paper.cycle} paper with every question ready to practise.</p></div>
+        <div className="paper-card-meta"><span><strong>{paper.available_question_count}</strong><small>Questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
+        <p className="paper-key-status"><ShieldCheck size={14} /> {paper.verified_question_count ? `${paper.verified_question_count} verified answers available` : "Answer key pending - AI explanations available"}</p>
+        <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openMock(paper)} disabled={busy || paper.available_question_count === 0}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openReview(paper)}>Review <ArrowRight size={15} /></button></div>
+        <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>
+      </article>)}</div>
+    </section>)}</div>
     {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>{year ? `The ${year} archive will appear here as its official papers are imported.` : "Try another year, cycle, or subject."}</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
     <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Complete papers. Honest scoring.</h2></div><div><article><strong>01 · Full review</strong><p>Browse every official question in its original UPSC scan and retain the exact paper numbering.</p></article><article><strong>02 · Solve the paper</strong><p>Answer the complete timed paper. Marks use only published or independently verified answer keys.</p></article></div></section>
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
