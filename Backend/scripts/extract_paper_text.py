@@ -63,9 +63,20 @@ def repair_text(text: str) -> str:
         "verydifficult": "very difficult",
         "willingness understand": "willingness to understand",
         "immanent'": "immanent",
+        "sciencehad": "science had",
+        "becomea": "become a",
+        "withnature": "with nature",
+        "thefirst": "the first",
+        "exp and ed": "expanded",
+        "alot": "a lot",
+        "The“": "The “",
     }
     for source, replacement in repairs.items():
         text = text.replace(source, replacement)
+    text = re.sub(r"\s+KPRS-F-NGE(?:\s.*)?$", "", text)
+    text = re.sub(r"\s+\d{1,3}\.$", "", text)
+    text = re.sub(r"^Sl:", "S1:", text)
+    text = text.replace("“asphalt complex\"", "“asphalt complex”")
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -145,7 +156,37 @@ def parse_question(number: int, rows: list[list]) -> dict[str, object] | None:
     }
 
 
+def inspect_directions() -> None:
+    engine = RapidOCR()
+    page_directory = ROOT / "Frontend" / "abhyaas" / "public" / "papers" / "cds-i-2026" / "english"
+    pages = sorted(
+        page_directory.glob("page-*.webp"),
+        key=lambda path: int(path.stem.split("-")[1]),
+    )
+    for page in pages:
+        rows, _ = engine(str(page))
+        rows = rows or []
+        direction_rows = [row for row in rows if "direction" in str(row[1]).lower()]
+        if not direction_rows:
+            continue
+        print(f"\n=== {page.name} ===", flush=True)
+        for direction in direction_rows:
+            left, top, right, _ = bounds(direction)
+            column_right = max(right + 520, 650)
+            nearby = [
+                row
+                for row in rows
+                if top - 8 <= bounds(row)[1] <= top + 310
+                and bounds(row)[0] >= left - 30
+                and bounds(row)[0] <= column_right
+            ]
+            print(join_rows(nearby), flush=True)
+
+
 def main() -> None:
+    if "--inspect-directions" in sys.argv:
+        inspect_directions()
+        return
     if "--repair-existing" in sys.argv:
         extracted = json.loads(OUTPUT.read_text(encoding="utf-8"))
         for question in extracted.values():

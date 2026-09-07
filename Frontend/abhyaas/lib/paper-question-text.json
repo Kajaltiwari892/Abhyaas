@@ -45,7 +45,7 @@
       "profound",
       "difficult",
       "elegant",
-      "informative KPRS-F-NGE"
+      "informative"
     ],
     "ocrConfidence": 0.812
   },
@@ -104,7 +104,7 @@
     "options": [
       "Noun",
       "Verb",
-      "Adverb 71.",
+      "Adverb",
       "Participle"
     ],
     "ocrConfidence": 0.791
@@ -114,7 +114,7 @@
     "options": [
       "Conjunction",
       "Preposition",
-      "Article 72.",
+      "Article",
       "Participle"
     ],
     "ocrConfidence": 0.805
@@ -123,7 +123,7 @@
     "prompt": "Vicky refused to join the trek to the hills because he is afraid of heights.",
     "options": [
       "Verb",
-      "Adverb 73.",
+      "Adverb",
       "Noun",
       "Adjective"
     ],
@@ -132,7 +132,7 @@
   "/papers/cds-i-2026/english/page-11.webp#69": {
     "prompt": "The number of boxes sold leapt from 19,400 to 33,542.",
     "options": [
-      "Noun 74.",
+      "Noun",
       "Adjective",
       "Adverb",
       "Verb"
@@ -140,12 +140,12 @@
     "ocrConfidence": 0.786
   },
   "/papers/cds-i-2026/english/page-11.webp#70": {
-    "prompt": "Amar ensured the timely delivery of the products. 75.",
+    "prompt": "Amar ensured the timely delivery of the products.",
     "options": [
       "Adverb",
       "Adjective",
       "Noun",
-      "Preposition KPRS-F-NGE"
+      "Preposition"
     ],
     "ocrConfidence": 0.787
   },
@@ -245,7 +245,7 @@
       "unto",
       "at",
       "in",
-      "into KPRS-F-NGE"
+      "into"
     ],
     "ocrConfidence": 0.773
   },
@@ -285,7 +285,7 @@
       "2 and 3 only",
       "1 and 3 only",
       "3 only",
-      "1, 2 and 3 KPRS-F-NGE"
+      "1, 2 and 3"
     ],
     "ocrConfidence": 0.809
   },
@@ -325,7 +325,7 @@
       "1 and 2 only",
       "3 only",
       "2 and 3 only",
-      "1, 2 and 3 KPRS-F-NGE"
+      "1, 2 and 3"
     ],
     "ocrConfidence": 0.797
   },
@@ -350,9 +350,9 @@
     "ocrConfidence": 0.805
   },
   "/papers/cds-i-2026/english/page-15.webp#91": {
-    "prompt": "Sl: Summer in Delhi is extremely hot. S2: Summer in Shimla is quite cold. The second sentence:",
+    "prompt": "S1: Summer in Delhi is extremely hot. S2: Summer in Shimla is quite cold. The second sentence:",
     "options": [
-      "contradicts the assertion of thefirst 95.",
+      "contradicts the assertion of the first",
       "contrasts the assertion of the first",
       "confirms the assertion of the first",
       "qualifies the assertion of the first"
@@ -360,7 +360,7 @@
     "ocrConfidence": 0.803
   },
   "/papers/cds-i-2026/english/page-15.webp#92": {
-    "prompt": "S1: Bananas are a good source of potassium. S2: Doctors often recommend bananas to maintain healthy levels of potassium. The second sentence: 96.",
+    "prompt": "S1: Bananas are a good source of potassium. S2: Doctors often recommend bananas to maintain healthy levels of potassium. The second sentence:",
     "options": [
       "contradicts the assertion of the first",
       "contrasts the assertion of the first",
@@ -372,10 +372,10 @@
   "/papers/cds-i-2026/english/page-15.webp#93": {
     "prompt": "S1: Electric cars produce no exhaust emissions. S2: However, the electricity to charge them 97. may come from fossil fuel sources. The second sentence:",
     "options": [
-      "contradicts the assertion of thefirst",
+      "contradicts the assertion of the first",
       "contrasts the assertion of the first",
       "confirms the assertion of the first",
-      "qualifies the assertion-of the first KPRS-F-NGE (15 A)"
+      "qualifies the assertion-of the first"
     ],
     "ocrConfidence": 0.809
   },
@@ -415,7 +415,7 @@
       "contradicts the assertion of the first",
       "contrasts the assertion of the first",
       "confirms the assertion of the first",
-      "qualifies the assertion of thefirst (15 A)"
+      "qualifies the assertion of the first (15 A)"
     ],
     "ocrConfidence": 0.827
   },
@@ -430,10 +430,10 @@
     "ocrConfidence": 0.843
   },
   "/papers/cds-i-2026/english/page-16.webp#99": {
-    "prompt": "Sl: Research shows exercise improves mood. S2: A 2022 study links daily walks to reduced depression. The second sentence:",
+    "prompt": "S1: Research shows exercise improves mood. S2: A 2022 study links daily walks to reduced depression. The second sentence:",
     "options": [
       "contradicts the assertion of the first",
-      "contrasts the assertion of thefirst",
+      "contrasts the assertion of the first",
       "confirms the assertion of the first",
       "qualifies the assertion of the first"
     ],
@@ -443,9 +443,9 @@
     "prompt": "S1:Some people doubt that God exists. S2: Belief in the existence of God is universal. The second sentence:",
     "options": [
       "contradicts the assertion of the first",
-      "contrasts the assertion of thefirst",
+      "contrasts the assertion of the first",
       "confirms the assertion of the first",
-      "qualifies the assertion of the first KPRS-F-NGE"
+      "qualifies the assertion of the first"
     ],
     "ocrConfidence": 0.843
   },
@@ -475,7 +475,7 @@
       "Imminent means immobile and Eminent means extremely large",
       "Imminent means extremely large and Eminent means immobile",
       "Imminent means famous and respected, and Eminent means happening soon",
-      "Imminent means happening soon and Eminent means famous and respected KPRS-F-NGE"
+      "Imminent means happening soon and Eminent means famous and respected"
     ],
     "ocrConfidence": 0.827
   },
@@ -510,12 +510,12 @@
     "ocrConfidence": 0.864
   },
   "/papers/cds-i-2026/english/page-20.webp#116": {
-    "prompt": "The“asphalt complex\" refers to:",
+    "prompt": "The “asphalt complex” refers to:",
     "options": [
-      "The inability of city dwellers to connect withnature",
+      "The inability of city dwellers to connect with nature",
       "The complexity of urban life and air pollution",
       "The causality between urban pollution and automobiles",
-      "The air pollution that results from the construction of asphalt roads KPRS-F-NGE"
+      "The air pollution that results from the construction of asphalt roads"
     ],
     "ocrConfidence": 0.853
   },
@@ -530,7 +530,7 @@
     "ocrConfidence": 0.848
   },
   "/papers/cds-i-2026/english/page-20.webp#118": {
-    "prompt": "The“biophilia hypothesis\":",
+    "prompt": "The “biophilia hypothesis\":",
     "options": [
       "Argues that psychological disorders are caused by biological organisms",
       "Is the design of a biological experiment which studies families thatlive in cities",
@@ -545,7 +545,7 @@
       "Wilson, automobile and city, deprivation of nature",
       "Urban dwellers, ecologists, trees and flowers",
       "Roszak,Pennsylvania,nature-induced recovery of patients",
-      "Well-beingdenial, human need, “asphalt complex\""
+      "Well-beingdenial, human need, “asphalt complex”"
     ],
     "ocrConfidence": 0.86
   },
@@ -575,7 +575,7 @@
       "Affect means the origin of something and Effect means the consequence of an 12. action",
       "Affect means to influence and Effect means the result of an action",
       "Affect means to impact something and Effect means to reason",
-      "Affect means the consequence of something andEffect means to influence something 13."
+      "Affect means the consequence of something andEffect means to influence something"
     ],
     "ocrConfidence": 0.788
   },
@@ -595,7 +595,7 @@
       "Conscious means brightness and Conscience means social awareness",
       "Conscious means awareness and Conscience means being spiritually 15. aware",
       "Conscious means being able to perceive and Conscience means inner sense of right and wrong",
-      "Conscious means clarity of purpose and Conscience means perception KPRS-F-NGE (3-Ａ)"
+      "Conscious means clarity of purpose and Conscience means perception"
     ],
     "ocrConfidence": 0.813
   },
@@ -695,7 +695,7 @@
       "academic",
       "concise",
       "erudite",
-      "recondite KPRS-F-NGE"
+      "recondite"
     ],
     "ocrConfidence": 0.807
   },
@@ -703,7 +703,7 @@
     "prompt": "Iconoclast:",
     "options": [
       "Person who criticises a cultural icon",
-      "Person who attracts alot of attention",
+      "Person who attracts a lot of attention",
       "Person who does not adhere to accepted beliefs and traditions",
       "Person who negates his own positions"
     ],
@@ -740,7 +740,7 @@
     "ocrConfidence": 0.832
   },
   "/papers/cds-i-2026/english/page-5.webp#25": {
-    "prompt": "Pachyderm: 30.",
+    "prompt": "Pachyderm:",
     "options": [
       "Athick-skinned mammal",
       "A strong-corded silk fabric",
@@ -760,7 +760,7 @@
     "ocrConfidence": 0.813
   },
   "/papers/cds-i-2026/english/page-5.webp#27": {
-    "prompt": "Desiccate: 31.",
+    "prompt": "Desiccate:",
     "options": [
       "To remove salt from diet",
       "To chop into little shards",
@@ -785,7 +785,7 @@
       "To give equal weightage to both arguments",
       "To advocate equally for both sides",
       "To change sides frequently",
-      "To use vague language to conceal the truth KPRS-F-NGE"
+      "To use vague language to conceal the truth"
     ],
     "ocrConfidence": 0.806
   },
@@ -800,7 +800,7 @@
     "ocrConfidence": 0.852
   },
   "/papers/cds-i-2026/english/page-5.webp#31": {
-    "prompt": "Sl: The word science originates from the Latin verb Scientia meaning \"to know\", S6: By the middle of the twentieth century, sciencehad becomea truly international enterprise, with many cultures and countries contributing to its rapid growth. P: Science, in a broad sense, is as old as the human species. Q: From the sixteenth century onwards, great strides were also made in science in Europe. R: The early civilisations of Egypt, India, China, Greece, Mesopotamia and many others made vital contributions to its progress. S: The Sanskrit word Vijnana and the Arabic word Ilm convey a similar meaning, namely knowledge.",
+    "prompt": "S1: The word science originates from the Latin verb Scientia meaning \"to know\", S6: By the middle of the twentieth century, science had become a truly international enterprise, with many cultures and countries contributing to its rapid growth. P: Science, in a broad sense, is as old as the human species. Q: From the sixteenth century onwards, great strides were also made in science in Europe. R: The early civilisations of Egypt, India, China, Greece, Mesopotamia and many others made vital contributions to its progress. S: The Sanskrit word Vijnana and the Arabic word Ilm convey a similar meaning, namely knowledge.",
     "options": [
       "QPRS",
       "SPRQ",
@@ -810,7 +810,7 @@
     "ocrConfidence": 0.829
   },
   "/papers/cds-i-2026/english/page-6.webp#32": {
-    "prompt": "Sl: Britain was the first country to experience modern industrialisation. S6: This gave people a wider choice of ways to spend their earnings and exp and ed the market for the sale of goods. P: Stability meant that the Kingdom had common laws, a single currency and a market that was not fragmented by local authorities levying taxes on goods that passed through their area, thus increasing their price. Q: It had been politically stable since the seventeenth century, with England, Wales and Scotland unified under a monarchy. R: By the end of the seventeenth century, money was widely used as the medium of exchange. S: As a consequence, a large section of the people received their income in the form of wages and salaries, rather than in goods.",
+    "prompt": "S1: Britain was the first country to experience modern industrialisation. S6: This gave people a wider choice of ways to spend their earnings and expanded the market for the sale of goods. P: Stability meant that the Kingdom had common laws, a single currency and a market that was not fragmented by local authorities levying taxes on goods that passed through their area, thus increasing their price. Q: It had been politically stable since the seventeenth century, with England, Wales and Scotland unified under a monarchy. R: By the end of the seventeenth century, money was widely used as the medium of exchange. S: As a consequence, a large section of the people received their income in the form of wages and salaries, rather than in goods.",
     "options": [
       "QPRS",
       "QPSR",
@@ -825,12 +825,12 @@
       "PRQS",
       "PSQR",
       "SQRP",
-      "SRQP KPRS-F-NGE"
+      "SRQP"
     ],
     "ocrConfidence": 0.807
   },
   "/papers/cds-i-2026/english/page-6.webp#34": {
-    "prompt": "Sl: In an economic sense, feudalism refers to a kind of system of agricultural production. S6:Thus,feudalism went beyond economic aspects to cover the social and political aspects of life as well. P: In fact, the latter cultivated their own land as well as that of the lord. Q: It is based on the relationship between lords and peasants, who worked on the former's land. R: They also had judicial control over the peasants. S: The peasants also performed other labour for the lords, who in exchange provided military protection.",
+    "prompt": "S1: In an economic sense, feudalism refers to a kind of system of agricultural production. S6:Thus,feudalism went beyond economic aspects to cover the social and political aspects of life as well. P: In fact, the latter cultivated their own land as well as that of the lord. Q: It is based on the relationship between lords and peasants, who worked on the former's land. R: They also had judicial control over the peasants. S: The peasants also performed other labour for the lords, who in exchange provided military protection.",
     "options": [
       "QPSR",
       "QSPR",
@@ -855,7 +855,7 @@
       "RSQP",
       "QPSR",
       "RPSQ",
-      "QSPR 39."
+      "QSPR"
     ],
     "ocrConfidence": 0.824
   },
@@ -865,7 +865,7 @@
       "QPRS",
       "SPQR",
       "SQRP",
-      "SQPR KPRS-F-NGE"
+      "SQPR"
     ],
     "ocrConfidence": 0.819
   },
@@ -895,7 +895,7 @@
       "RPQS",
       "PRQS",
       "RQSP",
-      "SQRP KPRS-F-NGE"
+      "SQRP"
     ],
     "ocrConfidence": 0.845
   },
@@ -943,7 +943,7 @@
     "prompt": "More than meets the eye",
     "options": [
       "A pleasant feast for the eyes beyond one's imagination",
-      "A beautiful spectacle unfolding before one's eyes 51.",
+      "A beautiful spectacle unfolding before one's eyes",
       "The disguised significance of something beyond the obvious",
       "Apairof beautiful eyes"
     ],
@@ -953,14 +953,14 @@
     "prompt": "Hold the fort",
     "options": [
       "To reach high places",
-      "Tobreach all opposition 52.",
+      "Tobreach all opposition",
       "Be present at the precise moment when one is required",
       "Be responsible on behalf of someone who is absent"
     ],
     "ocrConfidence": 0.812
   },
   "/papers/cds-i-2026/english/page-9.webp#48": {
-    "prompt": "It's all Greek to me 53.",
+    "prompt": "It's all Greek to me",
     "options": [
       "It is foreign to me",
       "It appears classical to me",
@@ -972,7 +972,7 @@
   "/papers/cds-i-2026/english/page-9.webp#49": {
     "prompt": "To close ranks",
     "options": [
-      "To engage in fierce competition 54.",
+      "To engage in fierce competition",
       "To stop communicating,with one's colleagues",
       "To stop hiring people for new jobs",
       "To unite in order to defend a common interest"
@@ -980,12 +980,12 @@
     "ocrConfidence": 0.798
   },
   "/papers/cds-i-2026/english/page-9.webp#50": {
-    "prompt": "Be under a cloud 55.",
+    "prompt": "Be under a cloud",
     "options": [
       "To be the object of suspicion",
       "To be filled with gloom",
       "To operate as an undercover agent",
-      "To hide one's misdeeds KPRS-F-NGE"
+      "To hide one's misdeeds"
     ],
     "ocrConfidence": 0.802
   },
