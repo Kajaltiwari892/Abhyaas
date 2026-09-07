@@ -17,6 +17,7 @@ from pathlib import Path
 from types import ModuleType
 
 import cv2
+from PIL import Image
 from rapidocr_onnxruntime import RapidOCR
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,13 +108,71 @@ def extract_page(job: tuple[str, int, int, int]):
     return page_crops, None
 
 
+def render_question_images(crops: dict[str, dict[str, float | int | str]]) -> None:
+    """Write stable per-question images instead of cropping via CSS at runtime.
+
+    A little extra space is retained above and around each OCR crop. This keeps
+    printed question numbers and ascenders intact without including the next
+    question in the same image.
+    """
+    opened: dict[Path, Image.Image] = {}
+    try:
+        for key, crop in crops.items():
+            asset_url, number_text = key.rsplit("#", 1)
+            source = PUBLIC_PAPERS / asset_url.removeprefix("/papers/")
+            image = opened.setdefault(source, Image.open(source).convert("RGB"))
+            width, height = image.size
+
+            crop_left = float(crop["x"])
+            crop_top = float(crop["y"])
+            crop_right = crop_left + float(crop["width"])
+            crop_bottom = crop_top + float(crop["height"])
+            # Keep the complete printed number at the outside/centre gutter,
+            # while stopping precisely at the opposite column boundary.
+            left = 0 if crop_left < 0.1 else max(0, round((crop_left - 0.038) * width))
+            top = max(0, round((crop_top - 0.012) * height))
+            right = min(width, round(crop_right * width))
+            bottom = min(height, round(crop_bottom * height))
+
+            output_directory = source.parent / "questions"
+            output_directory.mkdir(parents=True, exist_ok=True)
+            output = output_directory / f"question-{int(number_text):03d}.webp"
+            question_image = image.crop((left, top, right, bottom))
+            question_image.save(output, "WEBP", quality=88, method=6)
+            crop["imageUrl"] = (
+                f"{asset_url.rsplit('/', 1)[0]}/questions/question-"
+                f"{int(number_text):03d}.webp"
+            )
+            crop["pixelWidth"], crop["pixelHeight"] = question_image.size
+    finally:
+        for image in opened.values():
+            image.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--folder", help="Extract one archive folder, for example cds-i-2026/english"
     )
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument(
+        "--render-only",
+        action="store_true",
+        help="Rebuild question image files from the existing crop manifest",
+    )
     args = parser.parse_args()
+    if args.render_only:
+        existing = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        selected = {
+            key: value
+            for key, value in existing.items()
+            if not args.folder or key.startswith(f"/papers/{args.folder}/")
+        }
+        render_question_images(selected)
+        existing.update(selected)
+        OUTPUT.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+        print(f"Rendered {len(selected)} question images")
+        return
     crops: dict[str, dict[str, float | int]] = {}
     failures: list[str] = []
     jobs = [
@@ -134,6 +193,7 @@ def main() -> None:
 
     existing = json.loads(OUTPUT.read_text(encoding="utf-8")) if OUTPUT.exists() else {}
     existing.update(crops)
+    render_question_images(crops)
     OUTPUT.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
     print(f"\nWrote {len(crops)} verified crop locations to {OUTPUT}")
     if failures:

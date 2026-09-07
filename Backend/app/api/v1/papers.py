@@ -166,8 +166,14 @@ async def generate_paper_explanation(
         raise HTTPException(status_code=404, detail="Question image not found")
 
     frontend_origin = settings.cors_origins[0].rstrip("/")
+    question_image_url = (
+        f"{question.asset_url.rsplit('/', 1)[0]}/questions/"
+        f"question-{question.number:03d}.webp"
+    )
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        image_response = await client.get(f"{frontend_origin}{question.asset_url}")
+        image_response = await client.get(f"{frontend_origin}{question_image_url}")
+        if image_response.status_code == 404:
+            image_response = await client.get(f"{frontend_origin}{question.asset_url}")
         if image_response.status_code != 200 or len(image_response.content) > 8_000_000:
             raise HTTPException(status_code=502, detail="The question image could not be read")
         prompt = (
