@@ -1,11 +1,10 @@
 "use client";
 
-import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, Moon, ShieldCheck, Sun, Swords, Target, UserRound, X } from "lucide-react";
+import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, ShieldCheck, Swords, Target, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
 import { useAuth } from "./AuthProvider";
-import { useTheme } from "./ThemeProvider";
 
 const desktopItems = [
   { label: "Home", href: "/?view=home", icon: Home },
@@ -25,7 +24,6 @@ export default function AppShell({ active, children }: { active: string; childre
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
 
   const initials = user?.name
     .split(/\s+/)
@@ -39,9 +37,6 @@ export default function AppShell({ active, children }: { active: string; childre
       <header className="app-topbar">
         <Link href="/?view=home" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
         <ExamSwitcher compact />
-        <button className="app-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
-          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
         <div className="app-context app-user-context">
           {user ? <span className="app-user-avatar">{initials}</span> : <span className="status-dot" />}
           <span className="app-user-copy"><strong>{user?.name ?? "Study workspace"}</strong><small>{user?.email ?? "CDS preparation"}</small></span>

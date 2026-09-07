@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, RotateCcw, ShieldCheck, Sparkles, Square, Volume2, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -53,10 +53,13 @@ export default function PapersPage() {
   const [summary, setSummary] = useState<PaperAttemptSummary | null>(null);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<string, number>>({});
+  const [editingQuestion, setEditingQuestion] = useState("");
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [aiExplanations, setAiExplanations] = useState<Record<string, PaperAIExplanation>>({});
   const [aiBusy, setAiBusy] = useState("");
+  const [speakingQuestion, setSpeakingQuestion] = useState("");
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -72,7 +75,8 @@ export default function PapersPage() {
 
   const closeWorkspace = useCallback(() => {
     if (busy) return;
-    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setError("");
+    window.speechSynthesis?.cancel();
+    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setSubmittedAnswers({}); setEditingQuestion(""); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setSpeakingQuestion(""); setError("");
   }, [busy]);
 
   useEffect(() => {
@@ -100,6 +104,8 @@ export default function PapersPage() {
     if (error) toast.error("Something needs attention", { description: error, id: "papers-error" });
   }, [error]);
 
+  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
   const openReview = async (paper: PaperListItem) => {
     if (!accessToken) return;
     setBusy(true); setError("");
@@ -116,7 +122,7 @@ export default function PapersPage() {
         startPaperAttempt(accessToken, paper.id),
         getPaper(accessToken, paper.id),
       ]);
-      setAttempt(next); setDetail(paperDetail); setRemaining(next.duration_seconds); setAnswers({}); setMarked({}); setRevealed({}); setCurrent(0); setSummary(null); setMode("mock");
+      setAttempt(next); setDetail(paperDetail); setRemaining(next.duration_seconds); setAnswers({}); setSubmittedAnswers({}); setEditingQuestion(""); setMarked({}); setRevealed({}); setCurrent(0); setSummary(null); setMode("mock");
     } catch (reason) { setError(messageFor(reason, "The timed paper could not be started.")); }
     finally { setBusy(false); }
   };
@@ -126,37 +132,47 @@ export default function PapersPage() {
     setBusy(true); setError("");
     try {
       const elapsed = Math.max(0, attempt.duration_seconds - remaining);
-      const submittedAnswers = Object.entries(answers).map(([questionId, selectedIndex]) => ({
+      const finalAnswers = Object.entries(submittedAnswers).map(([questionId, selectedIndex]) => ({
         question_id: questionId,
         selected_index: selectedIndex,
         marked_for_review: Boolean(marked[questionId]),
       }));
-      setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed, submittedAnswers));
+      setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed, finalAnswers));
       setMode("summary");
+      toast.success("Paper saved to your history", { description: "Your score and attempt details are now available in Progress." });
     } catch (reason) { setError(messageFor(reason, "The paper could not be submitted.")); }
     finally { setBusy(false); }
-  }, [accessToken, answers, attempt, busy, marked, remaining]);
+  }, [accessToken, attempt, busy, marked, remaining, submittedAnswers]);
 
-  const saveAndMove = async () => {
+  const submitCurrentAnswer = async () => {
     const question = attempt?.questions[current];
     const selected = question ? answers[question.id] : undefined;
     if (!accessToken || !attempt || !question || selected === undefined) return;
     setBusy(true); setError("");
     try {
       await savePaperAnswer(accessToken, attempt.id, question.id, { selected_index: selected, marked_for_review: Boolean(marked[question.id]) });
-      if (current < attempt.questions.length - 1) setCurrent(index => index + 1);
-      else {
-        const elapsed = Math.max(0, attempt.duration_seconds - remaining);
-        const submittedAnswers = Object.entries(answers).map(([questionId, selectedIndex]) => ({
-          question_id: questionId,
-          selected_index: selectedIndex,
-          marked_for_review: Boolean(marked[questionId]),
-        }));
-        setSummary(await completePaperAttempt(accessToken, attempt.id, elapsed, submittedAnswers));
-        setMode("summary");
-      }
+      setSubmittedAnswers(values => ({ ...values, [question.id]: selected }));
+      setEditingQuestion("");
+      if (solutionQuestion?.is_verified) setRevealed(values => ({ ...values, [question.id]: true }));
+      toast.success(submittedAnswers[question.id] === undefined ? "Answer submitted" : "Answer updated", { description: `Question ${question.number} has been saved.` });
     } catch (reason) { setError(messageFor(reason, "Your answer could not be saved.")); }
     finally { setBusy(false); }
+  };
+
+  const speakExplanation = (text: string, questionId: string) => {
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      toast.error("Voice playback is unavailable", { description: "This browser does not support text-to-speech." });
+      return;
+    }
+    window.speechSynthesis.cancel();
+    if (speakingQuestion === questionId) { setSpeakingQuestion(""); return; }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.onend = () => setSpeakingQuestion("");
+    utterance.onerror = () => { setSpeakingQuestion(""); toast.error("Voice playback stopped", { description: "Please try listening again." }); };
+    setSpeakingQuestion(questionId);
+    window.speechSynthesis.speak(utterance);
   };
 
   const askAI = async () => {
@@ -193,12 +209,16 @@ export default function PapersPage() {
     : undefined;
   const aiExplanation = activeQuestion ? aiExplanations[activeQuestion.id] : undefined;
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.keys(submittedAnswers).length;
   const totalAttemptQuestions = attempt?.questions.length ?? 0;
   const visibleQuestionCount = (mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0;
   const progressPercent = mode === "mock" && totalAttemptQuestions
-    ? Math.round(answeredCount * 100 / totalAttemptQuestions)
-    : 100;
+    ? Math.round(answeredCount * 1000 / totalAttemptQuestions) / 10
+    : 0;
+  const currentAnswerSubmitted = activeQuestion ? submittedAnswers[activeQuestion.id] !== undefined : false;
+  const currentAnswerIsEditing = activeQuestion ? editingQuestion === activeQuestion.id : false;
+  const marksPerQuestion = detail ? detail.total_marks / detail.official_question_count : 0;
+  const penaltyPerWrongAnswer = detail ? marksPerQuestion * detail.negative_mark_fraction : 0;
   const papersByYear = PAPER_YEARS
     .map((paperYear) => ({ year: paperYear, papers: papers.filter((paper) => paper.year === paperYear) }))
     .filter((group) => group.papers.length > 0);
@@ -227,8 +247,8 @@ export default function PapersPage() {
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
-        {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} answered` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div><div className="paper-question-layout">
-          <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Go to</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><span>Question</span><strong>{activeQuestion.number}</strong><span>of {visibleQuestionCount}</span></div></nav>
+        {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} marksPerQuestion={marksPerQuestion} negativeMarkFraction={detail?.negative_mark_fraction ?? 0} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions submitted`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} submitted` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalAttemptQuestions} aria-valuenow={answeredCount}><span style={{ width: `${progressPercent}%` }} /></div></div>{mode === "mock" && <div className="paper-marking-rule"><ShieldCheck size={15} /><span><strong>Marking:</strong> +{marksPerQuestion.toFixed(2)} for a correct answer · −{penaltyPerWrongAnswer.toFixed(2)} for a wrong answer · 0 for unattempted</span></div>}<div className="paper-question-layout">
+          <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Go to</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{submittedAnswers[question.id] !== undefined ? " - submitted" : ""}</option>)}</select></label><div><span>Question</span><strong>{activeQuestion.number}</strong><span>of {visibleQuestionCount}</span></div></nav>
           <div className="paper-question-panel" ref={questionPanelRef}>
             {mode === "mock" && <div className="paper-question-tools"><button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> {marked[activeQuestion.id] ? "Marked for review" : "Mark for review"}</button></div>}
             <div className="paper-question-content">
@@ -236,23 +256,25 @@ export default function PapersPage() {
                 {activeSection && <header className="paper-directions"><span>Directions</span><h3>{activeSection.title}</h3><p>{activeSection.directions}</p></header>}
                 {activeSection?.passage && <section className="paper-passage"><strong>Passage</strong>{activeSection.passage.split("\n\n").map(paragraph => <p key={paragraph}>{paragraph}</p>)}</section>}
                 <section className="paper-sheet-question"><small>Question {activeQuestion.number}</small>{readableQuestion ? <h2>{readableQuestion.prompt}</h2> : activeQuestion.asset_url && activeCrop?.imageUrl ? <figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>Use the official source while question {activeQuestion.number} is checked.</p></div></div>}</section>
-                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>Select one option</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{option}</span>{correct && <Check size={15} />}</button>; })}</div>
-                {solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
-                {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation && <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span></div>}
+                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>{currentAnswerSubmitted && !currentAnswerIsEditing ? "Answer submitted" : "Select one option"}</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button disabled={mode === "mock" && currentAnswerSubmitted && !currentAnswerIsEditing} aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{option}</span>{correct && <Check size={15} />}</button>; })}</div>
+                {mode === "mock" && <div className="paper-answer-actions">{currentAnswerSubmitted && !currentAnswerIsEditing ? <><span><Check size={15} /> Saved as option {String.fromCharCode(65 + submittedAnswers[activeQuestion.id])}</span><button type="button" onClick={() => { setEditingQuestion(activeQuestion.id); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><RotateCcw size={14} /> Reattempt question</button></> : <button className="paper-submit-answer" type="button" disabled={selected === undefined || busy} onClick={() => void submitCurrentAnswer()}>{busy ? "Saving…" : currentAnswerSubmitted ? "Update answer" : "Submit answer"}</button>}</div>}
+                {mode === "review" && solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
+                {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation && <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><div className="paper-explanation-footer"><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span><button type="button" onClick={() => speakExplanation(solutionQuestion.explanation ?? "", activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
                 {!solutionQuestion?.is_verified && <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={15} /> {aiBusy === activeQuestion.id ? "Working…" : aiExplanation ? "Explain again" : "Explain with AI"}</button>}
-                {aiExplanation && <div className="paper-explanation is-ai"><small>AI suggests option {String.fromCharCode(65 + aiExplanation.correct_index)} · {aiExplanation.confidence} confidence</small><p>{aiExplanation.explanation}</p><span><Sparkles size={13} /> AI-generated guidance may be imperfect; verify important facts.</span></div>}
+                {aiExplanation && <div className="paper-explanation is-ai"><small>AI suggests option {String.fromCharCode(65 + aiExplanation.correct_index)} · {aiExplanation.confidence} confidence</small><p>{aiExplanation.explanation}</p><div className="paper-explanation-footer"><span><Sparkles size={13} /> AI-generated guidance may be imperfect; verify important facts.</span><button type="button" onClick={() => speakExplanation(aiExplanation.explanation, activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
               </section>
                 {readableQuestion && activeQuestion.asset_url && activeCrop?.imageUrl && <details className="paper-source-details"><summary>See the original scanned question</summary><figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure></details>}
               </article>
             </div>
-            <footer><button disabled={current === 0} onClick={() => setCurrent(index => index - 1)}><ArrowLeft size={15} /> Previous</button><span>{current + 1} / {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span>{mode === "review" ? <button disabled={current === (detail?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next <ArrowRight size={15} /></button> : <div><button onClick={() => void submitMock()} disabled={busy}>Submit</button><PrimaryButton size="sm" disabled={selected === undefined || busy} onClick={() => void saveAndMove()}>{current === (attempt?.questions.length ?? 1) - 1 ? "Save & submit" : "Save & next"}</PrimaryButton></div>}</footer>
+            <footer><button disabled={current === 0} onClick={() => setCurrent(index => index - 1)}><ArrowLeft size={15} /> Previous</button><span>{current + 1} / {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span>{mode === "review" ? <button disabled={current === (detail?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next <ArrowRight size={15} /></button> : <div><button className="paper-finish-paper" onClick={() => void submitMock()} disabled={busy || answeredCount === 0}>Finish &amp; save paper</button><PrimaryButton size="sm" disabled={current === (attempt?.questions.length ?? 1) - 1} onClick={() => setCurrent(index => index + 1)}>Next question <ArrowRight size={14} /></PrimaryButton></div>}</footer>
           </div></div></>}
       </section>
     </div>}
   </main></AppShell>;
 }
 
-function PaperSummary({ summary, onClose }: { summary: PaperAttemptSummary; onClose: () => void }) {
+function PaperSummary({ summary, onClose, marksPerQuestion, negativeMarkFraction }: { summary: PaperAttemptSummary; onClose: () => void; marksPerQuestion: number; negativeMarkFraction: number }) {
   const hasScore = summary.scored_questions > 0;
-  return <div className="paper-summary"><span><Check size={26} /></span><h2>Paper submitted</h2><p>{hasScore ? `Your answers were checked against ${summary.scored_questions} verified keys.` : "Your complete attempt is saved. Marks will appear when the official key is available."}</p><div><small>Completion</small><strong>{summary.answered_questions}/{summary.total_questions}</strong><small>Score</small><strong>{hasScore ? `${summary.score}/${summary.max_score}` : "Key pending"}</strong><small>Accuracy</small><strong>{summary.accuracy == null ? "—" : `${summary.accuracy}%`}</strong><small>Correct</small><strong>{hasScore ? `${summary.correct_answers}/${summary.scored_questions}` : "—"}</strong><small>Time</small><strong>{formatTime(summary.duration_seconds)}</strong></div><PrimaryButton href="/progress">Open progress</PrimaryButton><button onClick={onClose}>Return to papers</button></div>;
+  const negativeMarks = summary.incorrect_answers * marksPerQuestion * negativeMarkFraction;
+  return <div className="paper-summary"><span><Check size={26} /></span><h2>Paper submitted</h2><p>{hasScore ? `Saved to your history and checked against ${summary.scored_questions} verified keys.` : "Your complete attempt is saved. Marks will appear when the official key is available."}</p><div><small>Completion</small><strong>{summary.answered_questions}/{summary.total_questions}</strong><small>Score</small><strong>{hasScore ? `${summary.score}/${summary.max_score}` : "Key pending"}</strong><small>Correct</small><strong>{hasScore ? summary.correct_answers : "—"}</strong><small>Incorrect</small><strong>{hasScore ? summary.incorrect_answers : "—"}</strong><small>Negative marks</small><strong>{hasScore ? `−${negativeMarks.toFixed(2)}` : "—"}</strong><small>Accuracy</small><strong>{summary.accuracy == null ? "—" : `${summary.accuracy}%`}</strong><small>Time</small><strong>{formatTime(summary.duration_seconds)}</strong></div><PrimaryButton href="/progress">Open progress</PrimaryButton><button onClick={onClose}>Return to papers</button></div>;
 }

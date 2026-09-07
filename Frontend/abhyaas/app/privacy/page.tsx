@@ -1,8 +1,5 @@
-"use client";
-
-import { ArrowLeft, Mail, Moon, ShieldCheck, Sun, Swords } from "lucide-react";
+import { ArrowLeft, Mail, ShieldCheck, Swords } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "../components/ThemeProvider";
 
 const sections = [
   {
@@ -55,13 +52,11 @@ const sections = [
 ];
 
 export default function PrivacyPage() {
-  const { theme, toggleTheme } = useTheme();
-
   return (
     <main className="privacy-page">
       <header className="privacy-nav">
         <Link href="/" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
-        <div className="privacy-actions"><button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}</button><Link href="/" className="privacy-back"><ArrowLeft size={15} /> Back to home</Link></div>
+        <Link href="/" className="privacy-back"><ArrowLeft size={15} /> Back to home</Link>
       </header>
 
       <article className="privacy-document">
