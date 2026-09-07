@@ -4,6 +4,7 @@ import "./globals.css";
 import MotionLayer from "./components/MotionLayer";
 import AuthProvider from "./components/AuthProvider";
 import AppToaster from "./components/AppToaster";
+import ThemeProvider from "./components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AuthProvider><MotionLayer>{children}</MotionLayer><AppToaster /></AuthProvider></body>
+      <body className="min-h-full flex flex-col"><ThemeProvider><AuthProvider><MotionLayer>{children}</MotionLayer><AppToaster /></AuthProvider></ThemeProvider></body>
     </html>
   );
 }

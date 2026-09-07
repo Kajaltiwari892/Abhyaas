@@ -1,10 +1,11 @@
 "use client";
 
-import { BarChart3, BookOpen, Bot, FileText, GraduationCap, Home, Info, LogOut, Menu, ShieldCheck, Swords, Target, X } from "lucide-react";
+import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, Moon, ShieldCheck, Sun, Swords, Target, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
 import { useAuth } from "./AuthProvider";
+import { useTheme } from "./ThemeProvider";
 
 const desktopItems = [
   { label: "Home", href: "/?view=home", icon: Home },
@@ -22,7 +23,9 @@ const mobileItems = desktopItems.filter(({ label }) => ["Home", "Practice", "Dou
 
 export default function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const initials = user?.name
     .split(/\s+/)
@@ -36,6 +39,9 @@ export default function AppShell({ active, children }: { active: string; childre
       <header className="app-topbar">
         <Link href="/?view=home" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
         <ExamSwitcher compact />
+        <button className="app-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
+          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
         <div className="app-context app-user-context">
           {user ? <span className="app-user-avatar">{initials}</span> : <span className="status-dot" />}
           <span className="app-user-copy"><strong>{user?.name ?? "Study workspace"}</strong><small>{user?.email ?? "CDS preparation"}</small></span>
@@ -48,7 +54,18 @@ export default function AppShell({ active, children }: { active: string; childre
         <nav>
           {desktopItems.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} href={href} key={label} onClick={() => setOpen(false)}><Icon size={18} /><span>{label}</span></Link>)}
         </nav>
-        <div className="sidebar-note"><BookOpen size={16} /><div><strong>Official details</strong><span>Always verify dates and eligibility in the latest UPSC notification.</span></div></div>
+        <div className={`sidebar-profile ${profileOpen ? "is-open" : ""}`}>
+          <button type="button" className="sidebar-profile-trigger" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
+            <span className="sidebar-profile-avatar">{initials || <UserRound size={17} />}</span>
+            <span><strong>{user?.name ?? "Your profile"}</strong><small>View profile</small></span>
+            <ChevronDown size={16} />
+          </button>
+          {profileOpen && <div className="sidebar-profile-details">
+            <span><Mail size={14} /><span>{user?.email ?? "Sign in to see account details"}</span></span>
+            {user && <span><BadgeCheck size={14} /><span>{user.is_verified ? "Verified account" : "Email verification pending"}</span></span>}
+            {user && <button type="button" onClick={() => void signOut()}><LogOut size={14} /> Sign out</button>}
+          </div>}
+        </div>
       </aside>
       <div className="app-content">{children}</div>
       <nav className="app-bottom-nav" aria-label="Application navigation">

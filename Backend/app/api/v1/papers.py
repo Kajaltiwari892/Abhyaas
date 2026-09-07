@@ -186,28 +186,38 @@ async def generate_paper_explanation(
             "as 0 for A, 1 for B, 2 for C, or 3 for D; explanation; and confidence as high, "
             "medium, or low. If the question is not fully visible, use low confidence and say so."
         )
-        ai_response = await client.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent",
-            headers={"x-goog-api-key": settings.gemini_api_key},
-            json={
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/webp",
-                                    "data": base64.b64encode(image_response.content).decode(
-                                        "ascii"
-                                    ),
-                                }
-                            },
-                            {"text": prompt},
-                        ]
-                    }
-                ],
-                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
-            },
+        request_body = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "inline_data": {
+                                "mime_type": "image/webp",
+                                "data": base64.b64encode(image_response.content).decode("ascii"),
+                            }
+                        },
+                        {"text": prompt},
+                    ]
+                }
+            ],
+            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
+        }
+        # Preview models occasionally return a transient 503 even with a valid key.
+        # Fall back to stable Flash aliases so a student does not have to keep retrying.
+        candidate_models = list(
+            dict.fromkeys([settings.gemini_model, "gemini-flash-latest", "gemini-2.5-flash"])
         )
+        ai_response: httpx.Response | None = None
+        for model in candidate_models:
+            ai_response = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                headers={"x-goog-api-key": settings.gemini_api_key},
+                json=request_body,
+            )
+            if ai_response.status_code not in {429, 500, 502, 503, 504}:
+                break
+    if ai_response is None:
+        raise HTTPException(status_code=502, detail="The AI explanation service is unavailable")
     if ai_response.status_code in {400, 401, 403}:
         raise HTTPException(
             status_code=502,

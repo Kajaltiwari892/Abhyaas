@@ -90,7 +90,10 @@ export default function PapersPage() {
   }, [attempt, mode, remaining]);
 
   useEffect(() => {
-    questionPanelRef.current?.scrollTo({ top: 0 });
+    const frame = window.requestAnimationFrame(() => {
+      if (questionPanelRef.current) questionPanelRef.current.scrollTop = 0;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [current, mode]);
 
   useEffect(() => {
@@ -192,6 +195,10 @@ export default function PapersPage() {
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
   const answeredCount = Object.keys(answers).length;
   const totalAttemptQuestions = attempt?.questions.length ?? 0;
+  const visibleQuestionCount = (mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0;
+  const progressPercent = mode === "mock" && totalAttemptQuestions
+    ? Math.round(answeredCount * 100 / totalAttemptQuestions)
+    : 100;
 
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Complete official UPSC papers, with verified answers clearly distinguished from questions still being reviewed.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
@@ -213,10 +220,10 @@ export default function PapersPage() {
     {!papers.length && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>{year ? `The ${year} archive will appear here as its official papers are imported.` : "Try another year, cycle, or subject."}</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
     <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Complete papers. Honest scoring.</h2></div><div><article><strong>01 · Full review</strong><p>Browse every official question in its original UPSC scan and retain the exact paper numbering.</p></article><article><strong>02 · Solve the paper</strong><p>Answer the complete timed paper. Marks use only published or independently verified answer keys.</p></article></div></section>
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
-      <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
+      <section className="paper-dialog" role="dialog" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
-        {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} answered` : "Paper review"}</span><small>{mode === "mock" ? `${totalAttemptQuestions - answeredCount} remaining` : `${detail?.questions.length ?? 0} questions`}</small></div><i><b style={{ width: `${mode === "mock" && totalAttemptQuestions ? answeredCount * 100 / totalAttemptQuestions : 100}%` }} /></i></div><div className="paper-question-layout">
-          <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Jump to question</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><small>Current question</small><strong>{activeQuestion.number}</strong><span>of {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span></div></nav>
+        {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} answered` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div><div className="paper-question-layout">
+          <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Go to</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><span>Question</span><strong>{activeQuestion.number}</strong><span>of {visibleQuestionCount}</span></div></nav>
           <div className="paper-question-panel" ref={questionPanelRef}>
             {mode === "mock" && <div className="paper-question-tools"><button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> {marked[activeQuestion.id] ? "Marked for review" : "Mark for review"}</button></div>}
             <div className="paper-question-content">

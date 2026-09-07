@@ -38,7 +38,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     });
   } catch {
     throw new ApiError(
-      "The authentication server is unavailable. Start the FastAPI backend and try again.",
+      "The Abhyaas server is unavailable. Start the FastAPI backend and try again.",
       0,
     );
   }

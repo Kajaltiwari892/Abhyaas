@@ -11,6 +11,7 @@ os.environ["JWT_SECRET"] = "test-secret-that-is-long-enough-for-auth"
 os.environ["FRONTEND_URL"] = "http://localhost:3000"
 os.environ["GOOGLE_CLIENT_ID"] = ""
 os.environ["GOOGLE_CLIENT_SECRET"] = ""
+os.environ["GEMINI_API_KEY"] = ""
 
 from app.db.base import Base  # noqa: E402
 from app.db.session import engine  # noqa: E402
