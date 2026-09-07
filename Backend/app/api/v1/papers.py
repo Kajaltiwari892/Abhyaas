@@ -159,7 +159,10 @@ async def generate_paper_explanation(
 ) -> PaperAIExplanationResponse:
     settings = get_settings()
     if not settings.gemini_api_key:
-        raise HTTPException(status_code=503, detail="AI explanations are not configured yet")
+        raise HTTPException(
+            status_code=503,
+            detail="AI explanations need a Gemini API key in the backend environment",
+        )
     paper = await get_paper_or_404(db, paper_id)
     question = next((item for item in paper.questions if item.id == question_id), None)
     if question is None or not question.asset_url:
@@ -204,6 +207,16 @@ async def generate_paper_explanation(
                 ],
                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
             },
+        )
+    if ai_response.status_code in {400, 401, 403}:
+        raise HTTPException(
+            status_code=502,
+            detail="The Gemini API key was rejected. Check the backend AI configuration",
+        )
+    if ai_response.status_code == 429:
+        raise HTTPException(
+            status_code=503,
+            detail="The AI explanation limit has been reached. Please try again later",
         )
     if ai_response.status_code != 200:
         raise HTTPException(

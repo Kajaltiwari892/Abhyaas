@@ -3,6 +3,7 @@
 import { ArrowRight, BookA, BookOpen, FlaskConical, Globe2, Landmark, Languages, Sigma } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import { ApiError } from "@/lib/auth-api";
 import { getSubjects, type Subject } from "@/lib/study-api";
@@ -18,9 +19,10 @@ export default function SubjectsPage() {
     getSubjects().then(setSubjects).catch((reason: unknown) => setError(reason instanceof ApiError ? reason.message : "Subjects could not be loaded."));
   }, []);
 
+  useEffect(() => { if (error) toast.error("Subjects unavailable", { description: error, id: "subjects-error" }); }, [error]);
+
   return <AppShell active="Subjects"><main className="workspace subjects-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">Syllabus, made navigable</span><h1>Subjects</h1><p>Choose a subject, open a topic, and move directly into focused practice.</p></div><div className="workspace-badge"><BookOpen size={15} /> CDS syllabus</div></header>
-    {error && <p className="workspace-message is-error">{error}</p>}
     {!error && subjects.length === 0 && <p className="workspace-message">Loading the CDS syllabus…</p>}
     <section className="subject-page-grid">{subjects.map((subject, index) => {
       const Icon = subjectIcons[subject.slug as keyof typeof subjectIcons] ?? BookOpen;

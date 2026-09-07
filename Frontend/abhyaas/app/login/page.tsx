@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CircleAlert, Eye, EyeOff, Swords, X } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Swords } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import authImage from "../../assets/img5.png";
 import {
   ApiError,
@@ -86,6 +87,24 @@ export default function LoginPage() {
   const isLogin = mode === "login";
   const isSignup = mode === "signup";
   const heading = headings[mode];
+
+  useEffect(() => {
+    if (!notice) return;
+    const options = {
+      description: notice.message,
+      id: "auth-notice",
+      action: notice.action === "login" ? { label: "Go to sign in", onClick: () => changeMode("login") } : undefined,
+    };
+    if (notice.title === "Check your email") toast.success(notice.title, options);
+    else toast.error(notice.title, options);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!status) return;
+    if (status.kind === "success") toast.success(status.message, { id: "auth-status" });
+    else if (status.kind === "error") toast.error(status.message, { id: "auth-status" });
+    else toast.loading(status.message, { id: "auth-status" });
+  }, [status]);
 
   useEffect(() => {
     if (verificationStarted.current) return;
@@ -233,13 +252,6 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      {notice && (
-        <aside className="auth-notice" role="alert" aria-live="assertive">
-          <span className="auth-notice-icon"><CircleAlert size={18} /></span>
-          <div><strong>{notice.title}</strong><p>{notice.message}</p>{notice.action === "login" && <button type="button" onClick={() => changeMode("login")}>Go to sign in <ArrowRight size={14} /></button>}</div>
-          <button className="auth-notice-close" type="button" onClick={() => setNotice(null)} aria-label="Close message"><X size={16} /></button>
-        </aside>
-      )}
       <section className="auth-form-panel">
         <div className="auth-form-shell">
           <Link className="auth-brand" href="/"><span><Swords size={19} /></span>ABHYAAS</Link>
@@ -270,7 +282,6 @@ export default function LoginPage() {
               {pending ? "Please wait…" : getSubmitLabel(mode)}{!pending && <ArrowRight size={16} />}
             </button>
             {(isLogin || isSignup) && <><div className="auth-divider"><span>or continue with</span></div><button className="auth-google" type="button" onClick={() => window.location.assign(getGoogleSignInUrl())}><span aria-hidden="true">G</span>Sign in with Google</button></>}
-            {status && <p className={`auth-status ${status.kind}`} role={status.kind === "error" ? "alert" : "status"}>{status.message}</p>}
           </form>
 
           <p className="auth-alternate">

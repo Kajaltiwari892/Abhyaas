@@ -3,15 +3,18 @@
 import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
 import paperCrops from "@/lib/paper-crops.json";
+import paperQuestionText from "@/lib/paper-question-text.json";
 import { completePaperAttempt, generatePaperExplanation, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
 type PaperCrop = { x: number; y: number; width: number; height: number; pixelWidth: number; pixelHeight: number; imageUrl?: string };
+type PaperQuestionText = { prompt: string; options: string[]; ocrConfidence: number };
 const PAPER_YEARS = [2026, 2025, 2024] as const;
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
@@ -69,10 +72,8 @@ export default function PapersPage() {
   }, [current, mode]);
 
   useEffect(() => {
-    if (!error || !mode) return;
-    const timer = window.setTimeout(() => setError(""), 4500);
-    return () => window.clearTimeout(timer);
-  }, [error, mode]);
+    if (error) toast.error("Something needs attention", { description: error, id: "papers-error" });
+  }, [error]);
 
   const openReview = async (paper: PaperListItem) => {
     if (!accessToken) return;
@@ -140,6 +141,7 @@ export default function PapersPage() {
     try {
       const result = await generatePaperExplanation(accessToken, paperId, activeQuestion.id);
       setAiExplanations(values => ({ ...values, [activeQuestion.id]: result }));
+      toast.success("AI explanation ready", { description: `Question ${activeQuestion.number} has been analysed.`, id: "papers-ai" });
     } catch (reason) { setError(messageFor(reason, "An AI explanation could not be generated.")); }
     finally { setAiBusy(""); }
   };
@@ -152,6 +154,10 @@ export default function PapersPage() {
   const activeCrop = activeQuestion?.asset_url
     ? (paperCrops as Record<string, PaperCrop>)[`${activeQuestion.asset_url}#${activeQuestion.number}`]
     : undefined;
+  const readableQuestion = activeQuestion?.asset_url
+    ? (paperQuestionText as Record<string, PaperQuestionText>)[`${activeQuestion.asset_url}#${activeQuestion.number}`]
+    : undefined;
+  const displayOptions = readableQuestion?.options ?? activeQuestion?.options ?? [];
   const aiExplanation = activeQuestion ? aiExplanations[activeQuestion.id] : undefined;
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
   const answeredCount = Object.keys(answers).length;
@@ -165,7 +171,6 @@ export default function PapersPage() {
       <label><FileText size={15} /><select aria-label="Filter by subject" value={subject} onChange={event => setSubject(event.target.value)}><option value="">All subjects</option><option value="english">English</option><option value="general-knowledge">General Knowledge</option><option value="elementary-mathematics">Elementary Mathematics</option></select></label>
       <span>{papers.length} official {papers.length === 1 ? "paper" : "papers"}</span>
     </section>
-    {error && !mode && <p className="workspace-message is-error">{error}</p>}
     <section className="paper-type-grid">{papers.map((paper, index) => <article key={paper.id}>
       <header><span>{String(index + 1).padStart(2, "0")}</span><FileText size={23} /></header>
       <small>CDS {paper.cycle} · {paper.year} · {paper.academy_tracks.join(" · ")}</small>
@@ -180,13 +185,12 @@ export default function PapersPage() {
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
-        {error && <p className="workspace-message is-error paper-dialog-error">{error}</p>}
         {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} answered` : "Paper review"}</span><small>{mode === "mock" ? `${totalAttemptQuestions - answeredCount} remaining` : `${detail?.questions.length ?? 0} questions`}</small></div><i><b style={{ width: `${mode === "mock" && totalAttemptQuestions ? answeredCount * 100 / totalAttemptQuestions : 100}%` }} /></i></div><div className="paper-question-layout">
           <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Jump to question</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><small>Current question</small><strong>{activeQuestion.number}</strong><span>of {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span></div></nav>
           <div className="paper-question-panel" ref={questionPanelRef}><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Verified key available" : "AI review available"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Mark for review</button>}</div>
             <div className={`paper-question-content ${activeQuestion.asset_url ? "has-scan" : ""}`}>
-              {activeQuestion.asset_url && activeCrop?.imageUrl ? <figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Exact official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>This full page is intentionally hidden until question {activeQuestion.number} has been separated and checked.</p></div></div>}
-              <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><div><small>Answer for question {activeQuestion.number}</small><strong>Choose one option for this question only</strong></div><b>Select A, B, C or D</b></header><div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>
+              {readableQuestion ? <article className="paper-question-transcript"><small>Readable text from the official paper</small><h3>{readableQuestion.prompt}</h3>{activeQuestion.asset_url && activeCrop?.imageUrl && <details><summary>Compare with original scan</summary><figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure></details>}</article> : activeQuestion.asset_url && activeCrop?.imageUrl ? <figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Exact official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>This full page is intentionally hidden until question {activeQuestion.number} has been separated and checked.</p></div></div>}
+              <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><div><small>Answer for question {activeQuestion.number}</small><strong>Choose one option</strong></div><b>Select A, B, C or D</b></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{option}</span>{correct && <Check size={15} />}</button>; })}</div>
                 {solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
                 {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation ? <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span></div> : solutionQuestion && !solutionQuestion.is_verified && !aiExplanation && <div className="paper-verification-note"><Sparkles size={15} /><div><strong>Get an AI study explanation</strong><p>The official key is not available. AI can inspect question {activeQuestion.number}, suggest an answer, and explain its reasoning.</p></div></div>}
                 <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={14} /> {aiBusy === activeQuestion.id ? "Analysing question..." : aiExplanation ? "Generate again" : "Generate AI answer & explanation"}</button>

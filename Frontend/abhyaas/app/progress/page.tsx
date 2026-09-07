@@ -2,6 +2,7 @@
 
 import { ArrowRight, BarChart3, BookOpen, CalendarDays, Clock3, Target } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
@@ -45,11 +46,12 @@ export default function ProgressPage() {
     return () => { cancelled = true; };
   }, [accessToken, user]);
 
+  useEffect(() => { if (error) toast.error("Progress could not be loaded", { description: error, id: "progress-error" }); }, [error]);
+
   const hasAttempts = Boolean(dashboard?.completed_sets);
 
   return <AppShell active="Progress"><main className="workspace progress-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">{user ? `Signed in as ${user.email}` : "Your preparation, honestly measured"}</span><h1>{firstName ? `Welcome, ${firstName}.` : "Progress"}</h1><p>Your completed practice sets update this dashboard automatically.</p></div><div className="workspace-badge"><CalendarDays size={15} /> {dashboard ? `${dashboard.completed_sets} completed sets` : "Loading activity"}</div></header>
-    {error && <p className="workspace-message is-error">{error}</p>}
     <section className="progress-stat-grid">
       <article><span className="stat-icon"><Target size={19} /></span><div><small>Overall accuracy</small><strong>{dashboard?.overall_accuracy != null ? `${dashboard.overall_accuracy}%` : "—"}</strong><p>{hasAttempts ? `${dashboard?.correct_answers} correct answers` : "Complete a set to begin"}</p></div></article>
       <article><span className="stat-icon"><Clock3 size={19} /></span><div><small>Practice time</small><strong>{dashboard ? formatDuration(dashboard.practice_seconds) : "—"}</strong><p>{hasAttempts ? "Across completed sessions" : "No sessions recorded"}</p></div></article>

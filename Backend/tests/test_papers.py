@@ -165,6 +165,21 @@ def test_paper_solutions_and_attempts_require_authentication(client: TestClient)
     assert client.post(f"/api/v1/papers/{paper_id}/attempts").status_code == 401
 
 
+def test_ai_explanation_reports_missing_configuration(client: TestClient) -> None:
+    headers = auth_headers(client, "ai-config@example.com")
+    paper = client.get("/api/v1/papers").json()[0]
+    detail = client.get(f"/api/v1/papers/{paper['id']}", headers=headers).json()
+    scanned_question = detail["questions"][-1]
+
+    response = client.post(
+        f"/api/v1/papers/{paper['id']}/questions/{scanned_question['id']}/ai-explanation",
+        headers=headers,
+    )
+
+    assert response.status_code == 503
+    assert "Gemini API key" in response.json()["detail"]
+
+
 def test_user_cannot_update_another_users_attempt(client: TestClient) -> None:
     owner_headers = auth_headers(client, "owner@example.com")
     other_headers = auth_headers(client, "other@example.com")
