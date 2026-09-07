@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, Sparkles, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
@@ -35,6 +35,7 @@ export default function PapersPage() {
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const questionPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +63,16 @@ export default function PapersPage() {
     const timer = window.setInterval(() => setRemaining(value => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [attempt, mode, remaining]);
+
+  useEffect(() => {
+    questionPanelRef.current?.scrollTo({ top: 0 });
+  }, [current, mode]);
+
+  useEffect(() => {
+    if (!error || !mode) return;
+    const timer = window.setTimeout(() => setError(""), 4500);
+    return () => window.clearTimeout(timer);
+  }, [error, mode]);
 
   const openReview = async (paper: PaperListItem) => {
     if (!accessToken) return;
@@ -169,10 +180,10 @@ export default function PapersPage() {
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-modal="true" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
-        {error && <p className="workspace-message is-error">{error}</p>}
+        {error && <p className="workspace-message is-error paper-dialog-error">{error}</p>}
         {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} answered` : "Paper review"}</span><small>{mode === "mock" ? `${totalAttemptQuestions - answeredCount} remaining` : `${detail?.questions.length ?? 0} questions`}</small></div><i><b style={{ width: `${mode === "mock" && totalAttemptQuestions ? answeredCount * 100 / totalAttemptQuestions : 100}%` }} /></i></div><div className="paper-question-layout">
           <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Jump to question</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><small>Current question</small><strong>{activeQuestion.number}</strong><span>of {(mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0}</span></div></nav>
-          <div className="paper-question-panel"><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Verified key available" : "AI review available"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Mark for review</button>}</div>
+          <div className="paper-question-panel" ref={questionPanelRef}><div className="paper-question-label"><span>Question {activeQuestion.number}</span>{activeQuestion.topic && <small>{activeQuestion.topic}</small>}<small>{activeQuestion.is_verified ? "Verified key available" : "AI review available"}</small>{mode === "mock" && <button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> Mark for review</button>}</div>
             <div className={`paper-question-content ${activeQuestion.asset_url ? "has-scan" : ""}`}>
               {activeQuestion.asset_url && activeCrop?.imageUrl ? <figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Exact official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>This full page is intentionally hidden until question {activeQuestion.number} has been separated and checked.</p></div></div>}
               <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><div><small>Answer for question {activeQuestion.number}</small><strong>Choose one option for this question only</strong></div><b>Select A, B, C or D</b></header><div className="paper-mcq-options">{activeQuestion.options.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span>{option}{correct && <Check size={15} />}</button>; })}</div>
