@@ -43,24 +43,30 @@ class PaperDetailResponse(PaperListItemResponse):
     questions: list[PaperSolutionResponse]
 
 
-class PaperAttemptResponse(BaseModel):
-    id: str
-    paper_id: str
-    title: str
-    started_at: datetime
-    duration_seconds: int
-    questions: list[PaperQuestionResponse]
-
-
 class SavePaperAnswerRequest(BaseModel):
     selected_index: int = Field(ge=0, le=9)
     marked_for_review: bool = False
+    elapsed_seconds: int | None = Field(default=None, ge=0, le=21600)
 
 
 class SavedPaperAnswerResponse(BaseModel):
     question_id: str
     selected_index: int
     marked_for_review: bool
+    is_correct: bool | None
+    correct_index: int | None
+
+
+class PaperAttemptResponse(BaseModel):
+    id: str
+    paper_id: str
+    title: str
+    started_at: datetime
+    duration_seconds: int
+    elapsed_seconds: int
+    resumed: bool
+    answers: list[SavedPaperAnswerResponse]
+    questions: list[PaperQuestionResponse]
 
 
 class PaperAnswerSubmission(BaseModel):

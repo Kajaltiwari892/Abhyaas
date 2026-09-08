@@ -10,7 +10,7 @@ import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
 import paperCrops from "@/lib/paper-crops.json";
 import paperQuestionText from "@/lib/paper-question-text.json";
-import { completePaperAttempt, generatePaperExplanation, getPaper, getPapers, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
+import { completePaperAttempt, generatePaperExplanation, getPaper, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
 type PaperCrop = { x: number; y: number; width: number; height: number; pixelWidth: number; pixelHeight: number; imageUrl?: string };
@@ -53,6 +53,8 @@ export default function PapersPage() {
   const [summary, setSummary] = useState<PaperAttemptSummary | null>(null);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answerFeedback, setAnswerFeedback] = useState<Record<string, { selectedIndex: number; isCorrect: boolean | null; correctIndex: number | null }>>({});
+  const [answerBusy, setAnswerBusy] = useState("");
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [aiExplanations, setAiExplanations] = useState<Record<string, PaperAIExplanation>>({});
@@ -74,7 +76,7 @@ export default function PapersPage() {
   const closeWorkspace = useCallback(() => {
     if (busy) return;
     window.speechSynthesis?.cancel();
-    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setSpeakingQuestion(""); setError("");
+    setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setAnswerFeedback({}); setAnswerBusy(""); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setSpeakingQuestion(""); setError("");
   }, [busy]);
 
   useEffect(() => {
@@ -120,7 +122,12 @@ export default function PapersPage() {
         startPaperAttempt(accessToken, paper.id),
         getPaper(accessToken, paper.id),
       ]);
-      setAttempt(next); setDetail(paperDetail); setRemaining(next.duration_seconds); setAnswers({}); setMarked({}); setRevealed({}); setCurrent(0); setSummary(null); setMode("mock");
+      const restoredAnswers = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.selected_index]));
+      const restoredMarked = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.marked_for_review]));
+      const restoredFeedback = Object.fromEntries(next.answers.map(answer => [answer.question_id, { selectedIndex: answer.selected_index, isCorrect: answer.is_correct, correctIndex: answer.correct_index }]));
+      const firstUnanswered = next.questions.findIndex(question => restoredAnswers[question.id] === undefined);
+      setAttempt(next); setDetail(paperDetail); setRemaining(Math.max(0, next.duration_seconds - next.elapsed_seconds)); setAnswers(restoredAnswers); setAnswerFeedback(restoredFeedback); setAnswerBusy(""); setMarked(restoredMarked); setRevealed({}); setCurrent(firstUnanswered >= 0 ? firstUnanswered : Math.max(0, next.questions.length - 1)); setSummary(null); setMode("mock");
+      if (next.resumed) toast.success("Paper resumed", { description: `${next.answers.length} saved ${next.answers.length === 1 ? "answer" : "answers"} restored.` });
     } catch (reason) { setError(messageFor(reason, "The timed paper could not be started.")); }
     finally { setBusy(false); }
   };
@@ -158,6 +165,45 @@ export default function PapersPage() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const selectPaperAnswer = async (selectedIndex: number) => {
+    if (!activeQuestion) return;
+    if (mode === "mock" && answerFeedback[activeQuestion.id] !== undefined) return;
+    setAnswers(values => ({ ...values, [activeQuestion.id]: selectedIndex }));
+    setAnswerFeedback(values => { const next = { ...values }; delete next[activeQuestion.id]; return next; });
+    setRevealed(values => ({ ...values, [activeQuestion.id]: false }));
+    if (mode !== "mock" || !accessToken || !attempt || answerBusy) return;
+    const questionId = activeQuestion.id;
+    const questionIndex = current;
+    setAnswerBusy(questionId); setError("");
+    try {
+      const elapsed = Math.max(0, attempt.duration_seconds - remaining);
+      const saved = await savePaperAnswer(accessToken, attempt.id, questionId, { selected_index: selectedIndex, marked_for_review: Boolean(marked[questionId]), elapsed_seconds: elapsed });
+      setAnswerFeedback(values => ({ ...values, [questionId]: { selectedIndex: saved.selected_index, isCorrect: saved.is_correct, correctIndex: saved.correct_index } }));
+      window.setTimeout(() => {
+        setCurrent(index => index === questionIndex && index < attempt.questions.length - 1 ? index + 1 : index);
+      }, saved.is_correct === false ? 1100 : saved.is_correct === true ? 800 : 700);
+    } catch (reason) {
+      setAnswers(values => { const next = { ...values }; delete next[questionId]; return next; });
+      setError(messageFor(reason, "Your answer could not be saved."));
+    } finally { setAnswerBusy(""); }
+  };
+
+  const toggleQuestionMark = async () => {
+    if (!activeQuestion) return;
+    const questionId = activeQuestion.id;
+    const nextMarked = !marked[questionId];
+    setMarked(values => ({ ...values, [questionId]: nextMarked }));
+    const selectedIndex = answers[questionId];
+    if (mode !== "mock" || !accessToken || !attempt || selectedIndex === undefined || answerBusy) return;
+    try {
+      const elapsed = Math.max(0, attempt.duration_seconds - remaining);
+      await savePaperAnswer(accessToken, attempt.id, questionId, { selected_index: selectedIndex, marked_for_review: nextMarked, elapsed_seconds: elapsed });
+    } catch (reason) {
+      setMarked(values => ({ ...values, [questionId]: !nextMarked }));
+      setError(messageFor(reason, "The review marker could not be saved."));
+    }
+  };
+
   const askAI = async () => {
     const paperId = attempt?.paper_id ?? detail?.id;
     if (!accessToken || !paperId || !activeQuestion || aiBusy) return;
@@ -192,6 +238,7 @@ export default function PapersPage() {
     : undefined;
   const aiExplanation = activeQuestion ? aiExplanations[activeQuestion.id] : undefined;
   const selected = activeQuestion ? answers[activeQuestion.id] : undefined;
+  const activeFeedback = activeQuestion ? answerFeedback[activeQuestion.id] : undefined;
   const answeredCount = Object.keys(answers).length;
   const totalAttemptQuestions = attempt?.questions.length ?? 0;
   const visibleQuestionCount = (mode === "review" ? detail?.questions.length : attempt?.questions.length) ?? 0;
@@ -231,13 +278,13 @@ export default function PapersPage() {
         {mode === "summary" && summary ? <PaperSummary summary={summary} onClose={closeWorkspace} marksPerQuestion={marksPerQuestion} negativeMarkFraction={detail?.negative_mark_fraction ?? 0} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} answered` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalAttemptQuestions} aria-valuenow={answeredCount}><span style={{ width: `${progressPercent}%` }} /></div>{mode === "mock" && <span className="paper-inline-marking" title={`Correct: +${marksPerQuestion.toFixed(2)} · Wrong: −${penaltyPerWrongAnswer.toFixed(2)} · Unattempted: 0`}><ShieldCheck size={14} /> −{penaltyPerWrongAnswer.toFixed(2)} per wrong</span>}</div><div className="paper-question-layout">
           <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Go to</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><span>Question</span><strong>{activeQuestion.number}</strong><span>of {visibleQuestionCount}</span></div></nav>
           <div className="paper-question-panel" ref={questionPanelRef}>
-            {mode === "mock" && <div className="paper-question-tools"><button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => setMarked(values => ({ ...values, [activeQuestion.id]: !values[activeQuestion.id] }))}><Bookmark size={14} /> {marked[activeQuestion.id] ? "Marked for review" : "Mark for review"}</button></div>}
+            {mode === "mock" && <div className="paper-question-tools"><button className={marked[activeQuestion.id] ? "marked" : ""} onClick={() => void toggleQuestionMark()}><Bookmark size={14} /> {marked[activeQuestion.id] ? "Marked for review" : "Mark for review"}</button></div>}
             <div className="paper-question-content">
               <article className="paper-sheet">
                 {activeSection && <header className="paper-directions"><span>Directions</span><h3>{activeSection.title}</h3><p>{activeSection.directions}</p></header>}
                 {activeSection?.passage && <section className="paper-passage"><strong>Passage</strong>{activeSection.passage.split("\n\n").map(paragraph => <p key={paragraph}>{paragraph}</p>)}</section>}
                 <section className="paper-sheet-question"><small>Question {activeQuestion.number}</small>{readableQuestion ? <h2>{readableQuestion.prompt}</h2> : activeQuestion.asset_url && activeCrop?.imageUrl ? <figure className="paper-question-scan is-cropped"><Image src={activeCrop.imageUrl} width={activeCrop.pixelWidth} height={activeCrop.pixelHeight} alt={`Official UPSC question ${activeQuestion.number}`} /><figcaption><span>Official question {activeQuestion.number}</span><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">View source page <ExternalLink size={11} /></a></figcaption></figure> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Individual question view is being prepared</strong><p>Use the official source while question {activeQuestion.number} is checked.</p></div></div>}</section>
-                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>Select one option</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = Boolean(answerIsRevealed && selected === index && solutionQuestion?.is_verified && solutionQuestion.correct_index !== index); return <button aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => { setAnswers(values => ({ ...values, [activeQuestion.id]: index })); setRevealed(values => ({ ...values, [activeQuestion.id]: false })); }}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{option}</span>{correct && <Check size={15} />}</button>; })}</div>
+                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>{answerBusy === activeQuestion.id ? "Saving answer…" : activeFeedback?.isCorrect === true ? "Correct — moving to the next question" : activeFeedback?.isCorrect === false ? "Incorrect — correct answer highlighted" : activeFeedback?.isCorrect === null ? "Answer saved — official key pending" : "Select one option"}</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const feedback = answerFeedback[activeQuestion.id]; const correct = Boolean((answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index) || feedback?.correctIndex === index); const incorrect = Boolean(feedback?.isCorrect === false && feedback.selectedIndex === index); return <button disabled={answerBusy === activeQuestion.id || (mode === "mock" && activeFeedback !== undefined)} aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => void selectPaperAnswer(index)}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{option}</span>{correct && <Check size={15} />}{incorrect && <X size={15} />}</button>; })}</div>
                 {mode === "review" && solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
                 {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation && <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><div className="paper-explanation-footer"><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span><button type="button" onClick={() => speakExplanation(solutionQuestion.explanation ?? "", activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
                 {!solutionQuestion?.is_verified && <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={15} /> {aiBusy === activeQuestion.id ? "Working…" : aiExplanation ? "Explain again" : "Explain with AI"}</button>}

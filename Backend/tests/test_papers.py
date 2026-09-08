@@ -108,13 +108,26 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     first_question = attempt["questions"][0]
     assert len(attempt["questions"]) == 4
     assert "correct_index" not in first_question
+    assert attempt["resumed"] is False
+    assert attempt["elapsed_seconds"] == 0
+    assert attempt["answers"] == []
 
     saved = client.put(
         f"/api/v1/paper-attempts/{attempt['id']}/answers/{first_question['id']}",
         headers=headers,
-        json={"selected_index": 1, "marked_for_review": True},
+        json={"selected_index": 1, "marked_for_review": True, "elapsed_seconds": 45},
     )
     assert saved.status_code == 200
+    assert saved.json()["is_correct"] is True
+    assert saved.json()["correct_index"] == 1
+
+    resumed = client.post(f"/api/v1/papers/{paper['id']}/attempts", headers=headers)
+    assert resumed.status_code == 201
+    assert resumed.json()["id"] == attempt["id"]
+    assert resumed.json()["resumed"] is True
+    assert resumed.json()["elapsed_seconds"] == 45
+    assert resumed.json()["answers"][0]["selected_index"] == 1
+    assert resumed.json()["answers"][0]["marked_for_review"] is True
 
     unverified_question = attempt["questions"][-1]
     unverified_saved = client.put(
@@ -157,6 +170,11 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert dashboard.json()["history"][0]["topic"] == "Previous paper"
     assert dashboard.json()["questions_attempted"] == 4
     assert dashboard.json()["history"][0]["scored_questions"] == 3
+
+    restarted = client.post(f"/api/v1/papers/{paper['id']}/attempts", headers=headers)
+    assert restarted.status_code == 201
+    assert restarted.json()["id"] != attempt["id"]
+    assert restarted.json()["resumed"] is False
 
 
 def test_paper_solutions_and_attempts_require_authentication(client: TestClient) -> None:

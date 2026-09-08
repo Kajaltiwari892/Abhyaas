@@ -113,7 +113,18 @@ export type PaperAttempt = {
   title: string;
   started_at: string;
   duration_seconds: number;
+  elapsed_seconds: number;
+  resumed: boolean;
+  answers: PaperSavedAnswer[];
   questions: PaperQuestion[];
+};
+
+export type PaperSavedAnswer = {
+  question_id: string;
+  selected_index: number;
+  marked_for_review: boolean;
+  is_correct: boolean | null;
+  correct_index: number | null;
 };
 
 export type PaperAttemptSummary = {
@@ -192,8 +203,8 @@ export const savePaperAnswer = (
   token: string,
   attemptId: string,
   questionId: string,
-  input: { selected_index: number; marked_for_review: boolean },
-) => apiRequest(
+  input: { selected_index: number; marked_for_review: boolean; elapsed_seconds?: number },
+) => apiRequest<PaperSavedAnswer>(
   `/paper-attempts/${attemptId}/answers/${questionId}`,
   authorized(token, { method: "PUT", body: JSON.stringify(input) }),
 );

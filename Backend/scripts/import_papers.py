@@ -129,7 +129,9 @@ async def import_payload(payload: dict[str, Any]) -> tuple[int, int]:
             question.context = item.get("context") or None
             question.options = [str(option).strip() for option in item["options"]]
             question.correct_index = int(item.get("correct_index", 0))
-            question.explanation = (item.get("explanation") or "Answer verification pending.").strip()
+            question.explanation = (
+                item.get("explanation") or "Answer verification pending."
+            ).strip()
             question.source_label = item.get(
                 "source_label", "Official UPSC paper; independently verified explanation"
             ).strip()

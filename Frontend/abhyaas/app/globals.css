@@ -1091,6 +1091,7 @@ button:not(:disabled):hover,
 .paper-sheet .paper-mcq-options button { min-height: 57px; padding: 11px 8px; color: #343b31; background: transparent; border: 0; border-bottom: 1px solid #d8d1c3; border-radius: 0; font-family: Georgia, serif; font-size: 15px; }
 .paper-sheet .paper-mcq-options button > span:first-child { width: 30px; height: 30px; color: #59623e; background: #ebe6d9; border: 1px solid #9ca581; border-radius: 50%; font-family: var(--font-geist-mono); }
 .paper-sheet .paper-mcq-options button:hover:not(:disabled) { color: #172015; background: #ebe7da; border-color: #bcc4a3; }
+.paper-sheet .paper-mcq-options button:disabled { cursor: default; opacity: 1; }
 .paper-sheet .paper-mcq-options button.selected { color: #172015; background: #e0e7cd; border-color: #91a15f; box-shadow: inset 3px 0 #82944e; }
 .paper-sheet .paper-mcq-options button.correct { color: #163116; background: #dce8ce; border-color: #78914d; }.paper-sheet .paper-mcq-options button.incorrect { color: #71372f; background: #f1ddd5; border-color: #b77a6c; }
 .paper-sheet .paper-reveal-answer, .paper-sheet .paper-ai-answer { width: fit-content; min-height: 38px; margin-top: 18px; padding: 0 17px; border-radius: 20px; font-size: 9px; }

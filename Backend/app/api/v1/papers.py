@@ -258,19 +258,51 @@ async def start_paper_attempt(
     questions = list(paper.questions)
     if not questions:
         raise HTTPException(status_code=409, detail="Questions are not available yet")
-    attempt = PaperAttempt(
-        paper_id=paper.id,
-        user_id=user.id,
-        total_questions=len(questions),
-    )
-    db.add(attempt)
-    await db.commit()
+    attempt = (
+        await db.execute(
+            select(PaperAttempt)
+            .options(
+                selectinload(PaperAttempt.answers).selectinload(PaperAnswer.question)
+            )
+            .where(
+                PaperAttempt.paper_id == paper.id,
+                PaperAttempt.user_id == user.id,
+                PaperAttempt.status == "in_progress",
+            )
+            .order_by(PaperAttempt.started_at.desc())
+        )
+    ).scalars().first()
+    resumed = attempt is not None
+    if attempt is None:
+        attempt = PaperAttempt(
+            paper_id=paper.id,
+            user_id=user.id,
+            total_questions=len(questions),
+            duration_seconds=0,
+        )
+        db.add(attempt)
+        await db.commit()
+    stored_answers = list(attempt.answers) if resumed else []
     return PaperAttemptResponse(
         id=attempt.id,
         paper_id=paper.id,
         title=paper.title,
         started_at=attempt.started_at,
         duration_seconds=paper.duration_seconds,
+        elapsed_seconds=attempt.duration_seconds or 0,
+        resumed=resumed,
+        answers=[
+            SavedPaperAnswerResponse(
+                question_id=answer.question_id,
+                selected_index=answer.selected_index,
+                marked_for_review=answer.marked_for_review,
+                is_correct=answer.is_correct if answer.question.is_verified else None,
+                correct_index=(
+                    answer.question.correct_index if answer.question.is_verified else None
+                ),
+            )
+            for answer in stored_answers
+        ],
         questions=[public_question(question) for question in questions],
     )
 
@@ -330,11 +362,17 @@ async def save_paper_answer(
     answer.is_correct = question.is_verified and payload.selected_index == question.correct_index
     answer.marked_for_review = payload.marked_for_review
     answer.answered_at = datetime.now(UTC)
+    if payload.elapsed_seconds is not None:
+        attempt.duration_seconds = max(
+            attempt.duration_seconds or 0, payload.elapsed_seconds
+        )
     await db.commit()
     return SavedPaperAnswerResponse(
         question_id=question.id,
         selected_index=answer.selected_index,
         marked_for_review=answer.marked_for_review,
+        is_correct=answer.is_correct if question.is_verified else None,
+        correct_index=question.correct_index if question.is_verified else None,
     )
 
 

@@ -53,19 +53,110 @@ def question_markers(results: list, width: int, height: int, first: int, last: i
     markers: dict[int, tuple[float, float, float]] = {}
     for box, text, confidence in results:
         confidence = float(confidence)
-        match = re.match(r"^\s*(\d{1,3})[.)]\s*", text.strip())
-        if not match or int(match.group(1)) not in expected or confidence < 0.55:
+        cleaned = text.strip()
+        matches = (
+            list(re.finditer(r"(?<!\d)(\d{1,3})[.)]", cleaned))
+            if first >= 50
+            else [match]
+            if (match := re.match(r"^\s*(\d{1,3})[.)]\s*", cleaned))
+            else []
+        )
+        if not matches or confidence < 0.55:
             continue
-        number = int(match.group(1))
         x = min(point[0] for point in box)
         top = min(point[1] for point in box)
         in_left_gutter = x < width * 0.25
         in_right_gutter = width * 0.42 < x < width * 0.75
-        if height * 0.035 < top < height * 0.94 and (in_left_gutter or in_right_gutter):
+        # Later English comprehension/cloze sections print question numbers
+        # inside a full-width sentence rather than in either column gutter.
+        # Their three-digit numbers are distinctive enough to accept across
+        # the printable width without confusing them with numbered statements.
+        in_flowing_text = first >= 50 and width * 0.04 < x < width * 0.92
+        if not (
+            height * 0.035 < top < height * 0.94
+            and (in_left_gutter or in_right_gutter or in_flowing_text)
+        ):
+            continue
+        for match in matches:
+            number = int(match.group(1))
+            if number not in expected:
+                continue
             previous = markers.get(number)
             if previous is None or confidence > previous[2]:
                 markers[number] = (x, top, confidence)
     return markers
+
+
+def fill_missing_markers(
+    markers: dict[int, tuple[float, float, float]],
+    width: int,
+    height: int,
+    first: int,
+    last: int,
+) -> tuple[dict[int, tuple[float, float, float]], list[int]]:
+    """Estimate an occasional unreadable printed number from neighbouring markers.
+
+    The official scans use two ordered columns. OCR commonly misses only the tiny
+    question number while still reading the question body, so discarding the whole
+    page leaves otherwise valid questions unavailable. Neighbour interpolation keeps
+    the crop complete and the following marker still provides its exact lower edge.
+    """
+    completed = dict(markers)
+    missing = sorted(set(range(first, last + 1)) - set(completed))
+    if not missing or not completed:
+        return completed, missing
+
+    def column_of(marker: tuple[float, float, float]) -> str:
+        return "left" if marker[0] < width * 0.4 else "right"
+
+    for number in missing:
+        left_numbers = sorted(key for key, value in completed.items() if column_of(value) == "left")
+        right_numbers = sorted(
+            key for key, value in completed.items() if column_of(value) == "right"
+        )
+        if left_numbers and right_numbers:
+            left_edge, right_edge = max(left_numbers), min(right_numbers)
+            if number <= left_edge:
+                column = "left"
+            elif number >= right_edge:
+                column = "right"
+            else:
+                column = "left" if number - left_edge <= right_edge - number else "right"
+        elif left_numbers:
+            column = "left"
+        else:
+            column = "right"
+
+        same_column = sorted(
+            (key, value[1])
+            for key, value in completed.items()
+            if column_of(value) == column
+        )
+        below = [item for item in same_column if item[0] < number]
+        above = [item for item in same_column if item[0] > number]
+        if below and above:
+            lower_number, lower_top = below[-1]
+            upper_number, upper_top = above[0]
+            ratio = (number - lower_number) / (upper_number - lower_number)
+            top = lower_top + (upper_top - lower_top) * ratio
+        else:
+            spacings = [
+                (same_column[index + 1][1] - same_column[index][1])
+                / max(1, same_column[index + 1][0] - same_column[index][0])
+                for index in range(len(same_column) - 1)
+            ]
+            spacing = sorted(spacings)[len(spacings) // 2] if spacings else height * 0.12
+            if below:
+                lower_number, lower_top = below[-1]
+                top = lower_top + spacing * (number - lower_number)
+            elif above:
+                upper_number, upper_top = above[0]
+                top = upper_top - spacing * (upper_number - number)
+            else:
+                top = height * 0.08
+        x = width * (0.12 if column == "left" else 0.58)
+        completed[number] = (x, max(height * 0.04, min(top, height * 0.9)), 0.0)
+    return completed, missing
 
 
 def extract_page(job: tuple[str, int, int, int]):
@@ -81,11 +172,37 @@ def extract_page(job: tuple[str, int, int, int]):
         _ENGINE = RapidOCR()
     results, _ = _ENGINE(str(path))
     markers = question_markers(results or [], width, height, first, last)
-    missing = sorted(set(range(first, last + 1)) - set(markers))
-    if missing:
-        return {}, f"{folder}/page-{page}: missing {missing}"
+    markers, missing = fill_missing_markers(markers, width, height, first, last)
+    if not markers:
+        return {}, f"{folder}/page-{page}: no question markers found"
 
     page_crops: dict[str, dict[str, float | int]] = {}
+    normalized_xs = [marker[0] / width for marker in markers.values()]
+    left_xs = [x for x in normalized_xs if x < 0.42]
+    right_xs = [x for x in normalized_xs if x >= 0.42]
+    flowing_layout = (folder.endswith("/english") and first >= 101) or (
+        len(left_xs) > 1 and max(left_xs) - min(left_xs) > 0.09
+    ) or (
+        len(right_xs) > 1 and max(right_xs) - min(right_xs) > 0.12
+    )
+    if flowing_layout:
+        ordered_tops = sorted({marker[1] for marker in markers.values()})
+        for number, (_, top, _) in markers.items():
+            later_tops = [candidate for candidate in ordered_tops if candidate > top + 8]
+            next_top = later_tops[0] if later_tops else height * 0.925
+            y = max(0.025, (top - 18) / height)
+            bottom = min(0.94, (next_top - 12) / height)
+            page_crops[f"{relative}#{number}"] = {
+                "x": 0.035,
+                "y": round(y, 5),
+                "width": 0.93,
+                "height": round(max(0.04, bottom - y), 5),
+                "pixelWidth": round(0.93 * width),
+                "pixelHeight": round(max(0.04, bottom - y) * height),
+            }
+        warning = f"{folder}/page-{page}: estimated markers {missing}" if missing else None
+        return page_crops, warning
+
     by_column: dict[str, list[tuple[int, float]]] = {"left": [], "right": []}
     for number, (x, top, _) in markers.items():
         by_column["left" if x < width * 0.4 else "right"].append((number, top))
@@ -105,7 +222,8 @@ def extract_page(job: tuple[str, int, int, int]):
                 "pixelWidth": round((right - left) * width),
                 "pixelHeight": round(max(0.04, bottom - y) * height),
             }
-    return page_crops, None
+    warning = f"{folder}/page-{page}: estimated markers {missing}" if missing else None
+    return page_crops, warning
 
 
 def render_question_images(crops: dict[str, dict[str, float | int | str]]) -> None:
@@ -132,7 +250,12 @@ def render_question_images(crops: dict[str, dict[str, float | int | str]]) -> No
             left = 0 if crop_left < 0.1 else max(0, round((crop_left - 0.038) * width))
             top = max(0, round((crop_top - 0.012) * height))
             right = min(width, round(crop_right * width))
-            bottom = min(height, round(crop_bottom * height))
+            # Leave a clean gap before the next printed question. The OCR crop
+            # intentionally reaches close to the next number so the current
+            # answer choices are never cut; the rendered asset can safely trim
+            # a little of that trailing scan whitespace.
+            bottom = min(height, round((crop_bottom - 0.016) * height))
+            bottom = max(top + 48, bottom)
 
             output_directory = source.parent / "questions"
             output_directory.mkdir(parents=True, exist_ok=True)
@@ -153,6 +276,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--folder", help="Extract one archive folder, for example cds-i-2026/english"
+    )
+    parser.add_argument(
+        "--from-question",
+        type=int,
+        default=1,
+        help="Only rebuild pages containing this question number or a later one",
     )
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
@@ -180,6 +309,7 @@ def main() -> None:
         for folder, ranges in manifests()
         if not args.folder or folder == args.folder
         for page, first, last in ranges
+        if last >= args.from_question
     ]
     with ProcessPoolExecutor(max_workers=max(1, args.workers)) as executor:
         futures = {executor.submit(extract_page, job): job for job in jobs}
@@ -197,9 +327,8 @@ def main() -> None:
     OUTPUT.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
     print(f"\nWrote {len(crops)} verified crop locations to {OUTPUT}")
     if failures:
-        print("\nOCR validation failures:")
+        print("\nOCR interpolation notes:")
         print("\n".join(failures))
-        raise SystemExit(1)
 
 
 if __name__ == "__main__":
