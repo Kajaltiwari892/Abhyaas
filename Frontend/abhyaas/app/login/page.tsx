@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CircleAlert, Eye, EyeOff, Swords, X } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Swords } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import authImage from "../../assets/img5.png";
 import {
   ApiError,
@@ -20,6 +21,29 @@ import { useAuth } from "../components/AuthProvider";
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 type FormStatus = { kind: "success" | "error" | "info"; message: string } | null;
 type AuthNotice = { title: string; message: string; action?: "login" } | null;
+
+const googleErrorNotices: Record<string, Exclude<AuthNotice, null>> = {
+  not_configured: {
+    title: "Google sign-in is unavailable",
+    message: "Google authentication is not configured for this environment yet.",
+  },
+  cancelled: {
+    title: "Google sign-in was cancelled",
+    message: "The secure sign-in session was not completed. Please start it again.",
+  },
+  invalid_state: {
+    title: "Google sign-in session expired",
+    message: "The browser could not verify the sign-in session. Please start it again in this tab.",
+  },
+  failed: {
+    title: "Google could not verify the account",
+    message: "Google returned an invalid or incomplete identity response. Please try once more.",
+  },
+  account_conflict: {
+    title: "This email is linked differently",
+    message: "Sign in with your existing method first before connecting this Google account.",
+  },
+};
 
 const headings: Record<AuthMode, { eyebrow: string; title: string; description: string }> = {
   login: {
@@ -56,12 +80,31 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pending, setPending] = useState(false);
+  const [email, setEmail] = useState("");
   const [status, setStatus] = useState<FormStatus>(null);
   const [notice, setNotice] = useState<AuthNotice>(null);
   const [resetToken, setResetToken] = useState("");
   const isLogin = mode === "login";
   const isSignup = mode === "signup";
   const heading = headings[mode];
+
+  useEffect(() => {
+    if (!notice) return;
+    const options = {
+      description: notice.message,
+      id: "auth-notice",
+      action: notice.action === "login" ? { label: "Go to sign in", onClick: () => changeMode("login") } : undefined,
+    };
+    if (notice.title === "Check your email") toast.success(notice.title, options);
+    else toast.error(notice.title, options);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!status) return;
+    if (status.kind === "success") toast.success(status.message, { id: "auth-status" });
+    else if (status.kind === "error") toast.error(status.message, { id: "auth-status" });
+    else toast.loading(status.message, { id: "auth-status" });
+  }, [status]);
 
   useEffect(() => {
     if (verificationStarted.current) return;
@@ -72,11 +115,9 @@ export default function LoginPage() {
     const googleError = parameters.get("google_error");
 
     if (googleError) {
-      queueMicrotask(() => setNotice({
-        title: googleError === "not_configured" ? "Google sign-in needs one setup step" : "Google sign-in was not completed",
-        message: googleError === "not_configured"
-          ? "Add your free Google OAuth credentials to the backend, then this option will be ready."
-          : "You can try Google again or continue with your email and password.",
+      queueMicrotask(() => setNotice(googleErrorNotices[googleError] ?? {
+        title: "Google sign-in was not completed",
+        message: `Please try Google again. Error reference: ${googleError}`,
       }));
       window.history.replaceState(null, "", "/login");
       return;
@@ -115,6 +156,37 @@ export default function LoginPage() {
     setShowConfirmPassword(false);
   }
 
+  function showResetEmailConfirmation() {
+    setStatus(null);
+    setNotice({
+      title: "Check your email",
+      message: "Your password-reset link is on its way. It may take a minute, and please check your Spam folder too.",
+    });
+  }
+
+  async function handleForgotPasswordClick() {
+    changeMode("forgot");
+
+    const requestedEmail = email.trim();
+    if (!isValidEmail(requestedEmail)) {
+      setNotice({
+        title: "Enter your email address",
+        message: "Tell us which email you use for Abhyaas, then we’ll send your secure reset link.",
+      });
+      return;
+    }
+
+    setPending(true);
+    try {
+      await requestPasswordReset(requestedEmail);
+      showResetEmailConfirmation();
+    } catch {
+      setNotice({ title: "We couldn’t send the email yet", message: getFailureMessage("forgot") });
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function submitAuthentication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -143,7 +215,7 @@ export default function LoginPage() {
 
       if (mode === "forgot") {
         await requestPasswordReset(email);
-        setStatus({ kind: "success", message: "If that email is registered, a reset link has been created." });
+        showResetEmailConfirmation();
         return;
       }
 
@@ -180,13 +252,6 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      {notice && (
-        <aside className="auth-notice" role="alert" aria-live="assertive">
-          <span className="auth-notice-icon"><CircleAlert size={18} /></span>
-          <div><strong>{notice.title}</strong><p>{notice.message}</p>{notice.action === "login" && <button type="button" onClick={() => changeMode("login")}>Go to sign in <ArrowRight size={14} /></button>}</div>
-          <button className="auth-notice-close" type="button" onClick={() => setNotice(null)} aria-label="Close message"><X size={16} /></button>
-        </aside>
-      )}
       <section className="auth-form-panel">
         <div className="auth-form-shell">
           <Link className="auth-brand" href="/"><span><Swords size={19} /></span>ABHYAAS</Link>
@@ -204,20 +269,19 @@ export default function LoginPage() {
 
           <form className="auth-form" onSubmit={submitAuthentication}>
             {isSignup && <label><span>Full name</span><input name="name" type="text" autoComplete="name" placeholder="Your full name" minLength={2} required /></label>}
-            {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></label>}
+            {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>}
             {mode !== "forgot" && <label>
               <span>{mode === "reset" ? "New password" : "Password"}</span>
               <span className="auth-password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete={isLogin ? "current-password" : "new-password"} placeholder={isLogin ? "Enter your password" : "Create a password"} minLength={8} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span>
             </label>}
             {(isSignup || mode === "reset") && <label><span>Confirm password</span><span className="auth-password-field"><input name="confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /><button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}>{showConfirmPassword ? <Eye size={17} /> : <EyeOff size={17} />}</button></span></label>}
 
-            {isLogin && <div className="auth-form-options auth-forgot-only"><button type="button" onClick={() => changeMode("forgot")}>Forgot password?</button></div>}
+            {isLogin && <div className="auth-form-options auth-forgot-only"><button type="button" onClick={handleForgotPasswordClick} disabled={pending}>Forgot password?</button></div>}
 
             <button className="auth-submit-static" type="submit" disabled={pending}>
               {pending ? "Please wait…" : getSubmitLabel(mode)}{!pending && <ArrowRight size={16} />}
             </button>
             {(isLogin || isSignup) && <><div className="auth-divider"><span>or continue with</span></div><button className="auth-google" type="button" onClick={() => window.location.assign(getGoogleSignInUrl())}><span aria-hidden="true">G</span>Sign in with Google</button></>}
-            {status && <p className={`auth-status ${status.kind}`} role={status.kind === "error" ? "alert" : "status"}>{status.message}</p>}
           </form>
 
           <p className="auth-alternate">
@@ -238,9 +302,13 @@ export default function LoginPage() {
 
 function getSubmitLabel(mode: AuthMode) {
   if (mode === "signup") return "Create free account";
-  if (mode === "forgot") return "Create reset link";
+  if (mode === "forgot") return "Send reset email";
   if (mode === "reset") return "Update password";
   return "Sign in";
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function getSafeDestination() {

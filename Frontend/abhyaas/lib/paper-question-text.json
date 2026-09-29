@@ -1,0 +1,1042 @@
+{
+  "/papers/cds-i-2026/english/page-10.webp#56": {
+    "prompt": "Malaika has been in a perpetual dilemma since the time she heard the disturbing news.",
+    "options": [
+      "eternal",
+      "transitory",
+      "continuous",
+      "unceasing"
+    ],
+    "ocrConfidence": 0.808
+  },
+  "/papers/cds-i-2026/english/page-10.webp#57": {
+    "prompt": "They were distraught on receiving the news.",
+    "options": [
+      "flustered",
+      "composed",
+      "rattled",
+      "perturbed"
+    ],
+    "ocrConfidence": 0.8
+  },
+  "/papers/cds-i-2026/english/page-10.webp#58": {
+    "prompt": "She is considered to be demure by her family members.",
+    "options": [
+      "sedate",
+      "modest",
+      "brazen",
+      "solemn"
+    ],
+    "ocrConfidence": 0.779
+  },
+  "/papers/cds-i-2026/english/page-10.webp#59": {
+    "prompt": "What he got by way of a settlement was a pittance.",
+    "options": [
+      "bonanza",
+      "petty amount",
+      "instalment",
+      "miniscule amount"
+    ],
+    "ocrConfidence": 0.818
+  },
+  "/papers/cds-i-2026/english/page-10.webp#60": {
+    "prompt": "His academic papers often are viewed as being ponderous.",
+    "options": [
+      "profound",
+      "difficult",
+      "elegant",
+      "informative"
+    ],
+    "ocrConfidence": 0.812
+  },
+  "/papers/cds-i-2026/english/page-10.webp#61": {
+    "prompt": "Who came first in the race?",
+    "options": [
+      "Preposition",
+      "Adjective",
+      "Adverb",
+      "Article"
+    ],
+    "ocrConfidence": 0.799
+  },
+  "/papers/cds-i-2026/english/page-10.webp#62": {
+    "prompt": "It is obligatory for all employees to wear protective clothing.",
+    "options": [
+      "Noun",
+      "Adjective",
+      "Adverb",
+      "Participle"
+    ],
+    "ocrConfidence": 0.79
+  },
+  "/papers/cds-i-2026/english/page-10.webp#63": {
+    "prompt": "Turn right at the end of the street.",
+    "options": [
+      "Adjective",
+      "Adverb",
+      "Noun",
+      "Preposition"
+    ],
+    "ocrConfidence": 0.8
+  },
+  "/papers/cds-i-2026/english/page-10.webp#64": {
+    "prompt": "Swimming is good for health.",
+    "options": [
+      "Participle",
+      "Verb",
+      "Noun",
+      "Gerund"
+    ],
+    "ocrConfidence": 0.781
+  },
+  "/papers/cds-i-2026/english/page-10.webp#65": {
+    "prompt": "My arms are aching terribly.",
+    "options": [
+      "Noun",
+      "Adjective",
+      "Adverb",
+      "Participle"
+    ],
+    "ocrConfidence": 0.777
+  },
+  "/papers/cds-i-2026/english/page-11.webp#66": {
+    "prompt": "The local council could not finance the project as planned.",
+    "options": [
+      "Noun",
+      "Verb",
+      "Adverb",
+      "Participle"
+    ],
+    "ocrConfidence": 0.791
+  },
+  "/papers/cds-i-2026/english/page-11.webp#67": {
+    "prompt": "We met a lot of interesting people during our winter holidays.",
+    "options": [
+      "Conjunction",
+      "Preposition",
+      "Article",
+      "Participle"
+    ],
+    "ocrConfidence": 0.805
+  },
+  "/papers/cds-i-2026/english/page-11.webp#68": {
+    "prompt": "Vicky refused to join the trek to the hills because he is afraid of heights.",
+    "options": [
+      "Verb",
+      "Adverb",
+      "Noun",
+      "Adjective"
+    ],
+    "ocrConfidence": 0.773
+  },
+  "/papers/cds-i-2026/english/page-11.webp#69": {
+    "prompt": "The number of boxes sold leapt from 19,400 to 33,542.",
+    "options": [
+      "Noun",
+      "Adjective",
+      "Adverb",
+      "Verb"
+    ],
+    "ocrConfidence": 0.786
+  },
+  "/papers/cds-i-2026/english/page-11.webp#70": {
+    "prompt": "Amar ensured the timely delivery of the products.",
+    "options": [
+      "Adverb",
+      "Adjective",
+      "Noun",
+      "Preposition"
+    ],
+    "ocrConfidence": 0.787
+  },
+  "/papers/cds-i-2026/english/page-11.webp#71": {
+    "prompt": "The information is available the Internet.",
+    "options": [
+      "with",
+      "on",
+      "in",
+      "at"
+    ],
+    "ocrConfidence": 0.71
+  },
+  "/papers/cds-i-2026/english/page-11.webp#72": {
+    "prompt": "I don't want more vegetables.",
+    "options": [
+      "one",
+      "much",
+      "many",
+      "any"
+    ],
+    "ocrConfidence": 0.767
+  },
+  "/papers/cds-i-2026/english/page-11.webp#73": {
+    "prompt": "What other sport do you play hockey?",
+    "options": [
+      "beside",
+      "besides",
+      "instead",
+      "expect"
+    ],
+    "ocrConfidence": 0.784
+  },
+  "/papers/cds-i-2026/english/page-11.webp#74": {
+    "prompt": "I called the office two or three times, but time no one responded.",
+    "options": [
+      "all",
+      "some",
+      "any",
+      "each"
+    ],
+    "ocrConfidence": 0.759
+  },
+  "/papers/cds-i-2026/english/page-11.webp#75": {
+    "prompt": "You can park on, side ofthe street.",
+    "options": [
+      "all",
+      "no",
+      "either",
+      "both"
+    ],
+    "ocrConfidence": 0.747
+  },
+  "/papers/cds-i-2026/english/page-12.webp#76": {
+    "prompt": "I'm not speaking to Ravi. I've fallen with him.",
+    "options": [
+      "away",
+      "back",
+      "out",
+      "through"
+    ],
+    "ocrConfidence": 0.78
+  },
+  "/papers/cds-i-2026/english/page-12.webp#77": {
+    "prompt": "Dr. Kumar is very busy with her practice. She has time for other things",
+    "options": [
+      "few",
+      "a few",
+      "little",
+      "a little"
+    ],
+    "ocrConfidence": 0.782
+  },
+  "/papers/cds-i-2026/english/page-12.webp#78": {
+    "prompt": "Harish wanted to report on the war the danger involved.",
+    "options": [
+      "though",
+      "in spite of",
+      "although",
+      "even though"
+    ],
+    "ocrConfidence": 0.816
+  },
+  "/papers/cds-i-2026/english/page-12.webp#79": {
+    "prompt": "student could tell you where the college library is located.",
+    "options": [
+      "All",
+      "Some",
+      "Few",
+      "Any"
+    ],
+    "ocrConfidence": 0.777
+  },
+  "/papers/cds-i-2026/english/page-12.webp#80": {
+    "prompt": "The two groups entered an agreement after a protracted discussion.",
+    "options": [
+      "unto",
+      "at",
+      "in",
+      "into"
+    ],
+    "ocrConfidence": 0.773
+  },
+  "/papers/cds-i-2026/english/page-12.webp#81": {
+    "prompt": "crops, corps, corpse 1. What are the benefits of growing GM crops? 2. The volunteer corps was organising a blood donation camp. 3. He was sleeping like a corpse. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "2 and 3 only",
+      "2 only",
+      "1 and 3 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.808
+  },
+  "/papers/cds-i-2026/english/page-12.webp#82": {
+    "prompt": "censer,censor,censure 1. The news reports have been heavily censored. The censure board must regulate the cinematic content. 3. Incense was wafting out of the censer carried by the priest. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 2 only",
+      "3 only",
+      "1 and 3 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.817
+  },
+  "/papers/cds-i-2026/english/page-13.webp#83": {
+    "prompt": "pair, pear, pare 1.. My last pair of jeans don't fit any more. 2. Dessert was a delicious pear custard. 3. They had to pare the novel down to makeit into a two-hourfilm. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 2 only",
+      "1 only",
+      "2 and 3 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.802
+  },
+  "/papers/cds-i-2026/english/page-13.webp#84": {
+    "prompt": "fate,fete,faith 1. The working committee will meet to 86. discuss the fete of the erring employee. 2. The students organized a fate to felicitate the winners. 3. The accused person has lost faith in the fairness of the judgement. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "2 and 3 only",
+      "1 and 3 only",
+      "3 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.809
+  },
+  "/papers/cds-i-2026/english/page-13.webp#85": {
+    "prompt": "bear, bare, bier 1. She could not bare the extreme heat of Delhi in the month of May. 2. The walls of the store looked bear after the oil paintings had been sold. 3. The body was placed on a bier before the funeral service. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "2 only",
+      "2 and 3",
+      "1 and 3",
+      "3 only"
+    ],
+    "ocrConfidence": 0.801
+  },
+  "/papers/cds-i-2026/english/page-13.webp#86": {
+    "prompt": "tire, tier, tyre 1. The headmaster appealed to the students not to tier the new school master unnecessarily. 2. Our guest could not visit us yesterday as his car's tyre got damaged. 3. My uncle lives on the third tire of the building. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "3 only",
+      "2 and 3 only",
+      "2 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.803
+  },
+  "/papers/cds-i-2026/english/page-14.webp#87": {
+    "prompt": "cite, sight, site 1. The officer has left for her weekly inspection of the cite. 2. The fresh flowers at the desk made for a pretty sight. 3. Journalists should site their sources accurately. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 3 only",
+      "2 only",
+      "1 and 2 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.818
+  },
+  "/papers/cds-i-2026/english/page-14.webp#88": {
+    "prompt": "raze, raise, rays 1. It is expected that the young executives will ask for a raze pretty soon. 2. The plan proposes to raise the colonial building and construct a new memorial. 3. The heat rays emanated from the infrared device. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 2 only",
+      "3 only",
+      "2 and 3 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.797
+  },
+  "/papers/cds-i-2026/english/page-14.webp#89": {
+    "prompt": "idyll, idle, idol 1. The writer's words conjure up the idol of a bountiful and peaceful land. 2. An idle mind is the Devil's workshop. 3. An immense idyll was found at the archaeological site yesterday. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 3 only",
+      "1, 2 and 3",
+      "2 and 3 only",
+      "2 only"
+    ],
+    "ocrConfidence": 0.816
+  },
+  "/papers/cds-i-2026/english/page-14.webp#90": {
+    "prompt": "insure, ensure, unsure 1. One should be wary of visiting websites they are unsure of. 2. Meena says she always tries to insure that she has some loose cash in her h and bag. 3. Kewal I was ensure of the possible consequences of his decision. In which of the sentences given above has / have the word(s) been used correctly?",
+    "options": [
+      "1 and 2 only",
+      "2 and 3 only",
+      "1 only",
+      "1, 2 and 3"
+    ],
+    "ocrConfidence": 0.805
+  },
+  "/papers/cds-i-2026/english/page-15.webp#91": {
+    "prompt": "S1: Summer in Delhi is extremely hot. S2: Summer in Shimla is quite cold. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.803
+  },
+  "/papers/cds-i-2026/english/page-15.webp#92": {
+    "prompt": "S1: Bananas are a good source of potassium. S2: Doctors often recommend bananas to maintain healthy levels of potassium. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.835
+  },
+  "/papers/cds-i-2026/english/page-15.webp#93": {
+    "prompt": "S1: Electric cars produce no exhaust emissions. S2: However, the electricity to charge them 97. may come from fossil fuel sources. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion-of the first"
+    ],
+    "ocrConfidence": 0.809
+  },
+  "/papers/cds-i-2026/english/page-15.webp#94": {
+    "prompt": "S1: Mount Everest is the tallest peak in the world. S2: K2 in the Karakoram Range is taller than Mount Everest. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.835
+  },
+  "/papers/cds-i-2026/english/page-15.webp#95": {
+    "prompt": "S1: True knowledge is true power. S2: A little knowledge however isa dangerous thing. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertionof the first"
+    ],
+    "ocrConfidence": 0.825
+  },
+  "/papers/cds-i-2026/english/page-15.webp#96": {
+    "prompt": "S1: Slow and steady wins the race. S2: Haste makes waste. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.831
+  },
+  "/papers/cds-i-2026/english/page-15.webp#97": {
+    "prompt": "S1: 'Many h and s make light work. S2: Too many cooks spoil the broth. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first (15 A)"
+    ],
+    "ocrConfidence": 0.827
+  },
+  "/papers/cds-i-2026/english/page-16.webp#98": {
+    "prompt": "S1: The new laptop model is very desirable. S2: The battery life of the laptop could be better. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.843
+  },
+  "/papers/cds-i-2026/english/page-16.webp#99": {
+    "prompt": "S1: Research shows exercise improves mood. S2: A 2022 study links daily walks to reduced depression. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.817
+  },
+  "/papers/cds-i-2026/english/page-16.webp#100": {
+    "prompt": "S1:Some people doubt that God exists. S2: Belief in the existence of God is universal. The second sentence:",
+    "options": [
+      "contradicts the assertion of the first",
+      "contrasts the assertion of the first",
+      "confirms the assertion of the first",
+      "qualifies the assertion of the first"
+    ],
+    "ocrConfidence": 0.843
+  },
+  "/papers/cds-i-2026/english/page-2.webp#1": {
+    "prompt": "Pontoon and Platoon",
+    "options": [
+      "Pontoon means a wooden platform and Platoon means a bamboo structure",
+      "Pontoon means a group of soldiers and Platoon means a series of bunkers",
+      "Pontoon means a temporary bridge and Platoon means a group of soldiers",
+      "Pontoon means a group of people and Platoon means a temporary bridge"
+    ],
+    "ocrConfidence": 0.841
+  },
+  "/papers/cds-i-2026/english/page-2.webp#2": {
+    "prompt": "Invoke and Revoke",
+    "options": [
+      "Invoke means to invite trouble for doing something and Revoke means to repay debts",
+      "Invoke means to use the law 'to achieve something and Revoke means to officially cancel permission or agreement",
+      "Invoke means to use the law to achieve something and Revoke means to ignore legal procedures",
+      "Invoke means to usher newness and Revoke means to stick to tradition"
+    ],
+    "ocrConfidence": 0.832
+  },
+  "/papers/cds-i-2026/english/page-2.webp#3": {
+    "prompt": "Imminent and Eminent",
+    "options": [
+      "Imminent means immobile and Eminent means extremely large",
+      "Imminent means extremely large and Eminent means immobile",
+      "Imminent means famous and respected, and Eminent means happening soon",
+      "Imminent means happening soon and Eminent means famous and respected"
+    ],
+    "ocrConfidence": 0.827
+  },
+  "/papers/cds-i-2026/english/page-2.webp#4": {
+    "prompt": "Liable and Libel",
+    "options": [
+      "Liable means being legally responsible and Libel means publishing something that is false",
+      "Liable means publishing something that is false and Libel means being legally responsible",
+      "Liable means the willingness to understand and Libel means being generous",
+      "Liable means being generous and Libel means the willingness to understand"
+    ],
+    "ocrConfidence": 0.841
+  },
+  "/papers/cds-i-2026/english/page-2.webp#5": {
+    "prompt": "Incredible and Incredulous",
+    "options": [
+      "Incredible means impossible to understand something and Incredulous means extremely grateful",
+      "Incredible means difficult to believe and Incredulous means not willing to believe something",
+      "Incredible means not willing to believe and Incredulous means difficult to believe something",
+      "Incredible means extremely grateful and Incredulous means impossible to understand something"
+    ],
+    "ocrConfidence": 0.838
+  },
+  "/papers/cds-i-2026/english/page-2.webp#6": {
+    "prompt": "Climatic and Climactic",
+    "options": [
+      "Climatic means related to climate and Climactic means the most exciting part of a story or situation",
+      "Climatic means the most exciting part of a story or situation and Climactic means related to climate",
+      "Climatic means scientific study of climate and Climactic means climbing to the top of something",
+      "Climatic means climbing to the top of something and Climactic means the scientific study of climate"
+    ],
+    "ocrConfidence": 0.864
+  },
+  "/papers/cds-i-2026/english/page-20.webp#116": {
+    "prompt": "The “asphalt complex” refers to:",
+    "options": [
+      "The inability of city dwellers to connect with nature",
+      "The complexity of urban life and air pollution",
+      "The causality between urban pollution and automobiles",
+      "The air pollution that results from the construction of asphalt roads"
+    ],
+    "ocrConfidence": 0.853
+  },
+  "/papers/cds-i-2026/english/page-20.webp#117": {
+    "prompt": "The passage draws attention to which one among the following?",
+    "options": [
+      "The need tobuild more and better roads",
+      "The need for ecologists to learn from psychologists",
+      "The need to ban cars in cities",
+      "The need to remain close to nature even within our cities"
+    ],
+    "ocrConfidence": 0.848
+  },
+  "/papers/cds-i-2026/english/page-20.webp#118": {
+    "prompt": "The “biophilia hypothesis\":",
+    "options": [
+      "Argues that psychological disorders are caused by biological organisms",
+      "Is the design of a biological experiment which studies families thatlive in cities",
+      "Formulates that separation from nature leads to infelicitous mental states",
+      "Describes a philosophy that studies humansin relation to natural phenomena"
+    ],
+    "ocrConfidence": 0.842
+  },
+  "/papers/cds-i-2026/english/page-20.webp#119": {
+    "prompt": "Which one of the following includes the most appropriate and relevant set of keywords that match the concept of 'ecopsychology', as given in the passage?",
+    "options": [
+      "Wilson, automobile and city, deprivation of nature",
+      "Urban dwellers, ecologists, trees and flowers",
+      "Roszak,Pennsylvania,nature-induced recovery of patients",
+      "Well-beingdenial, human need, “asphalt complex”"
+    ],
+    "ocrConfidence": 0.86
+  },
+  "/papers/cds-i-2026/english/page-20.webp#120": {
+    "prompt": "In this passage, the word immanent is closest in meaning to:",
+    "options": [
+      "Inevitable",
+      "Intentional",
+      "Serendipitous",
+      "Inherent"
+    ],
+    "ocrConfidence": 0.835
+  },
+  "/papers/cds-i-2026/english/page-3.webp#7": {
+    "prompt": "Cursor and Cursory",
+    "options": [
+      "Cursor means a h and writing type and Cursory means very rude",
+      "Cursor means very offensive and Cursory means related to custom",
+      "Cursor means very old norms and Cursory means invoking a curse",
+      "Cursor means a pointer and Cursory means something done in haste"
+    ],
+    "ocrConfidence": 0.817
+  },
+  "/papers/cds-i-2026/english/page-3.webp#8": {
+    "prompt": "Affect and Effect",
+    "options": [
+      "Affect means the origin of something and Effect means the consequence of an 12. action",
+      "Affect means to influence and Effect means the result of an action",
+      "Affect means to impact something and Effect means to reason",
+      "Affect means the consequence of something andEffect means to influence something"
+    ],
+    "ocrConfidence": 0.788
+  },
+  "/papers/cds-i-2026/english/page-3.webp#9": {
+    "prompt": "Hard and Hardly",
+    "options": [
+      "Hard means difficult to a great degree and Hardly means scarcely",
+      "Hard means difficult and Hardly means very difficult",
+      "Hard means with great force and 14. Hardly means ever so often",
+      "Hard means to a great degree and Hardly means never"
+    ],
+    "ocrConfidence": 0.822
+  },
+  "/papers/cds-i-2026/english/page-3.webp#10": {
+    "prompt": "Conscious and Conscience",
+    "options": [
+      "Conscious means brightness and Conscience means social awareness",
+      "Conscious means awareness and Conscience means being spiritually 15. aware",
+      "Conscious means being able to perceive and Conscience means inner sense of right and wrong",
+      "Conscious means clarity of purpose and Conscience means perception"
+    ],
+    "ocrConfidence": 0.813
+  },
+  "/papers/cds-i-2026/english/page-3.webp#11": {
+    "prompt": "To say that the p and emic is done and dusted with would be an understatement.",
+    "options": [
+      "affecting politeness",
+      "underplaying significance",
+      "stating vociferously",
+      "practising subterfuge"
+    ],
+    "ocrConfidence": 0.81
+  },
+  "/papers/cds-i-2026/english/page-3.webp#12": {
+    "prompt": "The coach was of the opinion that his erstwhile protege was approaching the nadir of his career.",
+    "options": [
+      "all-time low",
+      "zenith",
+      "prime",
+      "steady-state"
+    ],
+    "ocrConfidence": 0.777
+  },
+  "/papers/cds-i-2026/english/page-3.webp#13": {
+    "prompt": "After the sudden demise of the director of the company, the employees felt str and ed.",
+    "options": [
+      "liberated",
+      "marooned",
+      "aggrieved",
+      "passive"
+    ],
+    "ocrConfidence": 0.804
+  },
+  "/papers/cds-i-2026/english/page-3.webp#14": {
+    "prompt": "The Professor assured us that her class lectures would be interspersed with practical demonstrations.",
+    "options": [
+      "isolated",
+      "explained",
+      "combined",
+      "supplied"
+    ],
+    "ocrConfidence": 0.807
+  },
+  "/papers/cds-i-2026/english/page-3.webp#15": {
+    "prompt": "She was effusive in her praise.",
+    "options": [
+      "expressing approval while exhibiting strong feelings",
+      "dispassionate expression of approval",
+      "tranquil appraisal",
+      "soothing and encouraging (3-Ａ)"
+    ],
+    "ocrConfidence": 0.835
+  },
+  "/papers/cds-i-2026/english/page-4.webp#16": {
+    "prompt": "It is ingenuous to suppose that money did not play a part in his decision.",
+    "options": [
+      "naive",
+      "clever",
+      "erudite",
+      "probing"
+    ],
+    "ocrConfidence": 0.799
+  },
+  "/papers/cds-i-2026/english/page-4.webp#17": {
+    "prompt": "The advertisements were all posted in a conspicuous place.",
+    "options": [
+      "niche",
+      "venerable",
+      "noticeable",
+      "available"
+    ],
+    "ocrConfidence": 0.818
+  },
+  "/papers/cds-i-2026/english/page-4.webp#18": {
+    "prompt": "Early humans may have had a rudimentary underst and ingof certain mathematical concepts.",
+    "options": [
+      "elementary",
+      "nuanced",
+      "radical",
+      "special"
+    ],
+    "ocrConfidence": 0.813
+  },
+  "/papers/cds-i-2026/english/page-4.webp#19": {
+    "prompt": "The poorly conducted workshop.was travesty of the initial vision document.",
+    "options": [
+      "mockery",
+      "complication",
+      "expansion",
+      "demonstration"
+    ],
+    "ocrConfidence": 0.812
+  },
+  "/papers/cds-i-2026/english/page-4.webp#20": {
+    "prompt": "The abstruse style of the speaker left the students disinterested and fidgety.",
+    "options": [
+      "academic",
+      "concise",
+      "erudite",
+      "recondite"
+    ],
+    "ocrConfidence": 0.807
+  },
+  "/papers/cds-i-2026/english/page-4.webp#21": {
+    "prompt": "Iconoclast:",
+    "options": [
+      "Person who criticises a cultural icon",
+      "Person who attracts a lot of attention",
+      "Person who does not adhere to accepted beliefs and traditions",
+      "Person who negates his own positions"
+    ],
+    "ocrConfidence": 0.829
+  },
+  "/papers/cds-i-2026/english/page-4.webp#22": {
+    "prompt": "Axiom:",
+    "options": [
+      "Quality of being very similar or equal",
+      "Rule or principle that most people believe to be true",
+      "Rule that says how people should behave",
+      "The mathematical principle of being exactly equal"
+    ],
+    "ocrConfidence": 0.807
+  },
+  "/papers/cds-i-2026/english/page-4.webp#23": {
+    "prompt": "Holistic:",
+    "options": [
+      "Relating to complete systems rather than individual parts",
+      "Relating to a particular work in certain industries",
+      "Related to routine tasks",
+      "Related to holyrituals"
+    ],
+    "ocrConfidence": 0.817
+  },
+  "/papers/cds-i-2026/english/page-4.webp#24": {
+    "prompt": "Obsequious:",
+    "options": [
+      "Excessively confident about oneself in a way that annoys people",
+      "Overly eager to help or obey someone important",
+      "Too emotional or dramatic",
+      "Far too important and respected to be criticised"
+    ],
+    "ocrConfidence": 0.832
+  },
+  "/papers/cds-i-2026/english/page-5.webp#25": {
+    "prompt": "Pachyderm:",
+    "options": [
+      "Athick-skinned mammal",
+      "A strong-corded silk fabric",
+      "A thick flour paste",
+      "Patchy skin"
+    ],
+    "ocrConfidence": 0.787
+  },
+  "/papers/cds-i-2026/english/page-5.webp#26": {
+    "prompt": "Ubiquitous:",
+    "options": [
+      "Something with limited presence",
+      "Something with skewed presence",
+      "Something with wide presence",
+      "Something with selective presence"
+    ],
+    "ocrConfidence": 0.813
+  },
+  "/papers/cds-i-2026/english/page-5.webp#27": {
+    "prompt": "Desiccate:",
+    "options": [
+      "To remove salt from diet",
+      "To chop into little shards",
+      "To dry out items of consumption",
+      "To slice vegetables thinly"
+    ],
+    "ocrConfidence": 0.807
+  },
+  "/papers/cds-i-2026/english/page-5.webp#28": {
+    "prompt": "Deleterious:",
+    "options": [
+      "Effecting a deletion",
+      "An untrue proposition",
+      "Causing harm or damage",
+      "The process of deletion"
+    ],
+    "ocrConfidence": 0.811
+  },
+  "/papers/cds-i-2026/english/page-5.webp#29": {
+    "prompt": "Equivocate:",
+    "options": [
+      "To give equal weightage to both arguments",
+      "To advocate equally for both sides",
+      "To change sides frequently",
+      "To use vague language to conceal the truth"
+    ],
+    "ocrConfidence": 0.806
+  },
+  "/papers/cds-i-2026/english/page-5.webp#30": {
+    "prompt": "Indolent:",
+    "options": [
+      "Lazy",
+      "Bountiful",
+      "Indulgent",
+      "Poverty-stricken Directions: In this section each item consists of six sentences that comprise a passage. The first and sixth sentences are given in the beginning as S1 and S6. The sequence of the four sentences in the middle, labelled as P, Q, R, and S, has been jumbled. You are required to find the proper sequence of the four jumbled sentences and marh youir response on the Answer Sheet accordingly."
+    ],
+    "ocrConfidence": 0.852
+  },
+  "/papers/cds-i-2026/english/page-5.webp#31": {
+    "prompt": "S1: The word science originates from the Latin verb Scientia meaning \"to know\", S6: By the middle of the twentieth century, science had become a truly international enterprise, with many cultures and countries contributing to its rapid growth. P: Science, in a broad sense, is as old as the human species. Q: From the sixteenth century onwards, great strides were also made in science in Europe. R: The early civilisations of Egypt, India, China, Greece, Mesopotamia and many others made vital contributions to its progress. S: The Sanskrit word Vijnana and the Arabic word Ilm convey a similar meaning, namely knowledge.",
+    "options": [
+      "QPRS",
+      "SPRQ",
+      "SQRP",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.829
+  },
+  "/papers/cds-i-2026/english/page-6.webp#32": {
+    "prompt": "S1: Britain was the first country to experience modern industrialisation. S6: This gave people a wider choice of ways to spend their earnings and expanded the market for the sale of goods. P: Stability meant that the Kingdom had common laws, a single currency and a market that was not fragmented by local authorities levying taxes on goods that passed through their area, thus increasing their price. Q: It had been politically stable since the seventeenth century, with England, Wales and Scotland unified under a monarchy. R: By the end of the seventeenth century, money was widely used as the medium of exchange. S: As a consequence, a large section of the people received their income in the form of wages and salaries, rather than in goods.",
+    "options": [
+      "QPRS",
+      "QPSR",
+      "SQRP",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.829
+  },
+  "/papers/cds-i-2026/english/page-6.webp#33": {
+    "prompt": "S1: distributed it in sections to one hundred eighty Norman nobles who had migrated with him to Britain. S6: Thus, Anglo-Saxon peasants became tenants of various levels of l and holders. P: They could not, however, use their knights for private warfare, which was forbidden in England. Q: They soon began to gift some of their own l and s to knights who would serve them just as they in turn served the king. R: They were obliged to supply a certain number of knights to the king. S: These noble lords became the chief tenants of the king and were expected to give him military help.",
+    "options": [
+      "PRQS",
+      "PSQR",
+      "SQRP",
+      "SRQP"
+    ],
+    "ocrConfidence": 0.807
+  },
+  "/papers/cds-i-2026/english/page-6.webp#34": {
+    "prompt": "S1: In an economic sense, feudalism refers to a kind of system of agricultural production. S6:Thus,feudalism went beyond economic aspects to cover the social and political aspects of life as well. P: In fact, the latter cultivated their own land as well as that of the lord. Q: It is based on the relationship between lords and peasants, who worked on the former's land. R: They also had judicial control over the peasants. S: The peasants also performed other labour for the lords, who in exchange provided military protection.",
+    "options": [
+      "QPSR",
+      "QSPR",
+      "SRQP",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.814
+  },
+  "/papers/cds-i-2026/english/page-6.webp#35": {
+    "prompt": "S1: The Japanese empire was considered rich. S6:$ Soon, other developments such as the increased use of money and the creation of a stock market in rice show that the economy was developing in new ways. P: However, paying for these imports with gold and silver strained the economy and led the Tokugawa to put restrictions on the export of precious metals. Q: Over time, the silk from Nishijin came to be known as the best in the world. R: They also took steps to develop the silk industry in Nishijin in Kyoto so as to reduce imports. S: This was because it imported luxury goods like silk from China and textiles from India.",
+    "options": [
+      "QPSR",
+      "QSPR",
+      "SPRQ",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.806
+  },
+  "/papers/cds-i-2026/english/page-7.webp#36": {
+    "prompt": "S1: A seasoned cricketer catches a cricket 38. ball coming in with great speed far more easily than a novice, who can hurt his h and s in the act. S6: The conclusion is clear: force not only depends on the change in momentum, but also on how fast the change is brought about. P: The novice, on the other hand, keeps his h and s fixed and tries to catch the ball almost instantly. Q: One reason is that the seasoned cricketer allows a longer time for his h and s to stop the ball. R: Consequently, he needs to provide a much greater force to stop the ball instantly, and this hurts. S: He does this by drawing his h and s backward in the act of catching the ball.",
+    "options": [
+      "RSQP",
+      "QPSR",
+      "RPSQ",
+      "QSPR"
+    ],
+    "ocrConfidence": 0.824
+  },
+  "/papers/cds-i-2026/english/page-7.webp#37": {
+    "prompt": "S1: People fall down from staircases in different ways in different countries. S6:This is because for the Americans, their home is usually the only place where they regularly use the stairs. P: They rely, instead, on the ease and safety of lifts and escalators which are ubiquitous in such places. Q: This is not because the Japanese are more reckless staircase users, but simply because Americans don't much use the stairs in public places. R: Staircase injuries, therefore, happen mostly in the home. S: For instance, someone in Japan is far more likely to be hurt in a staircase fall in an office, department store or railway station than is anyone in the United States.",
+    "options": [
+      "QPRS",
+      "SPQR",
+      "SQRP",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.819
+  },
+  "/papers/cds-i-2026/english/page-7.webp#38": {
+    "prompt": "S1: The lantana plant is not native to India. S6: 1 However, eradicating lantana is a long and arduous process which can only be carried out with a lot of technical expertise and financial commitment. P: Since then, it has spread over six lakh square kilometres, covering fifty percent of the country's natural areas. Q: Research also shows that the lantana has invaded most pasture l and s in the country. R: It was introduced in the country as an ornamental plant by the British in the 1800s. S: A 2020 estimate by researchers shows that the plant occupies forty percent of forests, including tiger reserves.",
+    "options": [
+      "QSRP",
+      "RPSQ",
+      "RQSP",
+      "SQPR"
+    ],
+    "ocrConfidence": 0.809
+  },
+  "/papers/cds-i-2026/english/page-7.webp#39": {
+    "prompt": "S1: Biodiversity is crucial for the sustenance of life. S6: Afterall,products that benefit customers must also positively impact the environment. P: Corporations have a social responsibility to help navigate discourses on biodiversity and leverage opportunities for sustainable development. Q: Conserving biodiversity requires the urgent collaboration between, and involvement of,individuals and corporations. R: Further,customers'demand for greener productscan be acatalyst for sustainability. S: Redesigning manufacturing processes, adopting new technologies, and shifting to a paperless environment are ways to achieve such development.",
+    "options": [
+      "QPRS",
+      "SPQR",
+      "PQRS",
+      "QPSR"
+    ],
+    "ocrConfidence": 0.791
+  },
+  "/papers/cds-i-2026/english/page-8.webp#40": {
+    "prompt": "S1: Among the momentous watersheds through which human beings have passed since their appearance over 100,000 years ago, none has been more profound in its consequences than the shift to agriculture. S6: Unfortunately, such transformations disrupted delicate natural balances as humans sought enhanced control over their new modes of subsistence. P: They did this, by. purposefully transforming l and scapes with their agricultural fields and pastures. Q:They lived much like the way in which their own hominid predecessors had lived for millions of years, as integral components of the Earth's ecosystems. R: However, with the invention of practices of agriculture, these new farmers and herders began manipulating their surroundings to an unprecedented degree. Before that, for countless generations, nearly all humans had lived as hunters and gatherers, dwelling together in small,stable,nomadic b and sthat operated in close harmony with nature.",
+    "options": [
+      "RPQS",
+      "PRQS",
+      "RQSP",
+      "SQRP"
+    ],
+    "ocrConfidence": 0.845
+  },
+  "/papers/cds-i-2026/english/page-8.webp#42": {
+    "prompt": "Live in each other's pockets",
+    "options": [
+      "To have a lot of money that is shared with others",
+      "To exchange wealth readily with each other",
+      "To live by borrowing from each other",
+      "To spend too much time together"
+    ],
+    "ocrConfidence": 0.827
+  },
+  "/papers/cds-i-2026/english/page-8.webp#43": {
+    "prompt": "Play possum",
+    "options": [
+      "Pretend tobe dead",
+      "Take big risks",
+      "Behave in a stupid way",
+      "Be excessively happy"
+    ],
+    "ocrConfidence": 0.806
+  },
+  "/papers/cds-i-2026/english/page-8.webp#44": {
+    "prompt": "Work like a dog",
+    "options": [
+      "To work in the hope of reward",
+      "To work faithfully",
+      "To work very hard",
+      "To make a mess while working"
+    ],
+    "ocrConfidence": 0.788
+  },
+  "/papers/cds-i-2026/english/page-8.webp#45": {
+    "prompt": "Open a can of worms",
+    "options": [
+      "To create suspense about how things will turn out",
+      "To spark a situation that creates problems and complications",
+      "To create trouble by saying the right thing at the wrong time",
+      "To create something without anyone knowing about it"
+    ],
+    "ocrConfidence": 0.839
+  },
+  "/papers/cds-i-2026/english/page-9.webp#46": {
+    "prompt": "More than meets the eye",
+    "options": [
+      "A pleasant feast for the eyes beyond one's imagination",
+      "A beautiful spectacle unfolding before one's eyes",
+      "The disguised significance of something beyond the obvious",
+      "Apairof beautiful eyes"
+    ],
+    "ocrConfidence": 0.813
+  },
+  "/papers/cds-i-2026/english/page-9.webp#47": {
+    "prompt": "Hold the fort",
+    "options": [
+      "To reach high places",
+      "Tobreach all opposition",
+      "Be present at the precise moment when one is required",
+      "Be responsible on behalf of someone who is absent"
+    ],
+    "ocrConfidence": 0.812
+  },
+  "/papers/cds-i-2026/english/page-9.webp#48": {
+    "prompt": "It's all Greek to me",
+    "options": [
+      "It is foreign to me",
+      "It appears classical to me",
+      "I can't understand it at all",
+      "It's frustrating because it is unfamiliar"
+    ],
+    "ocrConfidence": 0.793
+  },
+  "/papers/cds-i-2026/english/page-9.webp#49": {
+    "prompt": "To close ranks",
+    "options": [
+      "To engage in fierce competition",
+      "To stop communicating,with one's colleagues",
+      "To stop hiring people for new jobs",
+      "To unite in order to defend a common interest"
+    ],
+    "ocrConfidence": 0.798
+  },
+  "/papers/cds-i-2026/english/page-9.webp#50": {
+    "prompt": "Be under a cloud",
+    "options": [
+      "To be the object of suspicion",
+      "To be filled with gloom",
+      "To operate as an undercover agent",
+      "To hide one's misdeeds"
+    ],
+    "ocrConfidence": 0.802
+  },
+  "/papers/cds-i-2026/english/page-9.webp#51": {
+    "prompt": "To him everything I did was considered contemptuous.",
+    "options": [
+      "condescending",
+      "patronising",
+      "arrogant",
+      "reverential"
+    ],
+    "ocrConfidence": 0.806
+  },
+  "/papers/cds-i-2026/english/page-9.webp#52": {
+    "prompt": "Social media trends are ephemeral",
+    "options": [
+      "everlasting",
+      "evanescent",
+      "transient",
+      "fleeting"
+    ],
+    "ocrConfidence": 0.8
+  },
+  "/papers/cds-i-2026/english/page-9.webp#53": {
+    "prompt": "As a person Mohan is generally considered to be parsimonious.",
+    "options": [
+      "frugal",
+      "sparing",
+      "partisan",
+      "extravagant"
+    ],
+    "ocrConfidence": 0.801
+  },
+  "/papers/cds-i-2026/english/page-9.webp#54": {
+    "prompt": "Ramesh has a tempestuous relationship with his neighbours.",
+    "options": [
+      "tumultuous",
+      "belligerent",
+      "tranquil",
+      "riotous"
+    ],
+    "ocrConfidence": 0.796
+  },
+  "/papers/cds-i-2026/english/page-9.webp#55": {
+    "prompt": "Arvind had an arduous task to attend to.",
+    "options": [
+      "strenuous and exacting",
+      "onerous and overbearing",
+      "difficult and exacerbating",
+      "easy and effortless"
+    ],
+    "ocrConfidence": 0.824
+  }
+}

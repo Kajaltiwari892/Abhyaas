@@ -29,6 +29,10 @@ dev = [
   "pytest-asyncio>=1.1,<2",
   "ruff>=0.12,<1",
 ]
+ocr = [
+  "pillow>=12,<13",
+  "rapidocr-onnxruntime>=1.2,<2",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

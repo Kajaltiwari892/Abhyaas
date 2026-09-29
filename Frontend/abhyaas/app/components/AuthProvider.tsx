@@ -27,6 +27,15 @@ function isProtectedPath(pathname: string) {
   return !PUBLIC_PATHS.has(pathname);
 }
 
+function isExplicitHomeVisit(pathname: string) {
+  if (pathname !== "/" || typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("view") === "home";
+}
+
+function shouldRedirectAuthenticatedRoot(pathname: string) {
+  return pathname === "/" && !isExplicitHomeVisit(pathname);
+}
+
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,9 +67,37 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [refreshSession, session]);
 
   useEffect(() => {
+    if (!session) return;
+
+    const refreshExpiredAccessToken = () => {
+      const refreshThreshold = Date.now() + 60_000;
+      if (new Date(session.expires_at).getTime() <= refreshThreshold) {
+        void refreshSession();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshExpiredAccessToken();
+    };
+
+    window.addEventListener("focus", refreshExpiredAccessToken);
+    window.addEventListener("pageshow", refreshExpiredAccessToken);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshExpiredAccessToken);
+      window.removeEventListener("pageshow", refreshExpiredAccessToken);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshSession, session]);
+
+  useEffect(() => {
     if (status === "loading") return;
 
-    if (status === "authenticated" && ["/", "/login", "/auth/callback"].includes(pathname)) {
+    if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
+      router.replace("/progress");
+      return;
+    }
+
+    if (status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname)) {
       router.replace("/progress");
       return;
     }
@@ -99,10 +136,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   );
 
   const redirectingAuthenticatedUser =
-    status === "authenticated" && ["/", "/login", "/auth/callback"].includes(pathname);
+    status === "authenticated" && ["/login", "/auth/callback"].includes(pathname);
+  const redirectingAuthenticatedRoot =
+    status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname);
   const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
 
-  if (status === "loading" || redirectingAuthenticatedUser || redirectingAnonymousUser) {
+  const canRenderProtectedShellWhileRestoring = status === "loading" && isProtectedPath(pathname);
+
+  if ((status === "loading" && !canRenderProtectedShellWhileRestoring) || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
     return <main className="auth-route-loading" aria-label="Checking your session"><span /><p>Opening Abhyaas…</p></main>;
   }
 

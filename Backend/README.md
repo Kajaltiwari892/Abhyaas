@@ -6,6 +6,8 @@ New to Python? Read [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md) for a plain-language 
 
 To enable Google sign-in, follow [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md).
 
+To send real password-reset emails, follow [EMAIL_SETUP.md](EMAIL_SETUP.md).
+
 ## Quick local setup
 
 PostgreSQL 18.6 is installed on this computer. From the `Backend` folder, run:
@@ -16,11 +18,31 @@ PostgreSQL 18.6 is installed on this computer. From the `Backend` folder, run:
 
 If you prefer, double-click `scripts\setup_local_postgres.cmd` in File Explorer instead of entering the PowerShell command.
 
-Enter the private PostgreSQL password selected during installation. The script creates the database, generates `.env`, and applies migrations. After that, start the API with:
+Enter the private PostgreSQL password selected during installation. The script creates the database, generates `.env`, and applies migrations. After that, start the persistent local API with:
 
 ```powershell
 .\scripts\start_backend.ps1
 ```
+
+The command starts the backend in the background, so it stays available after
+the terminal closes. For foreground debugging with automatic code reloads, use:
+
+```powershell
+.\scripts\start_backend.ps1 -Foreground
+```
+
+After creating or replacing a Google App Password, update the local SMTP
+credential without displaying it in the terminal:
+
+```powershell
+.\scripts\set_local_smtp_password.ps1
+```
+
+This saves the credential in the ignored local `.env` file and restarts the
+background backend on port 8001.
+
+The command is safe to run again: it reports when a healthy backend is already
+listening instead of starting a duplicate process.
 
 ## Included now
 
@@ -33,7 +55,7 @@ Enter the private PostgreSQL password selected during installation. The script c
 - PostgreSQL-backed throttling after repeated failed sign-in attempts.
 - Logout and current-user endpoints.
 - Forgot/reset password flow.
-- Console email provider for free local development.
+- Console email provider for local development and authenticated SMTP delivery in production.
 - PostgreSQL migration and automated authentication tests.
 
 ## Manual setup reference

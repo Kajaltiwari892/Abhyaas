@@ -27,11 +27,12 @@ export class ApiError extends Error {
   }
 }
 
-async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_ROOT}${path}`, {
       ...init,
+      cache: "no-store",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init.headers },
     });
@@ -71,14 +72,33 @@ export function loginAccount(input: { email: string; password: string }) {
 
 let refreshPromise: Promise<AuthSession | null> | null = null;
 
+async function requestRestoredSession(): Promise<AuthSession | null> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return validateAuthSession(
+        await apiRequest<AuthSession>("/auth/refresh", { method: "POST" }),
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null;
+      const transientFailure = error instanceof ApiError
+        && (error.status === 0 || error.status >= 500);
+      if (!transientFailure || attempt === 1) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+    }
+  }
+  return null;
+}
+
+async function restoreWithCrossTabLock(): Promise<AuthSession | null> {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return await navigator.locks.request("abhyaas-session-refresh", requestRestoredSession);
+  }
+  return requestRestoredSession();
+}
+
 export function restoreAuthSession(): Promise<AuthSession | null> {
   if (!refreshPromise) {
-    refreshPromise = apiRequest<AuthSession>("/auth/refresh", { method: "POST" })
-      .then(validateAuthSession)
-      .catch((error: unknown) => {
-        if (error instanceof ApiError && error.status === 401) return null;
-        throw error;
-      })
+    refreshPromise = restoreWithCrossTabLock()
       .finally(() => {
         refreshPromise = null;
       });

@@ -15,6 +15,11 @@ class CapturingEmailProvider:
         self.messages.append(message)
 
 
+class FailingEmailProvider:
+    async def send(self, message: EmailMessage) -> None:
+        raise RuntimeError("SMTP unavailable")
+
+
 def extract_query_token(message: EmailMessage, parameter: str) -> str:
     match = re.search(rf"[?&]{parameter}=([^\s]+)", message.text)
     assert match is not None
@@ -110,6 +115,24 @@ def test_forgot_and_reset_password(client: TestClient) -> None:
     assert login.status_code == 200
 
 
+def test_forgot_password_email_failure_returns_cors_safe_response(client: TestClient) -> None:
+    provider = CapturingEmailProvider()
+    register_user(client, provider)
+    auth_routes.get_email_provider = lambda: FailingEmailProvider()
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        headers={"Origin": "http://localhost:3000"},
+        json={"email": "student@example.com"},
+    )
+
+    assert response.status_code == 503
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.json()["detail"] == (
+        "We could not send the reset email right now. Please try again shortly."
+    )
+
+
 def test_protected_route_and_origin_checks(client: TestClient) -> None:
     unauthorized = client.get("/api/v1/users/me")
     assert unauthorized.status_code == 401
@@ -128,6 +151,29 @@ def test_google_sign_in_reports_missing_local_credentials(client: TestClient) ->
     response = client.get("/api/v1/auth/google/start", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"].endswith("/auth/callback?google_error=not_configured")
+
+
+def test_google_oauth_cookies_are_available_to_frontend_proxy_callback(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(auth_routes.settings, "google_client_id", "test-client-id")
+    monkeypatch.setattr(auth_routes.settings, "google_client_secret", "test-client-secret")
+    monkeypatch.setattr(
+        auth_routes,
+        "create_google_authorization_request",
+        lambda: ("https://accounts.google.com/authorize", "state", "nonce", "verifier"),
+    )
+
+    response = client.get("/api/v1/auth/google/start", follow_redirects=False)
+
+    assert response.status_code == 303
+    oauth_cookies = [
+        value
+        for value in response.headers.get_list("set-cookie")
+        if "abhyaas_oauth_" in value
+    ]
+    assert len(oauth_cookies) == 3
+    assert all("Path=/" in value for value in oauth_cookies)
 
 
 def test_repeated_failed_logins_are_throttled(

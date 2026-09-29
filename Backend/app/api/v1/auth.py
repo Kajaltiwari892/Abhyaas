@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -41,6 +42,7 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+logger = logging.getLogger(__name__)
 settings = get_settings()
 REFRESH_COOKIE = "__Host-abhyaas_refresh" if settings.cookie_secure else "abhyaas_refresh"
 OAUTH_STATE_COOKIE = "abhyaas_oauth_state"
@@ -90,14 +92,14 @@ def set_oauth_cookie(response: Response, key: str, value: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
         max_age=600,
-        path=f"{settings.api_v1_prefix}/auth/google",
+        path="/",
     )
 
 
 def clear_oauth_cookies(response: Response) -> None:
-    path = f"{settings.api_v1_prefix}/auth/google"
     for key in (OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE, OAUTH_VERIFIER_COOKIE):
-        response.delete_cookie(key=key, path=path)
+        response.delete_cookie(key=key, path="/")
+        response.delete_cookie(key=key, path=f"{settings.api_v1_prefix}/auth/google")
 
 
 def frontend_auth_redirect(error: str | None = None) -> RedirectResponse:
@@ -344,14 +346,22 @@ async def forgot_password(payload: ForgotPasswordRequest, db: DatabaseSession) -
         settings = get_settings()
         _, raw_token = await create_email_token(db, user, "reset_password")
         link = f"{settings.frontend_url.split(',')[0]}/login?reset={raw_token}"
-        await get_email_provider().send(
-            EmailMessage(
-                recipient=user.email,
-                subject="Reset your Abhyaas password",
-                text=f"Hello {user.name},\n\nReset your password here:\n{link}\n\n"
-                "If you did not request this, ignore this email.",
+        try:
+            await get_email_provider().send(
+                EmailMessage(
+                    recipient=user.email,
+                    subject="Reset your Abhyaas password",
+                    text=f"Hello {user.name},\n\nReset your password here:\n{link}\n\n"
+                    "If you did not request this, ignore this email.",
+                )
             )
-        )
+        except Exception:
+            await db.rollback()
+            logger.exception("Password-reset email delivery failed")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="We could not send the reset email right now. Please try again shortly.",
+            ) from None
         await db.commit()
     return MessageResponse(
         message="If an account exists for this email, a password reset link has been created."
