@@ -112,15 +112,17 @@ async def get_paper_or_404(db: AsyncSession, paper_id: str) -> PreviousPaper:
 
 
 def public_question(question: PaperQuestion) -> PaperQuestionResponse:
+    text = question.transcription or {}
     return PaperQuestionResponse(
         id=question.id,
         number=question.number,
         topic=question.topic.name if question.topic else None,
-        prompt=question.prompt,
-        context=question.context,
-        options=question.options,
+        prompt=text.get("prompt", question.prompt),
+        context=text.get("passage") or text.get("directions") or question.context,
+        options=text.get("options", question.options),
         asset_url=question.asset_url,
         is_verified=question.is_verified,
+        transcription=question.transcription,
     )
 
 
@@ -296,10 +298,9 @@ async def start_paper_attempt(
                 question_id=answer.question_id,
                 selected_index=answer.selected_index,
                 marked_for_review=answer.marked_for_review,
-                is_correct=answer.is_correct if answer.question.is_verified else None,
-                correct_index=(
-                    answer.question.correct_index if answer.question.is_verified else None
-                ),
+                # Do not reveal correctness or answer keys while a timed paper is active.
+                is_correct=None,
+                correct_index=None,
             )
             for answer in stored_answers
         ],
@@ -307,7 +308,7 @@ async def start_paper_attempt(
     )
 
 
-async def owned_active_attempt(db: AsyncSession, attempt_id: str, user_id: str) -> PaperAttempt:
+async def owned_attempt(db: AsyncSession, attempt_id: str, user_id: str) -> PaperAttempt:
     attempt = (
         await db.execute(
             select(PaperAttempt).where(
@@ -317,9 +318,71 @@ async def owned_active_attempt(db: AsyncSession, attempt_id: str, user_id: str) 
     ).scalar_one_or_none()
     if attempt is None:
         raise HTTPException(status_code=404, detail="Paper attempt not found")
+    return attempt
+
+
+async def owned_active_attempt(db: AsyncSession, attempt_id: str, user_id: str) -> PaperAttempt:
+    attempt = await owned_attempt(db, attempt_id, user_id)
     if attempt.status != "in_progress":
         raise HTTPException(status_code=409, detail="This paper attempt is already complete")
     return attempt
+
+
+async def paper_attempt_summary(
+    db: AsyncSession,
+    attempt: PaperAttempt,
+    paper: PreviousPaper,
+) -> PaperAttemptSummaryResponse:
+    questions = list(paper.questions)
+    scored_questions = [question for question in questions if question.is_verified]
+    scored_ids = {question.id for question in scored_questions}
+    answers = {
+        answer.question_id: answer
+        for answer in (
+            await db.execute(select(PaperAnswer).where(PaperAnswer.attempt_id == attempt.id))
+        ).scalars()
+    }
+    scored_answers = [
+        answer for question_id, answer in answers.items() if question_id in scored_ids
+    ]
+    correct = sum(1 for answer in scored_answers if answer.is_correct)
+    incorrect = len(scored_answers) - correct
+    marks_per_question = paper.total_marks / paper.official_question_count
+    score = (
+        round((correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2)
+        if scored_questions
+        else None
+    )
+    max_score = round(len(scored_questions) * marks_per_question, 2) if scored_questions else None
+    return PaperAttemptSummaryResponse(
+        attempt_id=attempt.id,
+        total_questions=len(questions),
+        answered_questions=len(answers),
+        scored_questions=len(scored_questions),
+        unscored_questions=len(questions) - len(scored_questions),
+        correct_answers=correct,
+        incorrect_answers=incorrect,
+        unanswered_questions=len(questions) - len(answers),
+        score=score,
+        max_score=max_score,
+        accuracy=round(correct * 100 / len(scored_questions), 1) if scored_questions else None,
+        duration_seconds=attempt.duration_seconds or 0,
+        review=[
+            PaperAnswerReviewResponse(
+                question_id=question.id,
+                selected_index=answers[question.id].selected_index
+                if question.id in answers
+                else None,
+                correct_index=question.correct_index if question.is_verified else None,
+                is_correct=(answers[question.id].is_correct if question.id in answers else False)
+                if question.is_verified
+                else None,
+                explanation=question.explanation if question.is_verified else None,
+                source_label=question.source_label,
+            )
+            for question in questions
+        ],
+    )
 
 
 @router.put(
@@ -371,8 +434,9 @@ async def save_paper_answer(
         question_id=question.id,
         selected_index=answer.selected_index,
         marked_for_review=answer.marked_for_review,
-        is_correct=answer.is_correct if question.is_verified else None,
-        correct_index=question.correct_index if question.is_verified else None,
+        # Grading is returned only by the completion endpoint.
+        is_correct=None,
+        correct_index=None,
     )
 
 
@@ -386,8 +450,12 @@ async def complete_paper_attempt(
     user: CurrentUser,
     db: DatabaseSession,
 ) -> PaperAttemptSummaryResponse:
-    attempt = await owned_active_attempt(db, attempt_id, user.id)
+    attempt = await owned_attempt(db, attempt_id, user.id)
     paper = await get_paper_or_404(db, attempt.paper_id)
+    if attempt.status == "completed":
+        return await paper_attempt_summary(db, attempt, paper)
+    if attempt.status != "in_progress":
+        raise HTTPException(status_code=409, detail="This paper attempt cannot be completed")
     questions = list(paper.questions)
     scored_questions = [question for question in questions if question.is_verified]
     scored_ids = {question.id for question in scored_questions}
@@ -422,14 +490,12 @@ async def complete_paper_attempt(
     ]
     correct = sum(1 for answer in scored_answers if answer.is_correct)
     incorrect = len(scored_answers) - correct
-    unanswered = len(questions) - len(answers)
     marks_per_question = paper.total_marks / paper.official_question_count
     score = (
         round((correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2)
         if scored_questions
         else None
     )
-    max_score = round(len(scored_questions) * marks_per_question, 2) if scored_questions else None
     attempt.status = "completed"
     attempt.correct_answers = correct
     attempt.scored_questions = len(scored_questions)
@@ -437,32 +503,20 @@ async def complete_paper_attempt(
     attempt.duration_seconds = payload.duration_seconds
     attempt.completed_at = datetime.now(UTC)
     await db.commit()
-    return PaperAttemptSummaryResponse(
-        attempt_id=attempt.id,
-        total_questions=len(questions),
-        answered_questions=len(answers),
-        scored_questions=len(scored_questions),
-        unscored_questions=len(questions) - len(scored_questions),
-        correct_answers=correct,
-        incorrect_answers=incorrect,
-        unanswered_questions=unanswered,
-        score=score,
-        max_score=max_score,
-        accuracy=round(correct * 100 / len(scored_questions), 1) if scored_questions else None,
-        duration_seconds=payload.duration_seconds,
-        review=[
-            PaperAnswerReviewResponse(
-                question_id=question.id,
-                selected_index=answers[question.id].selected_index
-                if question.id in answers
-                else None,
-                correct_index=question.correct_index if question.is_verified else None,
-                is_correct=(answers[question.id].is_correct if question.id in answers else False)
-                if question.is_verified
-                else None,
-                explanation=question.explanation if question.is_verified else None,
-                source_label=question.source_label,
-            )
-            for question in questions
-        ],
-    )
+    return await paper_attempt_summary(db, attempt, paper)
+
+
+@router.get(
+    "/paper-attempts/{attempt_id}/result",
+    response_model=PaperAttemptSummaryResponse,
+)
+async def get_paper_attempt_result(
+    attempt_id: str,
+    user: CurrentUser,
+    db: DatabaseSession,
+) -> PaperAttemptSummaryResponse:
+    attempt = await owned_attempt(db, attempt_id, user.id)
+    if attempt.status != "completed":
+        raise HTTPException(status_code=409, detail="This paper has not been submitted yet")
+    paper = await get_paper_or_404(db, attempt.paper_id)
+    return await paper_attempt_summary(db, attempt, paper)

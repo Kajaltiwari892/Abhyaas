@@ -1,16 +1,17 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 export default function MotionLayer({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
-    if (!root) return;
+    // Workspace navigation must stay immediate. Decorative scroll reveals are for
+    // the public landing page only, never hide already-rendered study content.
+    if (!root || pathname !== "/") return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const elements = Array.from(root.querySelectorAll<HTMLElement>(
       ".workspace-header, .section-heading, .prep-value-grid > *, .feature-card, .dark-section-inner > *, .subject-row, .exam-card, .selection-path, .progress-copy, .progress-preview, .cds-chart-card, .closing-content, .dashboard-card, .academy-route-grid article, .subject-page-card, .paper-type-grid article, .value-grid article",
@@ -27,7 +28,7 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
     });
 
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => entry.target.classList.toggle("is-revealed", entry.isIntersecting));
+      entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add("is-revealed"); observer.unobserve(entry.target); } });
     }, { threshold: 0.08, rootMargin: "-5% 0px -7% 0px" });
 
     elements.forEach((element) => observer.observe(element));
@@ -38,30 +39,11 @@ export default function MotionLayer({ children }: { children: React.ReactNode })
     }, { threshold: 0.03, rootMargin: "-2% 0px -8% 0px" });
     glowPanels.forEach((panel) => glowObserver.observe(panel));
 
-    let navigationTimer = 0;
-    const handleNavigation = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target as HTMLElement;
-      const anchor = target.closest<HTMLAnchorElement>("a[href]");
-      if (!anchor || anchor.target || anchor.hasAttribute("download")) return;
-      const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-      const url = new URL(anchor.href, window.location.href);
-      if (url.origin !== window.location.origin) return;
-      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
-      event.preventDefault();
-      root.classList.add("is-leaving");
-      navigationTimer = window.setTimeout(() => router.push(`${url.pathname}${url.search}${url.hash}`), 210);
-    };
-    root.addEventListener("click", handleNavigation);
-
     return () => {
       observer.disconnect();
       glowObserver.disconnect();
-      root.removeEventListener("click", handleNavigation);
-      window.clearTimeout(navigationTimer);
     };
-  }, [pathname, router]);
+  }, [pathname]);
 
-  return <div ref={rootRef} key={pathname} className="route-stage">{children}</div>;
+  return <div ref={rootRef} className="route-stage">{children}</div>;
 }

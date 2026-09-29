@@ -18,6 +18,16 @@ const sections = [
     content: <p>We use this information to create and secure your account, keep you signed in, restore your preparation space, provide practice and progress features, prevent abuse, diagnose technical problems, respond to support requests and improve the platform.</p>,
   },
   {
+    title: "Doubt solver and study memory",
+    content: (
+      <>
+        <p>When you use the doubt solver, Abhyaas saves your question text, recognized text from question images, replies and source references in conversations connected to your account. Your question, recent conversation context, relevant study preferences and any attached image are sent to the Google Gemini service to prepare the answer. Avoid including personal or confidential information in questions or images.</p>
+        <p>Abhyaas validates and resizes attachments in memory, strips image metadata, and does not save the image files in its database or file storage. The AI provider processes requests under its own service and data terms.</p>
+        <p>Study memory records academic topic counts and your chosen explanation style to personalize future replies and suggestions. You can pause or clear it from Study memory on the doubt-solver page. Clearing study memory does not delete saved conversations or reset abuse-prevention limits. Abhyaas does not automatically fine-tune a shared model from this memory.</p>
+      </>
+    ),
+  },
+  {
     title: "Google user data",
     content: <p>Google profile information is used only to identify you, create or connect your Abhyaas account and display your account details. Google user data is not used for advertising, sold, or shared for unrelated purposes. Abhyaas does not store Google access or refresh tokens.</p>,
   },
@@ -64,7 +74,7 @@ export default function PrivacyPage() {
           <span><ShieldCheck size={15} /> Privacy at Abhyaas</span>
           <h1>Privacy policy</h1>
           <p>This policy explains what information Abhyaas handles, why it is needed, and the choices available to you.</p>
-          <small>Effective: 25 August 2026</small>
+          <small>Effective: 21 September 2026</small>
         </header>
 
         <div className="privacy-summary">

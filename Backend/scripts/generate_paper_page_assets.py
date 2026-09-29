@@ -8,6 +8,7 @@ changing mathematical notation, diagrams, or wording.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import pymupdf
@@ -38,6 +39,11 @@ PAPER_PAGES = {
         "general-knowledge": ("general-knowledge.pdf", range(3, 44, 2)),
         "elementary-mathematics": ("mathematics.pdf", range(3, 44, 2)),
     },
+    "cds-ii-2026": {
+        "english": ("english.pdf", range(2, 27)),
+        "general-knowledge": ("general-knowledge.pdf", range(3, 52, 2)),
+        "elementary-mathematics": ("mathematics.pdf", range(3, 36, 2)),
+    },
 }
 
 
@@ -60,11 +66,15 @@ def render_paper(folder: str, slug: str, pdf_name: str, pages: range) -> None:
         print(destination.relative_to(ROOT))
 
 
-def main() -> None:
+def main(folder_filter: str | None = None) -> None:
     for folder, papers in PAPER_PAGES.items():
+        if folder_filter and folder != folder_filter:
+            continue
         for slug, (pdf_name, pages) in papers.items():
             render_paper(folder, slug, pdf_name, pages)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", choices=sorted(PAPER_PAGES))
+    main(parser.parse_args().folder)

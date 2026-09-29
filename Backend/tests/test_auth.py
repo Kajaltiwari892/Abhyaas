@@ -107,6 +107,11 @@ def test_forgot_and_reset_password(client: TestClient) -> None:
         json={"token": reset_token, "password": "Newstrong2"},
     )
     assert reset.status_code == 200
+    reused = client.post(
+        "/api/v1/auth/reset-password", json={"token": reset_token, "password": "Changedagain3"},
+    )
+    assert reused.status_code == 400
+    assert client.post("/api/v1/auth/refresh").status_code == 401
 
     login = client.post(
         "/api/v1/auth/login",

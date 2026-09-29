@@ -111,6 +111,10 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert attempt["resumed"] is False
     assert attempt["elapsed_seconds"] == 0
     assert attempt["answers"] == []
+    pending_result = client.get(
+        f"/api/v1/paper-attempts/{attempt['id']}/result", headers=headers
+    )
+    assert pending_result.status_code == 409
 
     saved = client.put(
         f"/api/v1/paper-attempts/{attempt['id']}/answers/{first_question['id']}",
@@ -118,8 +122,8 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
         json={"selected_index": 1, "marked_for_review": True, "elapsed_seconds": 45},
     )
     assert saved.status_code == 200
-    assert saved.json()["is_correct"] is True
-    assert saved.json()["correct_index"] == 1
+    assert saved.json()["is_correct"] is None
+    assert saved.json()["correct_index"] is None
 
     resumed = client.post(f"/api/v1/papers/{paper['id']}/attempts", headers=headers)
     assert resumed.status_code == 201
@@ -128,6 +132,8 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert resumed.json()["elapsed_seconds"] == 45
     assert resumed.json()["answers"][0]["selected_index"] == 1
     assert resumed.json()["answers"][0]["marked_for_review"] is True
+    assert resumed.json()["answers"][0]["is_correct"] is None
+    assert resumed.json()["answers"][0]["correct_index"] is None
 
     unverified_question = attempt["questions"][-1]
     unverified_saved = client.put(
@@ -164,6 +170,20 @@ def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None
     assert completed.json()["review"][-1]["correct_index"] is None
     assert completed.json()["review"][-1]["is_correct"] is None
 
+    recovered = client.get(
+        f"/api/v1/paper-attempts/{attempt['id']}/result", headers=headers
+    )
+    assert recovered.status_code == 200
+    assert recovered.json() == completed.json()
+
+    repeated_completion = client.post(
+        f"/api/v1/paper-attempts/{attempt['id']}/complete",
+        headers=headers,
+        json={"duration_seconds": 999, "answers": []},
+    )
+    assert repeated_completion.status_code == 200
+    assert repeated_completion.json() == completed.json()
+
     dashboard = client.get("/api/v1/progress/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["completed_sets"] == 1
@@ -181,6 +201,7 @@ def test_paper_solutions_and_attempts_require_authentication(client: TestClient)
     paper_id = client.get("/api/v1/papers").json()[0]["id"]
     assert client.get(f"/api/v1/papers/{paper_id}").status_code == 401
     assert client.post(f"/api/v1/papers/{paper_id}/attempts").status_code == 401
+    assert client.get("/api/v1/paper-attempts/missing/result").status_code == 401
 
 
 def test_ai_explanation_reports_missing_configuration(client: TestClient) -> None:

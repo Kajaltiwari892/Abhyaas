@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8001/api/v1/auth/google/callback"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.8-flash"
+    gemini_fallback_model: str = "gemini-3.5-flash-lite"
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
+    qdrant_local_path: str = "./data/qdrant"
+    rag_collection: str = "abhyaas_knowledge_v1"
+    rag_embedding_model: str = "gemini-embedding-2"
+    rag_embedding_dimensions: int = 768
+    rag_top_k: int = 5
+    rag_daily_limit: int = 30
 
     @field_validator("*", mode="before")
     @classmethod

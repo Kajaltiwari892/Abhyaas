@@ -23,6 +23,12 @@ type FormStatus = { kind: "success" | "error" | "info"; message: string } | null
 type AuthNotice = { title: string; message: string; action?: "login" } | null;
 
 const googleErrorNotices: Record<string, Exclude<AuthNotice, null>> = {
+  provider_unavailable: { title: "Could not reach Google", message: "The server could not finish Google's secure verification. Try again shortly, or sign in with your email and password." },
+  expired_code: { title: "Google sign-in expired", message: "This one-time sign-in link expired or was already used. Start Google sign-in again from this page." },
+  clock_skew: { title: "The server clock needs attention", message: "Google's token time did not match the server clock. The server's date and time need to be synchronized." },
+  configuration: { title: "Google sign-in needs configuration", message: "The server's Google client or callback URL was rejected. Email and password sign-in is still available." },
+  invalid_identity: { title: "Google identity could not be verified", message: "The identity token did not pass the server's security checks. Start a fresh Google sign-in." },
+  account_unavailable: { title: "Account unavailable", message: "This account is not active. Please contact support." },
   not_configured: {
     title: "Google sign-in is unavailable",
     message: "Google authentication is not configured for this environment yet.",
@@ -84,6 +90,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState<FormStatus>(null);
   const [notice, setNotice] = useState<AuthNotice>(null);
   const [resetToken, setResetToken] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const isLogin = mode === "login";
   const isSignup = mode === "signup";
   const heading = headings[mode];
@@ -154,37 +161,20 @@ export default function LoginPage() {
     setNotice(null);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setResetSent(false);
   }
 
   function showResetEmailConfirmation() {
     setStatus(null);
+    setResetSent(true);
     setNotice({
       title: "Check your email",
-      message: "Your password-reset link is on its way. It may take a minute, and please check your Spam folder too.",
+      message: "If this email has an account, you will receive a secure reset link. Check your inbox and Spam folder.",
     });
   }
 
-  async function handleForgotPasswordClick() {
+  function handleForgotPasswordClick() {
     changeMode("forgot");
-
-    const requestedEmail = email.trim();
-    if (!isValidEmail(requestedEmail)) {
-      setNotice({
-        title: "Enter your email address",
-        message: "Tell us which email you use for Abhyaas, then we’ll send your secure reset link.",
-      });
-      return;
-    }
-
-    setPending(true);
-    try {
-      await requestPasswordReset(requestedEmail);
-      showResetEmailConfirmation();
-    } catch {
-      setNotice({ title: "We couldn’t send the email yet", message: getFailureMessage("forgot") });
-    } finally {
-      setPending(false);
-    }
   }
 
   async function submitAuthentication(event: FormEvent<HTMLFormElement>) {
@@ -243,7 +233,7 @@ export default function LoginPage() {
           action: "login",
         });
       } else {
-        setNotice({ title: "Something needs attention", message: getFailureMessage(mode) });
+        setNotice({ title: "Something needs attention", message: error instanceof ApiError ? error.message : getFailureMessage(mode) });
       }
     } finally {
       setPending(false);
@@ -268,6 +258,7 @@ export default function LoginPage() {
           </div>
 
           <form className="auth-form" onSubmit={submitAuthentication}>
+            {mode === "forgot" && <div className="auth-recovery-note" role="status"><strong>{resetSent ? "Check your inbox" : "A secure link, just for you"}</strong><p>{resetSent ? `If ${email} is registered, a reset link will arrive shortly. Open it, choose your new password, then sign in. Check Spam if it does not arrive.` : "Confirm your email below. We’ll email a single-use link so only the person with access to your inbox can reset the password."}</p><small>The link expires in 30 minutes. You can also use Google sign-in if your account is connected.</small></div>}
             {isSignup && <label><span>Full name</span><input name="name" type="text" autoComplete="name" placeholder="Your full name" minLength={2} required /></label>}
             {(isLogin || isSignup || mode === "forgot") && <label><span>Email address</span><input name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>}
             {mode !== "forgot" && <label>
@@ -305,10 +296,6 @@ function getSubmitLabel(mode: AuthMode) {
   if (mode === "forgot") return "Send reset email";
   if (mode === "reset") return "Update password";
   return "Sign in";
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function getSafeDestination() {

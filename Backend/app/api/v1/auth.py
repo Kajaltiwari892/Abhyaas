@@ -10,7 +10,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.google import create_google_authorization_request, exchange_google_code
+from app.auth.google import (
+    GoogleSignInError,
+    create_google_authorization_request,
+    exchange_google_code,
+)
 from app.auth.service import (
     consume_email_token,
     create_email_token,
@@ -309,7 +313,14 @@ async def google_callback(
         claims = await exchange_google_code(code, verifier, stored_nonce)
         google_sub = str(claims["sub"])
         email = normalize_email(str(claims["email"]))
-    except (KeyError, ValueError, httpx.HTTPError):
+    except GoogleSignInError as exc:
+        logger.warning("Google sign-in failed: %s", exc.code)
+        return frontend_auth_redirect(exc.code)
+    except httpx.HTTPError:
+        logger.warning("Google sign-in failed: provider connection")
+        return frontend_auth_redirect("provider_unavailable")
+    except (KeyError, ValueError, TypeError):
+        logger.warning("Google sign-in failed: invalid identity or nonce")
         return frontend_auth_redirect("failed")
 
     result = await db.execute(select(User).where(User.google_sub == google_sub))
@@ -318,6 +329,8 @@ async def google_callback(
         user = await find_user_by_email(db, email)
     if user is not None and user.google_sub not in (None, google_sub):
         return frontend_auth_redirect("account_conflict")
+    if user is not None and not user.is_active:
+        return frontend_auth_redirect("account_unavailable")
     if user is None:
         user = User(
             name=str(claims.get("name") or email.split("@", 1)[0]),

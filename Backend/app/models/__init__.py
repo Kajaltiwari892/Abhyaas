@@ -8,11 +8,23 @@ from app.models.practice import (
     Subject,
     Topic,
 )
+from app.models.rag import (
+    DoubtConversation,
+    DoubtMessage,
+    DoubtStudyProfile,
+    KnowledgeChunk,
+    KnowledgeDocument,
+)
 
 __all__ = [
     "AttemptQuestion",
+    "DoubtConversation",
+    "DoubtMessage",
+    "DoubtStudyProfile",
     "EmailToken",
     "LoginAttempt",
+    "KnowledgeChunk",
+    "KnowledgeDocument",
     "PracticeAnswer",
     "PracticeAttempt",
     "PaperAnswer",

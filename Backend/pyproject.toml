@@ -14,9 +14,11 @@ dependencies = [
   "fastapi>=0.116,<1",
   "google-auth>=2.40,<3",
   "httpx>=0.28,<1",
+  "pillow>=12,<13",
   "pwdlib[argon2]>=0.2,<1",
   "pydantic-settings>=2.10,<3",
   "PyJWT>=2.10,<3",
+  "qdrant-client>=1.15,<2",
   "requests>=2.32,<3",
   "sqlalchemy[asyncio]>=2.0.41,<3",
   "uvicorn[standard]>=0.35,<1",
@@ -32,6 +34,9 @@ dev = [
 ocr = [
   "pillow>=12,<13",
   "rapidocr-onnxruntime>=1.2,<2",
+]
+rag-authoring = [
+  "pymupdf>=1.26,<2",
 ]
 
 [tool.setuptools.packages.find]

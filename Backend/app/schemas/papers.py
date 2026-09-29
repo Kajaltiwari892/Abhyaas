@@ -30,6 +30,7 @@ class PaperQuestionResponse(BaseModel):
     options: list[str]
     asset_url: str | None
     is_verified: bool
+    transcription: dict | None = None
 
 
 class PaperSolutionResponse(PaperQuestionResponse):

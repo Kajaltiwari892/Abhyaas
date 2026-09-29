@@ -85,6 +85,11 @@ export type PaperListItem = {
   solutions_available: boolean;
 };
 
+export type PaperTranscription = {
+  prompt: string; options: string[]; sectionTitle?: string; directions?: string;
+  passage?: string; hasVisual?: boolean; visualDescription?: string; sourcePageUrl?: string;
+  text_reviewed?: boolean;
+};
 export type PaperQuestion = {
   id: string;
   number: number;
@@ -94,6 +99,7 @@ export type PaperQuestion = {
   options: string[];
   asset_url: string | null;
   is_verified: boolean;
+  transcription: PaperTranscription | null;
 };
 
 export type PaperSolution = PaperQuestion & {
@@ -154,6 +160,58 @@ export type PaperAIExplanation = {
   correct_index: number;
   explanation: string;
   confidence: "high" | "medium" | "low";
+};
+
+export type DoubtSource = {
+  id: string;
+  title: string;
+  publisher: string;
+  chapter: string | null;
+  page_start: number | null;
+  page_end: number | null;
+  source_url: string | null;
+  excerpt: string;
+  relevance: number;
+};
+
+export type DoubtAnswer = {
+  conversation_id: string;
+  answer: string;
+  confidence: number;
+  grounded: boolean;
+  sources: DoubtSource[];
+  follow_up_questions: string[];
+  pyq_result: PyqResult | null;
+  practice_result: PracticeResult | null;
+  answer_kind: "explanation" | "pyq" | "practice" | "clarification" | "archive_info";
+};
+
+export type PyqCard = {
+  id: string; paper_id: string; number: number; year: number; cycle: string; subject: string;
+  prompt: string; options: string[]; directions?: string; passage?: string; section_title?: string;
+  has_visual: boolean; source_page?: number; source_page_url?: string; source_url: string;
+  topics: string[]; text_reviewed: boolean; answer_verified: boolean;
+  correct_index: number | null; explanation: string | null;
+};
+export type PyqResult = {
+  questions: PyqCard[]; total: number; returned: number; has_more: boolean;
+  indexed_questions: number; catalog_questions: number; kind: "pyq" | "clarification" | "archive_info";
+  query: { years: number[]; cycle: string | null; chapter: string | null; subject: string | null; offset: number };
+};
+
+export type PracticeResult = {
+  kind: "practice" | "clarification"; topic: string; requested: number; target: number;
+  returned: number; complete: boolean;
+  questions: Array<{number: number; prompt: string; options: string[]; correct_index: number; explanation: string}>;
+};
+
+export type DoubtImage = { mime_type: "image/jpeg" | "image/png" | "image/webp"; data: string };
+export type StudyProfile = {
+  enabled: boolean;
+  explanation_style: "step-by-step" | "concise" | "hints-first";
+  topics: Array<{ name: string; count: number }>;
+  total_questions: number;
+  suggested_questions: string[];
 };
 
 const authorized = (token: string, init: RequestInit = {}): RequestInit => ({
@@ -219,3 +277,33 @@ export const completePaperAttempt = (
     `/paper-attempts/${attemptId}/complete`,
     authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }),
   );
+
+export const getPaperAttemptResult = (token: string, attemptId: string) =>
+  apiRequest<PaperAttemptSummary>(
+    `/paper-attempts/${attemptId}/result`,
+    authorized(token),
+  );
+
+export const askDoubt = (
+  token: string,
+  input: {
+    question: string;
+    subject?: "general-knowledge" | "elementary-mathematics" | "english";
+    conversation_id?: string;
+    image?: DoubtImage;
+    paper_question_id?: string;
+  },
+) => apiRequest<DoubtAnswer>(
+  "/doubts/ask",
+  authorized(token, { method: "POST", body: JSON.stringify(input) }),
+);
+
+export const getStudyProfile = (token: string) =>
+  apiRequest<StudyProfile>("/doubts/personalization", authorized(token));
+export const updateStudyProfile = (
+  token: string, input: Partial<Pick<StudyProfile, "enabled" | "explanation_style">>,
+) => apiRequest<StudyProfile>("/doubts/personalization", authorized(token, {
+  method: "PATCH", body: JSON.stringify(input),
+}));
+export const clearStudyProfile = (token: string) =>
+  apiRequest<StudyProfile>("/doubts/personalization", authorized(token, { method: "DELETE" }));

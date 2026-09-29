@@ -9,3 +9,4 @@ htmlcov/
 .coverage
 
 .vercel
+data/qdrant/

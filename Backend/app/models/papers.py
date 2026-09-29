@@ -69,6 +69,8 @@ class PaperQuestion(Base):
     source_label: Mapped[str] = mapped_column(String(240))
     asset_url: Mapped[str | None] = mapped_column(String(700), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # Full, source-linked question text. Separate from answer-key verification.
+    transcription: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     paper: Mapped[PreviousPaper] = relationship(back_populates="questions")
     topic: Mapped[Topic | None] = relationship()

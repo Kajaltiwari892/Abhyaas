@@ -69,8 +69,19 @@ Open `http://localhost:3000/login` and select **Sign in with Google**.
 - Cryptographically random `state` value for CSRF protection.
 - OpenID Connect nonce validation.
 - Google ID-token signature, issuer, audience, and expiry validation.
+- A maximum 60-second clock-skew tolerance; signature and identity checks are never bypassed.
 - Only verified Google email addresses are accepted.
 - Google tokens are not stored by Abhyaas.
 - Abhyaas creates its own rotating, hashed seven-day session after Google confirms identity.
 
 Official reference: [Google OAuth 2.0 for web-server applications](https://developers.google.com/identity/protocols/oauth2/web-server).
+
+## Local troubleshooting
+
+Use `localhost` consistently rather than mixing it with `127.0.0.1` in the browser. Check that the
+backend is running on port 8001, the callback above is registered, and the Windows clock is synced.
+Start a fresh sign-in rather than refreshing a callback URL, because authorization codes are single-use.
+
+The login screen distinguishes an expired sign-in, provider connectivity, clock mismatch and OAuth
+configuration problems. Server logs contain only safe error codes, not Google tokens or credentials.
+Certificate retrieval has a 10-second timeout so a network issue cannot indefinitely stall verification.
