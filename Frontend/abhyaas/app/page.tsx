@@ -16,6 +16,7 @@ import { MinimalistTextEffect } from "@/components/ui/reveal-text";
 import ScrollExpand from "@/components/ui/scroll-expand";
 import ProgressAreaChart from "@/components/ui/progress-area-chart";
 import PrimaryButton from "@/components/ui/primary-button";
+import { footerWordmarkPath } from "@/lib/footer-wordmark";
 
 const navItems = [
   ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Practice", "/practice"],
@@ -213,27 +214,25 @@ export default function Home() {
           <svg viewBox="0 0 1200 232" role="img" aria-label="Abhyaas">
             <defs>
               <linearGradient id="footer-outline-gradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stopColor="#ff9933" />
-                <stop offset=".3" stopColor="#ff9933" />
-                <stop offset=".48" stopColor="#f4f5ef" />
-                <stop offset=".58" stopColor="#f4f5ef" />
-                <stop offset=".7" stopColor="#138808" />
-                <stop offset="1" stopColor="#138808" />
+                <stop offset="0" stopColor="#80975a" />
+                <stop offset=".35" stopColor="#c3d58e" />
+                <stop offset=".55" stopColor="#f1dfae" />
+                <stop offset=".75" stopColor="#c3d58e" />
+                <stop offset="1" stopColor="#80975a" />
               </linearGradient>
               <linearGradient id="footer-flow-gradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stopColor="#ff9933" />
-                <stop offset=".3" stopColor="#ff9933" />
-                <stop offset=".48" stopColor="#ffffff" />
-                <stop offset=".58" stopColor="#ffffff" />
-                <stop offset=".7" stopColor="#138808" />
-                <stop offset="1" stopColor="#138808" />
+                <stop offset="0" stopColor="#7e9555" />
+                <stop offset=".35" stopColor="#b7c981" />
+                <stop offset=".55" stopColor="#e6cc8c" />
+                <stop offset=".75" stopColor="#b7c981" />
+                <stop offset="1" stopColor="#7e9555" />
               </linearGradient>
               <filter id="footer-word-glow" x="-10%" y="-35%" width="120%" height="170%">
                 <feGaussianBlur stdDeviation="8" />
               </filter>
             </defs>
-            <text className="footer-word-glow" x="600" y="211" textAnchor="middle" textLength="1150" lengthAdjust="spacingAndGlyphs">ABHYAAS</text>
-            <text className="footer-word-outline" x="600" y="211" textAnchor="middle" textLength="1150" lengthAdjust="spacingAndGlyphs">ABHYAAS</text>
+            <path className="footer-word-glow" d={footerWordmarkPath} />
+            <path className="footer-word-outline" d={footerWordmarkPath} />
           </svg>
         </a>
       </footer>

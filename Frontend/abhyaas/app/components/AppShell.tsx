@@ -9,7 +9,7 @@ import NavigationHint from "./NavigationHint";
 
 const desktopSections = [
   { label: "Learn", items: [
-    { label: "Home", href: "/?view=home", icon: Home },
+    { label: "Home", href: "/", icon: Home },
     { label: "Exam info", href: "/exam-info", icon: Info },
     { label: "Subjects", href: "/subjects", icon: GraduationCap },
   ] },
@@ -53,7 +53,7 @@ export default function AppShell({ active, children }: { active: string; childre
   return (
     <div className="app-shell">
       <header className="app-topbar">
-        <Link href="/?view=home" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
+        <Link href="/" className="app-brand"><span><Swords size={18} /></span> ABHYAAS</Link>
         <ExamSwitcher compact />
         <div className="app-context app-user-context">
           {user ? <span className="app-user-avatar">{initials}</span> : <span className="status-dot" />}

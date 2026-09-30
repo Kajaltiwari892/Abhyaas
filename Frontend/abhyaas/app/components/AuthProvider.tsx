@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { authRedirect } from "@/lib/auth-routing";
 import {
   logoutAccount,
   restoreAuthSession,
@@ -21,26 +22,13 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const PUBLIC_PATHS = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
-
-function isProtectedPath(pathname: string) {
-  return !PUBLIC_PATHS.has(pathname);
-}
-
-function isExplicitHomeVisit(pathname: string) {
-  if (pathname !== "/" || typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("view") === "home";
-}
-
-function shouldRedirectAuthenticatedRoot(pathname: string) {
-  return pathname === "/" && !isExplicitHomeVisit(pathname);
-}
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<AuthSession | null>(null);
+  const redirectTo = authRedirect(pathname, status);
 
   const refreshSession = useCallback(async () => {
     try {
@@ -90,23 +78,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [refreshSession, session]);
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
-      router.replace("/progress");
-      return;
-    }
-
-    if (status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname)) {
-      router.replace("/progress");
-      return;
-    }
-
-    if (status === "anonymous" && isProtectedPath(pathname)) {
-      const destination = encodeURIComponent(pathname);
-      router.replace(`/login?next=${destination}`);
-    }
-  }, [pathname, router, status]);
+    if (redirectTo) router.replace(redirectTo);
+  }, [redirectTo, router]);
 
   const completeAuthentication = useCallback((nextSession: AuthSession) => {
     setSession(nextSession);
@@ -135,15 +108,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     [completeAuthentication, refreshSession, session, signOut, status],
   );
 
-  const redirectingAuthenticatedUser =
-    status === "authenticated" && ["/login", "/auth/callback"].includes(pathname);
-  const redirectingAuthenticatedRoot =
-    status === "authenticated" && shouldRedirectAuthenticatedRoot(pathname);
-  const redirectingAnonymousUser = status === "anonymous" && isProtectedPath(pathname);
-
-  const canRenderProtectedShellWhileRestoring = status === "loading" && isProtectedPath(pathname);
-
-  if ((status === "loading" && !canRenderProtectedShellWhileRestoring) || redirectingAuthenticatedUser || redirectingAuthenticatedRoot || redirectingAnonymousUser) {
+  if (redirectTo) {
     return <main className="auth-route-loading" aria-label="Checking your session"><span /><p>Opening Abhyaas…</p></main>;
   }
 
