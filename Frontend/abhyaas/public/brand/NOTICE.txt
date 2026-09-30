@@ -1,0 +1,5 @@
+The Abhyaas favicon uses an outlined Devanagari "अ" glyph from Yatra One.
+Copyright 2014 The Yatra Project Authors (https://github.com/CatherineLeighSchmidt/Yatra).
+Yatra One is licensed under the SIL Open Font License, Version 1.1.
+Font source and license: https://github.com/google/fonts/tree/main/ofl/yatraone
+The font itself is not distributed or loaded by this application.

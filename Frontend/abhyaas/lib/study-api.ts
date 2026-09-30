@@ -1,6 +1,6 @@
 import { apiRequest } from "./auth-api";
 
-export type Topic = { id: string; slug: string; name: string };
+export type Topic = { id: string; slug: string; name: string; question_count: number };
 export type Subject = {
   id: string;
   slug: string;
@@ -8,8 +8,10 @@ export type Subject = {
   name: string;
   description: string;
   topics: Topic[];
+  question_count: number;
 };
 
+export type PracticeProvenance = { kind: "pyq"; source_url: string; source_page_url: string; answer_key_url: string; text_reviewed: boolean; year: number; cycle: string; number: number };
 export type PracticeQuestion = {
   id: string;
   position: number;
@@ -18,6 +20,8 @@ export type PracticeQuestion = {
   prompt: string;
   context: string | null;
   options: string[];
+  source_label: string;
+  provenance: PracticeProvenance | null;
 };
 
 export type PracticeAttempt = {
@@ -27,14 +31,36 @@ export type PracticeAttempt = {
   started_at: string;
   duration_seconds: number;
   questions: PracticeQuestion[];
+  subject_slug: string;
+  topic_slug: string | null;
+  status: string;
+  elapsed_seconds: number;
+  current_position: number;
+  negative_mark_fraction: number;
+  new_questions: number;
+  repeated_questions: number;
+  answers: PracticeAnswerInput[];
 };
+
+export type PracticeAnswerInput = { question_id: string; selected_index: number; marked_for_review: boolean };
+export type PracticeHistoryItem = {
+  id: string; subject: string; topic: string | null; status: string; started_at: string;
+  completed_at: string | null; total_questions: number; answered_questions: number;
+  correct_answers: number | null; duration_seconds: number; time_limit_seconds: number;
+};
+export type PageResult<T> = { items: T[]; total: number; has_more: boolean };
+export type CatalogQuestionPage = { questions: PracticeQuestion[]; total: number; has_more: boolean };
 
 export type AttemptSummary = {
   attempt_id: string;
+  subject: string;
+  topic: string | null;
   total_questions: number;
   answered_questions: number;
   correct_answers: number;
   accuracy: number;
+  score: number;
+  negative_mark_fraction: number;
   duration_seconds: number;
   review: Array<{
     question_id: string;
@@ -43,6 +69,8 @@ export type AttemptSummary = {
     is_correct: boolean;
     explanation: string;
     source_label: string;
+    provenance: PracticeProvenance | null;
+    position: number; prompt: string; context: string | null; options: string[]; topic: string;
   }>;
 };
 
@@ -223,7 +251,7 @@ export const getSubjects = () => apiRequest<Subject[]>("/catalog/subjects");
 
 export const startPracticeAttempt = (
   token: string,
-  input: { subject_slug: string; topic_slug?: string; question_count?: number },
+  input: { subject_slug: string; topic_slug?: string; question_count?: number; allow_repeats?: boolean },
 ) => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input) }));
 
 export const savePracticeAnswer = (
@@ -233,8 +261,34 @@ export const savePracticeAnswer = (
   input: { selected_index: number; marked_for_review: boolean },
 ) => apiRequest(`/practice/attempts/${attemptId}/answers/${questionId}`, authorized(token, { method: "PUT", body: JSON.stringify(input) }));
 
-export const completePracticeAttempt = (token: string, attemptId: string, durationSeconds: number) =>
-  apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds }) }));
+export const completePracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[] = []) =>
+  apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }));
+
+export const checkpointPracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[], currentPosition?: number, keepalive = false) =>
+  apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) }));
+export type PracticeAvailability = { total: number; unseen: number; seen: number };
+export const getPracticeAvailability = (token: string, subject: string, topic = "") => {
+  const params = new URLSearchParams({ subject_slug: subject });
+  if (topic) params.set("topic_slug", topic);
+  return apiRequest<PracticeAvailability>(`/practice/availability?${params}`, authorized(token));
+};
+export const getPracticeHistory = (token: string, offset = 0) =>
+  apiRequest<PageResult<PracticeHistoryItem>>(`/practice/attempts?offset=${offset}&limit=20`, authorized(token));
+export const getPracticeAttempt = (token: string, id: string) => apiRequest<PracticeAttempt>(`/practice/attempts/${id}`, authorized(token));
+export const getPracticeResult = (token: string, id: string) => apiRequest<AttemptSummary>(`/practice/attempts/${id}/result`, authorized(token));
+export const getCatalogQuestions = (subject: string, topic = "", offset = 0) => {
+  const params = new URLSearchParams({ subject_slug: subject, offset: String(offset), limit: "10" });
+  if (topic) params.set("topic_slug", topic);
+  return apiRequest<CatalogQuestionPage>(`/catalog/questions?${params}`);
+};
+
+export type ConversationItem = { id: string; title: string; updated_at: string };
+export type SavedConversation = ConversationItem & { messages: Array<{
+  id: string; role: "user" | "assistant"; content: string; citations: DoubtSource[];
+  pyq_result: PyqResult | null; practice_result: PracticeResult | null;
+}> };
+export const getConversations = (token: string, offset = 0) => apiRequest<PageResult<ConversationItem>>(`/doubts/conversations?offset=${offset}&limit=20`, authorized(token));
+export const getConversation = (token: string, id: string) => apiRequest<SavedConversation>(`/doubts/conversations/${id}`, authorized(token));
 
 export const getProgressDashboard = (token: string) =>
   apiRequest<ProgressDashboard>("/progress/dashboard", authorized(token));

@@ -1,33 +1,34 @@
 "use client";
 
-import { ArrowRight, BookA, BookOpen, FlaskConical, Globe2, Landmark, Languages, Sigma } from "lucide-react";
+import { ArrowRight, BookOpen, Globe2, Languages, Sigma } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import AppShell from "../components/AppShell";
-import { ApiError } from "@/lib/auth-api";
 import { getSubjects, type Subject } from "@/lib/study-api";
-
-const foundations = [{ icon: Landmark, label: "Humanities" }, { icon: FlaskConical, label: "Science" }, { icon: BookA, label: "NCERT foundations" }];
-const subjectIcons = { english: Languages, "general-knowledge": Globe2, "elementary-mathematics": Sigma };
+import AppShell from "../components/AppShell";
+import { useAuth } from "../components/AuthProvider";
+import PracticeWorkspace from "../practice/PracticeWorkspace";
+import p from "../practice/practice.module.css";
+import s from "./subjects.module.css";
 
 export default function SubjectsPage() {
+  const { user } = useAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selected, setSelected] = useState<string>();
   const [error, setError] = useState("");
-
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    getSubjects().then(setSubjects).catch((reason: unknown) => setError(reason instanceof ApiError ? reason.message : "Subjects could not be loaded."));
-  }, []);
-
-  useEffect(() => { if (error) toast.error("Subjects unavailable", { description: error, id: "subjects-error" }); }, [error]);
-
-  return <AppShell active="Subjects"><main className="workspace subjects-workspace">
-    <header className="workspace-header"><div><span className="workspace-kicker">Syllabus, made navigable</span><h1>Subjects</h1><p>Choose a subject, open a topic, and move directly into focused practice.</p></div><div className="workspace-badge"><BookOpen size={15} /> CDS syllabus</div></header>
-    {!error && subjects.length === 0 && <p className="workspace-message">Loading the CDS syllabus…</p>}
-    <section className="subject-page-grid">{subjects.map((subject, index) => {
-      const Icon = subjectIcons[subject.slug as keyof typeof subjectIcons] ?? BookOpen;
-      return <article className="subject-page-card" key={subject.id}><header><span>0{index + 1}</span><Icon size={25} /></header><h2>{subject.name}</h2><p>{subject.description}</p><div className="topic-chip-grid">{subject.topics.map(topic => <Link href={`/practice?subject=${subject.slug}&topic=${topic.slug}`} key={topic.id}>{topic.name}<ArrowRight size={13} /></Link>)}</div></article>;
-    })}</section>
-    <section className="foundation-strip"><div><span className="workspace-kicker">Content approach</span><h2>Strong foundations before shortcuts.</h2><p>Core explanations are organised around the CDS syllabus and connected directly to practice.</p></div><div className="foundation-items">{foundations.map(({ icon: Icon, label }) => <span key={label}><Icon size={18} />{label}</span>)}</div></section>
-  </main></AppShell>;
+    let alive = true;
+    getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Could not load subjects."); });
+    return () => { alive = false; };
+  }, [retry]);
+  return <AppShell active="Subjects">{selected ? <PracticeWorkspace key={(user?.id ?? "guest") + selected} initialSubject={selected} onBack={() => setSelected(undefined)} /> : <main className={p.workspace}>
+    <header className={p.header}><div><span className={p.eyebrow}><BookOpen size={14} /> Choose your focus</span><h1>Subjects</h1></div><Link href="/practice?view=history" className={p.secondary}>Practice history <ArrowRight size={14} /></Link></header>
+    <p className={p.muted}>Choose a subject, then practice here. Topic filters, larger sets, saved progress and results — in one place.</p>
+    {error && <div className={p.error} role="alert">{error} <button onClick={() => setRetry((v) => v+1)}>Retry</button></div>}
+    <div className={s.subjects} role="group" aria-label="Choose a subject">{subjects.map((item) => {
+      const Icon = item.slug === "english" ? Languages : item.slug === "general-knowledge" ? Globe2 : Sigma;
+      return <button key={item.id} onClick={() => setSelected(item.slug)}><span className={s.icon}><Icon size={22} /></span><span><strong>{item.name}</strong><small>{item.slug === "elementary-mathematics" ? "CDS · not required for OTA" : "CDS / OTA"}</small><small>{item.topics.filter((t) => t.question_count > 0).length} available topics · {item.question_count} questions</small></span><ArrowRight size={16} /></button>;
+    })}</div>
+    {!subjects.length && !error && <p className={p.muted} role="status">Loading subjects…</p>}
+  </main>}</AppShell>;
 }

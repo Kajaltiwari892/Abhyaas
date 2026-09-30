@@ -1,9 +1,12 @@
 .workspace { --text: #e6e9e2; --subtle: #859088; --line: rgba(178,190,162,.14); --surface: #101411; --field: #0c100e; color: var(--text); height: calc(100dvh - 66px); min-height: 440px; display: flex; flex-direction: column; padding: 17px clamp(22px, 4.4vw, 70px) 18px; overflow: hidden; background: radial-gradient(ellipse at 43% 37%, rgba(130,145,77,.045), transparent 48%); }
 :global(body):has(.workspace) { padding-bottom: 0; }
+.chatLayout { display:flex; width:100%; min-width:0; }
+.chatLayout > .workspace { flex:1; min-width:0; padding-inline:clamp(16px,2.5vw,40px); }
 .topbar { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; flex: none; }
 .pageLabel { display: flex; align-items: center; gap: 8px; color: #a5ae9f; font-size: 12px; }
 .pageLabel svg { color: #b3c37a; }
 .topActions { display: flex; align-items: center; gap: 8px; }
+.topActions { flex-wrap: wrap; justify-content: flex-end; }
 .topActions button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 10px; color: var(--subtle); font-size: 11px; background: transparent; border: 1px solid transparent; border-radius: 9px; cursor: pointer; transition: color .2s, background .2s; }
 .topActions button:hover, .topActions button.selected { color: var(--text); background: rgba(155,172,110,.07); border-color: var(--line); }
 .topActions button:disabled { opacity: .45; cursor: not-allowed; }

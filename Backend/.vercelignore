@@ -1,0 +1,10 @@
+.env*
+.venv/
+.vercel/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+*.db
+*.egg-info/
+tests/
+data/qdrant/

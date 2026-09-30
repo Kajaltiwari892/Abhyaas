@@ -1822,3 +1822,20 @@ html[data-theme="light"] .doubt-workspace .rag-chat-panel { background: linear-g
 .answer-list-item { padding-left: 18px; position: relative; }
 .answer-list-item i { width: 5px; height: 5px; position: absolute; left: 3px; top: .68em; background: #aabd69; border-radius: 50%; box-shadow: 0 0 0 3px rgba(170,189,105,.07); }
 html[data-theme="light"] .answer-content { color: #536055; }
+
+/* Keep account controls visible even on shorter laptop screens. */
+.app-sidebar .sidebar-intro { flex-shrink: 0; }
+.app-sidebar .sidebar-navigation { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3c472d transparent; padding-bottom: 18px; }
+.app-sidebar .sidebar-profile { flex-shrink: 0; margin-top: 12px; overflow: visible; }
+.app-sidebar .sidebar-profile:hover { transform: none; }
+.app-sidebar .sidebar-profile-trigger { grid-template-columns: 34px minmax(0,1fr) 14px; gap: 8px; padding: 12px 9px; }
+.app-sidebar .sidebar-profile-avatar { width: 34px; height: 34px; }
+.app-sidebar .sidebar-profile-trigger strong { white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.4; font-size: 12px; }
+.app-sidebar .sidebar-profile-trigger small { font-size: 10px; }
+.app-sidebar .sidebar-profile-details { position: absolute; bottom: calc(100% + 10px); left: 0; width: 100%; max-height: min(60dvh,360px); overflow-y: auto; padding: 15px 12px; gap: 13px; border: 1px solid #455334; border-radius: 13px; background: #141d11; box-shadow: 0 14px 38px #0009; }
+.sidebar-account-name { color: #dce6ce; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.app-sidebar .sidebar-profile-details > span { font-size: 11px; line-height: 1.65; }
+.app-sidebar .sidebar-profile-details > button { font-size: 12px; min-height: 38px; }
+html[data-theme="light"] .app-sidebar .sidebar-profile-details { background: #f3f6ed; border-color: #c3ceb3; }
+html[data-theme="light"] .sidebar-account-name { color: #35432d; }
+@media (max-width: 850px) { .app-sidebar { bottom: calc(66px + env(safe-area-inset-bottom)); } }

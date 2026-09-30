@@ -79,6 +79,30 @@ def test_doubt_solver_requires_authentication(client: TestClient, fake_rag: Fake
     assert fake_rag.calls == []
 
 
+def test_conversation_history_is_private_paginated_and_reopenable(
+    client: TestClient, fake_rag: FakeRagService
+) -> None:
+    headers = register(client, "history@example.com")
+    other = register(client, "not-history@example.com")
+    ids = []
+    for text in ["What is weather?", "Explain climate", "Why does rain fall?"]:
+        response = client.post("/api/v1/doubts/ask", headers=headers, json={"question":text})
+        assert response.status_code == 200
+        ids.append(response.json()["conversation_id"])
+    first = client.get("/api/v1/doubts/conversations?limit=2", headers=headers).json()
+    second = client.get("/api/v1/doubts/conversations?limit=2&offset=2", headers=headers).json()
+    assert first["total"] == 3 and first["has_more"]
+    assert len(first["items"]) == 2 and len(second["items"]) == 1 and not second["has_more"]
+    assert first["items"][0]["id"] == ids[-1]
+    assert client.get("/api/v1/doubts/conversations", headers=other).json()["items"] == []
+    assert client.get(f"/api/v1/doubts/conversations/{ids[0]}", headers=other).status_code == 404
+    saved = client.get(f"/api/v1/doubts/conversations/{ids[0]}", headers=headers).json()
+    assert saved["messages"][0]["content"] == "What is weather?"
+    assert saved["messages"][1]["citations"][0]["source_url"] == "https://wmo.int/themes/weather"
+    assert client.get("/api/v1/doubts/conversations").status_code == 401
+    assert client.get("/api/v1/doubts/conversations?limit=999", headers=headers).status_code == 422
+
+
 def test_doubt_solver_saves_grounded_conversation(
     client: TestClient, fake_rag: FakeRagService
 ) -> None:

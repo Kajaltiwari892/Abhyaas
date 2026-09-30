@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,6 +16,8 @@ from app.models.rag import DoubtConversation, DoubtMessage, DoubtStudyProfile
 from app.schemas.doubts import (
     AskDoubtRequest,
     AskDoubtResponse,
+    DoubtConversationItem,
+    DoubtConversationPage,
     DoubtConversationResponse,
     DoubtMessageResponse,
     DoubtSourceResponse,
@@ -300,6 +302,22 @@ async def clear_personalization(user: CurrentUser, db: DatabaseSession) -> Study
     profile.explanation_style = "step-by-step"
     await db.commit()
     return profile_response(profile)
+
+
+@router.get("/conversations", response_model=DoubtConversationPage)
+async def list_conversations(user: CurrentUser, db: DatabaseSession,
+    offset: int = Query(default=0, ge=0), limit: int = Query(default=20, ge=1, le=50),
+) -> DoubtConversationPage:
+    condition = DoubtConversation.user_id == user.id
+    total = (
+        await db.execute(select(func.count(DoubtConversation.id)).where(condition))
+    ).scalar_one()
+    rows = list((await db.execute(select(DoubtConversation).where(condition)
+        .order_by(DoubtConversation.updated_at.desc(), DoubtConversation.id.desc())
+        .offset(offset).limit(limit))).scalars())
+    return DoubtConversationPage(total=total, has_more=offset+len(rows)<total, items=[
+        DoubtConversationItem(id=c.id, title=c.title, updated_at=c.updated_at) for c in rows
+    ])
 
 
 @router.get("/conversations/{conversation_id}", response_model=DoubtConversationResponse)

@@ -84,3 +84,15 @@ class DoubtConversationResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     messages: list[DoubtMessageResponse]
+
+
+class DoubtConversationItem(BaseModel):
+    id: str
+    title: str
+    updated_at: datetime
+
+
+class DoubtConversationPage(BaseModel):
+    items: list[DoubtConversationItem]
+    total: int
+    has_more: bool

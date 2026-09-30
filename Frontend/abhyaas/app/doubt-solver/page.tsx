@@ -6,7 +6,7 @@ import { type ClipboardEvent, type FormEvent, useEffect, useRef, useState } from
 import { toast } from "sonner";
 import { ApiError } from "@/lib/auth-api";
 import { readQuestionImage, type QuestionAttachment } from "@/lib/doubt-image";
-import { askDoubt, clearStudyProfile, getStudyProfile, updateStudyProfile, type DoubtSource, type StudyProfile, type PyqResult, type PracticeResult } from "@/lib/study-api";
+import { askDoubt, clearStudyProfile, getStudyProfile, getConversation, updateStudyProfile, type DoubtSource, type StudyProfile, type PyqResult, type PracticeResult } from "@/lib/study-api";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import StudyCompanion, { CompanionMark } from "../components/StudyCompanion";
@@ -14,6 +14,7 @@ import s from "./doubt-solver.module.css";
 import PyqResults from "./PyqResults";
 import PracticeResults from "./PracticeResults";
 import RequestStatus from "./RequestStatus";
+import ChatHistory from "./ChatHistory";
 
 const starterPrompts = ["Explain Fundamental Rights simply", "How do I solve time and work questions?", "What is the difference between weather and climate?"];
 const encouragements = ["One clear concept. One step closer.", "Big ambitions start with small questions.", "Your next breakthrough starts here.", "A little curiosity goes a long way."];
@@ -42,6 +43,11 @@ function AnswerContent({ content }: { content: string }) {
 }
 
 export default function DoubtSolverPage() {
+  const { user } = useAuth();
+  return <DoubtSolverWorkspace key={user?.id ?? "guest"} />;
+}
+
+function DoubtSolverWorkspace() {
   const { accessToken, user } = useAuth();
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const [question, setQuestion] = useState("");
@@ -49,6 +55,10 @@ export default function DoubtSolverPage() {
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => { queueMicrotask(() => setHistoryOpen(window.matchMedia("(min-width:1101px)").matches)); }, []);
   const [readingImage, setReadingImage] = useState(false);
   const [attachment, setAttachment] = useState<QuestionAttachment>();
   const [attachmentError, setAttachmentError] = useState("");
@@ -113,7 +123,7 @@ export default function DoubtSolverPage() {
   };
 
   const attachFiles = async (files: File[]) => {
-    if (loading || imageInFlight.current) return;
+    if (loading || inFlight.current || imageInFlight.current) return;
     setAttachmentError("");
     if (files.length !== 1 || attachment) { setAttachmentError("Attach one image at a time. Remove the current image to replace it."); return; }
     imageInFlight.current = true; setReadingImage(true);
@@ -144,6 +154,7 @@ export default function DoubtSolverPage() {
         paper_question_id: paperQuestionId,
       });
       setConversationId(result.conversation_id);
+      setHistoryVersion((v) => v + 1);
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: result.answer, sources: result.sources, grounded: result.grounded, followUps: result.follow_up_questions, pyqResult: result.pyq_result, practiceResult: result.practice_result, answerKind: result.answer_kind }]);
       getStudyProfile(accessToken).then(setProfile).catch(() => {});
     } catch (error) {
@@ -154,9 +165,24 @@ export default function DoubtSolverPage() {
   };
 
   const startNew = () => {
-    if (inFlight.current) return;
+    if (inFlight.current || imageInFlight.current) return;
     setMessages([]); setConversationId(undefined); setQuestion(""); setAttachment(undefined); setAttachmentError("");
     inputRef.current?.focus();
+  };
+  const openConversation = async (id: string) => {
+    if (!accessToken || inFlight.current || imageInFlight.current) return false;
+    if ((question.trim() || attachment) && !window.confirm("Open this saved chat? Your unsent draft will be cleared.")) return false;
+    inFlight.current = true; setHistoryLoading(true);
+    try {
+      const data = await getConversation(accessToken, id);
+      setConversationId(data.id);
+      setMessages(data.messages.map((item) => ({ id: item.id, role: item.role, content: item.content,
+        sources: item.citations, grounded: item.citations.length > 0, pyqResult: item.pyq_result,
+        practiceResult: item.practice_result, answerKind: item.practice_result?.kind ?? item.pyq_result?.kind ?? "explanation" })));
+      setQuestion(""); setAttachment(undefined); setAttachmentError("");
+      return true;
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not open this conversation."); return false; }
+    finally { inFlight.current = false; setHistoryLoading(false); }
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void submitQuestion(question); };
   const greeting = hour === null ? "Welcome back" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -164,11 +190,14 @@ export default function DoubtSolverPage() {
   const hasMessages = messages.length > 0;
 
   return <AppShell active="Doubt solver">
+    <div className={s.chatLayout}>
+    <ChatHistory token={accessToken} currentId={conversationId} disabled={loading || readingImage || historyLoading} version={historyVersion} open={historyOpen} onClose={() => setHistoryOpen(false)} onNew={startNew} onOpen={openConversation} />
     <main className={[s.workspace, hasMessages ? s.conversation : s.empty].join(" ")}>
       <header className={s.topbar}>
         <span className={s.pageLabel}><Sparkles size={15} /> Doubt solver</span>
         <div className={s.topActions}>
-          {hasMessages && <button type="button" onClick={startNew} disabled={loading || readingImage} title="New conversation"><Plus size={15} /> New chat</button>}
+          <button id="chat-history-toggle" type="button" aria-expanded={historyOpen} aria-controls="chat-history-panel" onClick={() => setHistoryOpen((v) => !v)}>Chats</button>
+          {hasMessages && <button type="button" onClick={startNew} disabled={loading || readingImage || historyLoading} title="New conversation"><Plus size={15} /> New chat</button>}
           <div className={s.memoryAnchor} ref={memoryRef}>
             <button type="button" className={memoryOpen ? s.selected : ""} aria-expanded={memoryOpen} aria-controls="study-memory" onClick={() => setMemoryOpen((open) => !open)}><BrainCircuit size={15} /> Study memory{profile?.enabled && <i />}</button>
             {memoryOpen && <section className={s.memoryPanel} id="study-memory" aria-label="Study memory settings">
@@ -184,6 +213,7 @@ export default function DoubtSolverPage() {
           </div>
         </div>
       </header>
+      {historyLoading && <p role="status" className={s.memoryNote}>Opening saved conversation…</p>}
       <div className={s.stage}>
         {!hasMessages ? <div className={s.greeting}>
           <StudyCompanion name={firstName} />
@@ -216,7 +246,7 @@ export default function DoubtSolverPage() {
             onDrop={(event) => { event.preventDefault(); setDragging(false); void attachFiles(Array.from(event.dataTransfer.files)); }}>
             <div className={s.composer}>
               {attachment && <div className={s.attachment}><Image src={attachment.preview} alt="Attached question preview" width={64} height={52} unoptimized /><div><strong>{attachment.name}</strong><small>Ready to ask</small></div><button type="button" aria-label="Remove attached image" onClick={() => { setAttachment(undefined); setAttachmentError(""); }}><X size={15} /></button></div>}
-              <textarea ref={inputRef} value={question} onChange={(event) => setQuestion(event.target.value)} onPaste={pasteImage}
+              <textarea ref={inputRef} value={question} readOnly={historyLoading} onChange={(event) => setQuestion(event.target.value)} onPaste={pasteImage}
                 onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submitQuestion(question); } }}
                 aria-label="Ask your CDS question" placeholder={dragging ? "Drop your question image here…" : attachment ? "What would you like to know about this question?" : firstName ? `Ask anything, ${firstName}…` : "Ask anything…"} rows={2} maxLength={1500} disabled={loading} />
               <div className={s.composerTools}>
@@ -238,5 +268,6 @@ export default function DoubtSolverPage() {
         })}</div>}
       </div>
     </main>
+    </div>
   </AppShell>;
 }

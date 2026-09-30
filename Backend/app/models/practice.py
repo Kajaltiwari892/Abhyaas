@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -54,6 +64,7 @@ class Question(Base):
     source_label: Mapped[str] = mapped_column(String(180), default="Original CDS-style practice")
     difficulty: Mapped[str] = mapped_column(String(20), default="foundation")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     topic: Mapped[Topic] = relationship(back_populates="questions")
 
@@ -69,6 +80,9 @@ class PracticeAttempt(Base):
     total_questions: Mapped[int] = mapped_column(Integer)
     correct_answers: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    time_limit_seconds: Mapped[int] = mapped_column(Integer, default=1800, server_default="1800")
+    current_position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    negative_mark_fraction: Mapped[float] = mapped_column(Float, default=0, server_default="0")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

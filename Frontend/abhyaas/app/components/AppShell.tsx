@@ -2,7 +2,7 @@
 
 import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, ChevronRight, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, ShieldCheck, Sparkles, Swords, Target, UserRound, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
 import { useAuth } from "./AuthProvider";
 import NavigationHint from "./NavigationHint";
@@ -33,6 +33,15 @@ export default function AppShell({ active, children }: { active: string; childre
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const profileRef = useRef<HTMLDivElement>(null);
+  const profileTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!profileOpen) return;
+    const outside = (event: PointerEvent) => { if (!profileRef.current?.contains(event.target as Node)) setProfileOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setProfileOpen(false); profileTrigger.current?.focus(); } };
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [profileOpen]);
 
   const initials = user?.name
     .split(/\s+/)
@@ -66,13 +75,14 @@ export default function AppShell({ active, children }: { active: string; childre
             </Link>)}
           </section>)}
         </nav>
-        <div className={`sidebar-profile ${profileOpen ? "is-open" : ""}`}>
-          <button type="button" className="sidebar-profile-trigger" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
+        <div ref={profileRef} className={`sidebar-profile ${profileOpen ? "is-open" : ""}`}>
+          <button ref={profileTrigger} type="button" className="sidebar-profile-trigger" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen} aria-controls="sidebar-account-details">
             <span className="sidebar-profile-avatar">{initials || <UserRound size={17} />}</span>
             <span><strong>{user?.name ?? "Your profile"}</strong><small>View profile</small></span>
             <ChevronDown size={16} />
           </button>
-          {profileOpen && <div className="sidebar-profile-details">
+          {profileOpen && <div className="sidebar-profile-details" id="sidebar-account-details" aria-label="Account details">
+            <strong className="sidebar-account-name">{user?.name ?? "Your account"}</strong>
             <span><Mail size={14} /><span>{user?.email ?? "Sign in to see account details"}</span></span>
             {user && <span><BadgeCheck size={14} /><span>{user.is_verified ? "Verified account" : "Email verification pending"}</span></span>}
             {user && <button type="button" onClick={() => void signOut()}><LogOut size={14} /> Sign out</button>}
