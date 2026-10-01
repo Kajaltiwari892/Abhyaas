@@ -102,7 +102,7 @@ export type PaperListItem = {
   title: string;
   subject_slug: string;
   subject_name: string;
-  exam_date: string;
+  exam_date: string | null;
   duration_seconds: number;
   total_marks: number;
   official_question_count: number;

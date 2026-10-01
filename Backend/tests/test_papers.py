@@ -86,6 +86,27 @@ def auth_headers(client: TestClient, email: str = "paper@example.com") -> dict[s
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
+def test_pdf_only_archive_lists_without_fake_mock_or_date(client: TestClient) -> None:
+    async def add_archive():
+        from sqlalchemy import select
+        async with SessionLocal() as db:
+            subject = (await db.execute(select(Subject))).scalars().first()
+            db.add(PreviousPaper(id="pdf-only", subject_id=subject.id, year=2016, cycle="II",
+                                 title="CDS II 2016 - English", exam_date=None,
+                                 official_question_count=120, academy_tracks=["OTA"],
+                                 source_url="https://upsc.gov.in/old-paper.pdf"))
+            await db.commit()
+    asyncio.run(add_archive())
+    response = client.get("/api/v1/papers?year=2016&cycle=II&subject=english")
+    assert response.status_code == 200
+    paper = response.json()[0]
+    assert paper["exam_date"] is None
+    assert paper["available_question_count"] == 0
+    assert paper["verified_question_count"] == 0
+    assert paper["solutions_available"] is False
+    assert client.post("/api/v1/papers/pdf-only/attempts", headers=auth_headers(client)).status_code == 409
+
+
 def test_paper_archive_review_and_mock_are_persisted(client: TestClient) -> None:
     headers = auth_headers(client)
     archive = client.get("/api/v1/papers?year=2024&cycle=I&subject=english")

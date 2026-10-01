@@ -33,7 +33,8 @@ class PreviousPaper(Base):
     year: Mapped[int] = mapped_column(Integer, index=True)
     cycle: Mapped[str] = mapped_column(String(4), index=True)
     title: Mapped[str] = mapped_column(String(180))
-    exam_date: Mapped[date] = mapped_column(Date)
+    # Older official PDF listings identify year/cycle but do not give an exam date.
+    exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     duration_seconds: Mapped[int] = mapped_column(Integer, default=7200)
     total_marks: Mapped[int] = mapped_column(Integer, default=100)
     official_question_count: Mapped[int] = mapped_column(Integer)

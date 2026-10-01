@@ -5,7 +5,7 @@ from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,13 +69,16 @@ async def list_papers(
     subject: str | None = None,
 ) -> list[PaperListItemResponse]:
     query = (
-        select(PreviousPaper)
-        .join(Subject, Subject.id == PreviousPaper.subject_id)
-        .options(
-            selectinload(PreviousPaper.subject),
-            selectinload(PreviousPaper.questions),
+        select(
+            PreviousPaper,
+            func.count(PaperQuestion.id).label("available"),
+            func.count(PaperQuestion.id).filter(PaperQuestion.is_verified.is_(True)).label("verified"),
         )
+        .join(Subject, Subject.id == PreviousPaper.subject_id)
+        .outerjoin(PaperQuestion, PaperQuestion.paper_id == PreviousPaper.id)
+        .options(selectinload(PreviousPaper.subject))
         .where(PreviousPaper.is_published.is_(True))
+        .group_by(PreviousPaper.id, Subject.position)
         .order_by(PreviousPaper.year.desc(), PreviousPaper.cycle, Subject.position)
     )
     if year is not None:
@@ -84,15 +87,9 @@ async def list_papers(
         query = query.where(PreviousPaper.cycle == cycle)
     if subject:
         query = query.where(Subject.slug == subject)
-    papers = (await db.execute(query)).scalars().all()
-    return [
-        list_item(
-            paper,
-            len(paper.questions),
-            sum(question.is_verified for question in paper.questions),
-        )
-        for paper in papers
-    ]
+    # List metadata without loading every question/transcription into memory.
+    papers = (await db.execute(query)).all()
+    return [list_item(paper, available, verified) for paper, available, verified in papers]
 
 
 async def get_paper_or_404(db: AsyncSession, paper_id: str) -> PreviousPaper:

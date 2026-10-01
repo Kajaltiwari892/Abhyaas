@@ -8,11 +8,11 @@ import { useAuth } from "../components/AuthProvider";
 import PaperArchiveSkeleton from "../components/PaperArchiveSkeleton";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
+import { filterPaperArchive, paperArchiveYears, paperAvailability } from "@/lib/paper-archive";
 import { completePaperAttempt, generatePaperExplanation, getPaper, getPaperAttemptResult, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
 type PaperSection = { from: number; to: number; title: string; directions: string; passage?: string };
-const PAPER_YEARS = [2026, 2025, 2024] as const;
 const ENGLISH_2026_SECTIONS: PaperSection[] = [
   { from: 1, to: 10, title: "Pair of words", directions: "A pair of words is provided. Select the option that most appropriately describes the meaning of both words." },
   { from: 11, to: 20, title: "Nearest meaning", directions: "Select the option nearest in meaning to the underlined word in the given sentence." },
@@ -119,12 +119,12 @@ export default function PapersPage() {
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => { if (!cancelled) setListingLoading(true); });
-    getPapers({ year: year ? Number(year) : undefined, cycle: cycle || undefined, subject: subject || undefined })
+    getPapers()
       .then(data => { if (!cancelled) { setPapers(data); setError(""); } })
       .catch((reason: unknown) => { if (!cancelled) setError(messageFor(reason, "The paper archive could not be loaded.")); })
       .finally(() => { if (!cancelled) setListingLoading(false); });
     return () => { cancelled = true; };
-  }, [cycle, subject, year]);
+  }, []);
 
   const closeWorkspace = useCallback(() => {
     if (busy) return;
@@ -320,32 +320,34 @@ export default function PapersPage() {
     : 0;
   const marksPerQuestion = detail ? detail.total_marks / detail.official_question_count : 0;
   const penaltyPerWrongAnswer = detail ? marksPerQuestion * detail.negative_mark_fraction : 0;
-  const papersByYear = PAPER_YEARS
-    .map((paperYear) => ({ year: paperYear, papers: papers.filter((paper) => paper.year === paperYear) }))
+  const archiveYears = paperArchiveYears(papers);
+  const filteredPapers = filterPaperArchive(papers, { year, cycle, subject });
+  const papersByYear = archiveYears
+    .map((paperYear) => ({ year: paperYear, papers: filteredPapers.filter((paper) => paper.year === paperYear) }))
     .filter((group) => group.papers.length > 0);
 
   return <AppShell active="Previous papers"><main className="workspace papers-workspace">
-    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Complete official UPSC papers, with verified answers clearly distinguished from questions still being reviewed.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
+    <header className="workspace-header"><div><span className="workspace-kicker">Learn from the real examination</span><h1>Previous papers</h1><p>Browse official CDS papers by year, cycle and subject. Open the full PDF or practise papers marked interactive.</p></div><div className="workspace-badge"><FileCheck2 size={15} /> Official archive</div></header>
     <section className="paper-filters">
-      <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{PAPER_YEARS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+      <label><Calendar size={15} /><select aria-label="Filter by year" value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{archiveYears.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
       <label><ShieldCheck size={15} /><select aria-label="Filter by cycle" value={cycle} onChange={event => setCycle(event.target.value)}><option value="">Both cycles</option><option value="I">CDS I</option><option value="II">CDS II</option></select></label>
       <label><FileText size={15} /><select aria-label="Filter by subject" value={subject} onChange={event => setSubject(event.target.value)}><option value="">All subjects</option><option value="english">English</option><option value="general-knowledge">General Knowledge</option><option value="elementary-mathematics">Elementary Mathematics</option></select></label>
-      <span>{listingLoading ? "Loading papers…" : `${papers.length} official ${papers.length === 1 ? "paper" : "papers"}`}</span>
+      <span aria-live="polite">{listingLoading ? "Loading papers…" : `${filteredPapers.length} of ${papers.length} official papers`}</span>
     </section>
     <div className="papers-by-year">{papersByYear.map((group) => <section className="paper-year-group" key={group.year}>
-      <header className="paper-year-heading"><div><span>{group.year}</span><div><h2>{group.year} question papers</h2><p>Choose a subject and start the complete official paper.</p></div></div><strong>{group.papers.length} {group.papers.length === 1 ? "paper" : "papers"}</strong></header>
+      <header className="paper-year-heading"><div><span>{group.year}</span><div><h2>{group.year} question papers</h2><p>English, General Knowledge and Elementary Mathematics.</p></div></div><strong>{group.papers.length} {group.papers.length === 1 ? "paper" : "papers"}</strong></header>
       <div className="paper-type-grid">{group.papers.map((paper) => <article key={paper.id}>
         <header className="paper-card-top"><span className="paper-year-badge">{paper.year}</span><span className="paper-cycle-badge">CDS {paper.cycle}</span><FileText size={21} /></header>
-        <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>Official CDS {paper.cycle} paper with every question ready to practise.</p></div>
-        <div className="paper-card-meta"><span><strong>{paper.available_question_count}</strong><small>Questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
-        <p className="paper-key-status"><ShieldCheck size={14} /> {paper.verified_question_count ? `${paper.verified_question_count} verified answers available` : "Answer key pending - AI explanations available"}</p>
-        <div className="paper-actions"><PrimaryButton size="sm" onClick={() => void openMock(paper)} disabled={busy || paper.available_question_count === 0}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openReview(paper)}>Review <ArrowRight size={15} /></button></div>
-        <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>
+        <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>{paperAvailability(paper) === "pdf" ? "Complete original UPSC PDF. Interactive questions have not been prepared for this paper yet." : paperAvailability(paper) === "interactive" ? "Interactive paper · every question available to practise." : `${paper.available_question_count} interactive questions available. Use the PDF for the complete paper.`}</p></div>
+        <div className="paper-card-meta"><span><strong>{paper.official_question_count}</strong><small>Paper questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
+        <p className="paper-key-status"><ShieldCheck size={14} /> {paperAvailability(paper) === "pdf" ? "Official PDF · online scoring not available" : paper.verified_question_count ? `${paper.verified_question_count} verified answers available` : "Answer verification pending"}</p>
+        <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openMock(paper)} disabled={busy}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openReview(paper)}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
+        {paper.available_question_count > 0 && <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>}
       </article>)}</div>
     </section>)}</div>
     {!papers.length && listingLoading && <PaperArchiveSkeleton />}
-    {!papers.length && !listingLoading && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>{year ? `The ${year} archive will appear here as its official papers are imported.` : "Try another year, cycle, or subject."}</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
-    <section className="paper-method"><div><span className="workspace-kicker">Transparent by design</span><h2>Complete papers. Honest scoring.</h2></div><div><article><strong>01 · Full review</strong><p>Browse every official question in its original UPSC scan and retain the exact paper numbering.</p></article><article><strong>02 · Solve the paper</strong><p>Answer the complete timed paper. Marks use only published or independently verified answer keys.</p></article></div></section>
+    {!filteredPapers.length && !listingLoading && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>This combination is not in the available official archive. Try another year, cycle, or subject.</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
+    <section className="paper-method"><div><span className="workspace-kicker">Archive coverage</span><h2>Original papers. Clear availability.</h2></div><div><article><strong>01 · Official PDFs</strong><p>Coverage follows UPSC’s currently available online listings, not every historical CDS sitting. The older archive begins with CDS II 2016. <a href="https://www.upsc.gov.in/examinations/previous-question-papers/archives" target="_blank" rel="noreferrer">Check the UPSC archive.</a></p></article><article><strong>02 · Interactive practice</strong><p>PDF-only papers are not presented as ready-to-score mocks. Interactive papers retain your saved attempts; marks use verified answers only.</p></article></div></section>
     {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>

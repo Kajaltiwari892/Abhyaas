@@ -10,7 +10,7 @@ class PaperListItemResponse(BaseModel):
     title: str
     subject_slug: str
     subject_name: str
-    exam_date: date
+    exam_date: date | None
     duration_seconds: int
     total_marks: int
     official_question_count: int

@@ -1,0 +1,515 @@
+{
+  "version": 1,
+  "checked_at": "2026-10-01T11:26:41.565161+00:00",
+  "sources": [
+    "https://www.upsc.gov.in/examinations/previous-question-papers",
+    "https://www.upsc.gov.in/examinations/previous-question-papers/archives"
+  ],
+  "papers": [
+    {
+      "year": 2026,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-26-ELEMENTARY-MATHEMATICS-130426.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2026,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-26-ENGLISH-130426.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2026,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-26-GENERAL-KNOWLEDGE-130426.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2026,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-26-ELEMENTARY-MATHEMATICS-140926.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2026,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-26-ENGLISH-140926.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2026,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-26-GENERAL-KNOWLEDGE-140926.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-25-ELEMENTARY-MATHEMATICS-150425.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-25-ENGLISH-150425.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-25-GENERAL-KNOWLEDGE-150425.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-25-ELEMENTARY-MATHEMATICS-150925.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-25-ENGLISH-150925.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2025,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-25-GENERAL-KNOWLEDGE-150925.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP_CDSI2024_ELEMENTARY-MATHEMATICS_22042024.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP_CDSI2024_ENGLISH_22042024.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP_CDSI2024_GENERAL-KNOWLEDGE_22042024.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-24-ELEMENTARY-MATHEMATICS-020924.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-24-ENGLISH-020924.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2024,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-24-GENERAL-KNOWLEDGE-020924.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-23-ELEMENTARY-MATHEMATICS-170423.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-23-ENGLISH-170423.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-23-GENERAL-KNOWLEDGE-170423.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-2023-EleMath-04092023.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-2023-Eng-04092023.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2023,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-2023-GK-04092023.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-22-ELEMENTARY-MATHEMATICS-120422.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-22-ENGLISH-120422.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-22-GENERAL-KNOWLEDGE-120422.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-22-ELEMENTARY-MATHEMATICS-050922.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-22-ENGLISH-050922.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2022,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-22-GENERAL-KNOWLEDGE-050922.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS-I-21-Elem_Maths.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS-I-21-ENGLISH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS-I-21-Gen_Knowledge.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-ELEMATH-CDS-EXAM-II-2021-161121.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-ENGL-CDS-EXAM-II-2021-161121.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2021,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-GK-CDS-EXAM-II-2021-161121.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_I_2020_EL_MATHS.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_I_2020_ENGLISH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_I_2020_GK.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS2-20-ELEMENTARY_MATHS.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS2-20-ENGLISH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2020,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS2-20-GENERAL_KNOWLEDGE.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-2019-EleMath.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-2019-English.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-2019-GK.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-19-ELE_MATHS.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-19-ENGLISH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2019,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-II-19-GEN_KNOWLEDGE.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSI18-Math.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSI18-Engl.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-18-GK-C.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/MATHEMATICS_3.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/ENGLIH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2018,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/GS_0.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "I",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_1_17_MATH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "I",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_1_ENGLISH.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/CDS_1_17_GK_NEW.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/ELEMENT_MATHEMATICS.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/ENGLISH_4.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2017,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/GENRAL_KNOWLEDGE.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2016,
+      "cycle": "II",
+      "subject_slug": "elementary-mathematics",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/Elementary%20Mathematics.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2016,
+      "cycle": "II",
+      "subject_slug": "english",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/ENGLISH_2.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    },
+    {
+      "year": 2016,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/General%20Knowledge.pdf",
+      "listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+      "pdf_checked": true
+    }
+  ],
+  "coverage_note": "All CDS PDFs listed in UPSC's current and archived question-paper pages at the time of checking. The earliest listing is CDS II 2016. CDS I 2016 and earlier papers are not listed there; this is not an all-time archive."
+}

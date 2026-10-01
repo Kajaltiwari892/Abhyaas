@@ -1,5 +1,30 @@
 # Feeding previous-paper data
 
+## Official PDF archive
+
+Migration `20261001_18` publishes the reviewed public manifest
+`data/upsc_paper_archive_20261001.json`. It adds missing papers only; existing paper IDs,
+questions, answer keys, and student attempts are not replaced.
+
+The checked snapshot contains 63 PDFs: CDS I and II for 2017–2026, plus CDS II 2016,
+in English, General Knowledge, and Elementary Mathematics. UPSC's current and archived
+listings do not include CDS I 2016 or earlier years. Do not describe this as an all-time archive.
+These new entries are PDF-only until their questions are separately transcribed and reviewed.
+An unknown exact exam date remains null rather than using an invented date.
+
+To discover a future snapshot, run from `Backend` with a **new** dated output filename:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/discover_official_paper_archive.py --output data/upsc_paper_archive_YYYYMMDD.json
+```
+
+The script reads both official listings, requires all three subjects per sitting, and checks
+each official URL for a PDF signature using small streamed requests. Review the manifest,
+then publish it in a new insert-only migration; do not overwrite an already-released snapshot.
+The frontend derives year options from the catalogue, so new years need no hard-coded UI change.
+
+## Interactive questions
+
 Only add questions from the official UPSC paper. The archive can contain an official question
 before its answer has been verified, but it must include the exact source scan in `asset_url`.
 Unverified questions use `is_verified: false` and omit `correct_index` and `explanation`.
