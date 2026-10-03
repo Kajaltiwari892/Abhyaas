@@ -46,6 +46,29 @@ listening instead of starting a duplicate process.
 
 ## Included now
 
+### Full-paper solutions in the doubt solver
+
+Requests such as `Solve CDS I 2026 English full paper` go directly to the stored
+paper questions, not to a RAG paper-summary excerpt. The solver includes the full
+options, directions and passages and returns at most ten solutions per response.
+`Continue solving` resumes the saved position; `Explain Q3` revisits a question
+without losing that position. A new subject or ordinary lesson does not inherit
+an old paper search.
+
+The existing conversation-message JSON stores a `paper_solution` snapshot, so
+this feature needs no database migration. AI solutions never update paper answer
+keys, verification flags, mock-test scores or other students' conversations.
+Verified keys and unverified AI reasoning have separate visible labels. Missing
+text/diagrams, uncertainty and key conflicts remain explicit; provider failures
+do not advance the cursor or become misleading paper-summary answers.
+
+Run `python -m pytest tests/test_paper_solver.py` for isolated checks. Run
+`python scripts/check_paper_solver.py` for a read-only local source check; adding
+`--live` sends one ten-question batch to the configured AI provider (uses quota).
+The background local backend does not auto-reload code: restart it after changes.
+
+### Authentication
+
 - Registration with normalized unique email addresses.
 - Argon2 password hashing.
 - Login with 15-minute, issuer-and-audience-bound JWT access tokens kept only in memory.
@@ -148,4 +171,21 @@ GET  /api/v1/auth/google/callback
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
 GET  /api/v1/users/me
+PATCH /api/v1/users/me/preferences
 ```
+
+## Saved academy target
+
+`PATCH /api/v1/users/me/preferences` requires the student's bearer token and accepts
+only `{"target_academy":"ota"}` (or `ima`, `ina`, `afa`). Send an explicit `null`
+to clear the target. The saved value is returned by `/users/me`, login and session
+refresh. Other account fields and user IDs are rejected by this endpoint.
+
+Apply `alembic upgrade head` before running the updated backend. Migration
+`20261003_19` adds a nullable, constrained column; existing accounts start without
+a target. It does not change practice sets, answers, scores, or chat memory.
+
+The frontend uses this preference to prioritise English and GK for OTA, or all
+three written subjects for IMA/INA/AFA. Browsing an academy never saves a target;
+students must use **Set … as my target**. Optional subjects and all history remain
+accessible. This is a study preference, not an eligibility assessment or AI training.

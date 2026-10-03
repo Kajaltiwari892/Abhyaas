@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import StudentProgressChart from "../components/StudentProgressChart";
+import PreparationTarget from "../components/PreparationTarget";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
@@ -53,7 +54,8 @@ export default function ProgressPage() {
 
   return <AppShell active="Progress"><main className="workspace progress-workspace">
     <header className="workspace-header"><div><span className="workspace-kicker">{user ? `Signed in as ${user.email}` : "Your preparation, honestly measured"}</span><h1>{firstName ? `Welcome, ${firstName}.` : "Progress"}</h1><p>Your completed practice sets update this dashboard automatically.</p></div><div className="workspace-badge"><CalendarDays size={15} /> {dashboard ? `${dashboard.completed_sets} completed sets` : "Loading activity"}</div></header>
-    <section className="progress-stat-grid">
+    <PreparationTarget practiceLinks />
+    <section className="progress-stat-grid" aria-label="All-time progress across all subjects">
       <article><span className="stat-icon"><Target size={19} /></span><div><small>Overall accuracy</small><strong>{dashboard?.overall_accuracy != null ? `${dashboard.overall_accuracy}%` : "—"}</strong><p>{hasAttempts ? `${dashboard?.correct_answers} correct answers` : "Complete a set to begin"}</p></div></article>
       <article><span className="stat-icon"><Clock3 size={19} /></span><div><small>Practice time</small><strong>{dashboard ? formatDuration(dashboard.practice_seconds) : "—"}</strong><p>{hasAttempts ? "Across completed sessions" : "No sessions recorded"}</p></div></article>
       <article><span className="stat-icon"><BookOpen size={19} /></span><div><small>Questions attempted</small><strong>{dashboard?.questions_attempted ?? "—"}</strong><p>{hasAttempts ? `${dashboard?.completed_sets} completed sets` : "Your attempts appear here"}</p></div></article>

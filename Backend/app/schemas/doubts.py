@@ -62,9 +62,9 @@ class AskDoubtResponse(BaseModel):
     follow_up_questions: list[str]
     pyq_result: dict | None = None
     practice_result: dict | None = None
-    answer_kind: Literal["explanation", "pyq", "practice", "clarification", "archive_info"] = (
-        "explanation"
-    )
+    answer_kind: Literal[
+        "explanation", "pyq", "practice", "clarification", "archive_info", "paper_solution"
+    ] = "explanation"
 
 
 class DoubtMessageResponse(BaseModel):

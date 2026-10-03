@@ -209,9 +209,9 @@ export type DoubtAnswer = {
   grounded: boolean;
   sources: DoubtSource[];
   follow_up_questions: string[];
-  pyq_result: PyqResult | null;
+  pyq_result: PyqResult | PaperSolutionResult | null;
   practice_result: PracticeResult | null;
-  answer_kind: "explanation" | "pyq" | "practice" | "clarification" | "archive_info";
+  answer_kind: "explanation" | "pyq" | "practice" | "clarification" | "archive_info" | "paper_solution";
 };
 
 export type PyqCard = {
@@ -225,6 +225,20 @@ export type PyqResult = {
   questions: PyqCard[]; total: number; returned: number; has_more: boolean;
   indexed_questions: number; catalog_questions: number; kind: "pyq" | "clarification" | "archive_info";
   query: { years: number[]; cycle: string | null; chapter: string | null; subject: string | null; offset: number };
+};
+
+export type PaperSolutionResult = {
+  kind: "paper_solution";
+  status: "solutions" | "clarification" | "unavailable" | "complete";
+  paper: { id: string; title: string; total: number; source_url: string } | null;
+  start: number; end: number; next_number: number; range_end: number | null; has_more: boolean;
+  questions: Array<{
+    id: string; number: number; prompt: string; options: string[];
+    directions?: string | null; passage?: string | null; additional_context?: string | null;
+    text_reviewed: boolean; source_url: string;
+    solution: { status: "ai" | "verified" | "needs_source" | "uncertain" | "key_conflict" | "key_pending";
+      answer_index: number | null; explanation: string };
+  }>;
 };
 
 export type PracticeResult = {
@@ -285,7 +299,7 @@ export const getCatalogQuestions = (subject: string, topic = "", offset = 0) => 
 export type ConversationItem = { id: string; title: string; updated_at: string };
 export type SavedConversation = ConversationItem & { messages: Array<{
   id: string; role: "user" | "assistant"; content: string; citations: DoubtSource[];
-  pyq_result: PyqResult | null; practice_result: PracticeResult | null;
+  pyq_result: PyqResult | PaperSolutionResult | null; practice_result: PracticeResult | null;
 }> };
 export const getConversations = (token: string, offset = 0) => apiRequest<PageResult<ConversationItem>>(`/doubts/conversations?offset=${offset}&limit=20`, authorized(token));
 export const getConversation = (token: string, id: string) => apiRequest<SavedConversation>(`/doubts/conversations/${id}`, authorized(token));

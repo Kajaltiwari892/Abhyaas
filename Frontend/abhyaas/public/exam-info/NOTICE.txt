@@ -1,0 +1,20 @@
+Academy photographs used on the Exam info page
+
+ina.jpg — Indian Navy, passing-out parade at INA Ezhimala, 27 May 2017.
+https://commons.wikimedia.org/wiki/File:Passing_out_Parade_Spring_Term_2017_held_at_Indian_Naval_Academy,_Ezhimala_(2).jpg
+
+afa.jpg — Ministry of Defence / Press Information Bureau, graduation parade at
+Air Force Academy Dundigal, 21 June 2014. PIB image ID 54626 / CNR 57385.
+https://commons.wikimedia.org/wiki/File:The_Chief_of_the_Air_Staff,_Air_Chief_Marshal_Arup_Raha_reviewing_the_Graduation_Parade,_at_Air_Force_Academy,_Dundigal,_in_Hyderabad_on_June_21,_2014.jpg
+
+ota.jpg — Army Training Command, Indian Army, OTA Chennai, 16 January 2023.
+https://commons.wikimedia.org/wiki/File:OTA_Chennai.jpg
+
+These three files are identified on Wikimedia Commons as licensed under the
+Government Open Data License–India (GODL-India).
+https://data.gov.in/sites/default/files/Gazette_Notification_OGDL.pdf
+Files downloaded 3 October 2026. Originals retained; displayed with CSS cropping
+and colour treatment. No endorsement by the photographers or government implied.
+Visible attribution is available in the page's Photo credits disclosure.
+
+IMA uses the pre-existing project asset assets/img6.jpg; no new copy was added.

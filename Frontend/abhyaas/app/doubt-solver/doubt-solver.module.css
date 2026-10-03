@@ -180,6 +180,15 @@
   .workspace *, .workspace *::before, .workspace *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 .pyqResults { margin-top:14px; }
+.solutionToolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; font-size:11px; color:var(--subtle); }
+.solutionToolbar a { display:inline-flex; align-items:center; gap:5px; color:#b7c987; }
+.solutionAnswer { padding:14px 0; border-top:1px solid var(--line); }
+.solutionLabel { display:block; color:var(--subtle); font-size:10px; margin-bottom:8px; }
+.solutionAnswer strong { display:block; font-size:13px; line-height:1.6; color:var(--text); }
+.solutionAnswer p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; line-height:1.8; margin:9px 0 0; }
+.continueSolutions { display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; margin:18px 0 8px; padding:10px 16px; border:1px solid #a6b77850; border-radius:12px; background:#a6b77815; color:var(--text); font-size:12px; cursor:pointer; }
+.continueSolutions:hover:not(:disabled) { background:#a6b77825; }
+.continueSolutions:disabled { opacity:.45; cursor:not-allowed; }
 .pyqFilters,.pyqBadges { display:flex; flex-wrap:wrap; gap:7px; font-size:10px; color:#a9b596; }
 .pyqFilters span { display:inline-flex;align-items:center;gap:5px;border:1px solid #adbe782b; padding:4px 9px; border-radius:20px; }
 .pyqCard { margin-top:15px; border:1px solid #a6b77825; border-radius:16px; padding:17px 19px; background:#adb77e06; }

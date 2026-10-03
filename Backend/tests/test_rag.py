@@ -323,7 +323,11 @@ def test_official_answer_key_refusal_does_not_invent_an_answer() -> None:
             }
         )
         result = await service.answer(None, "What is the official CDS 2026 answer key?", None, [])
-        assert "does not contain" in result.answer
-        assert service._generate_json.await_count == 1
+        # A paper/key request now asks for the missing cycle and subject rather than
+        # asking the model to improvise a response from an unrelated source snippet.
+        assert result.pyq_result["status"] == "clarification"
+        assert "cycle, subject" in result.answer
+        assert result.pyq_result["questions"] == []
+        assert service._generate_json.await_count == 0
 
     asyncio.run(scenario())

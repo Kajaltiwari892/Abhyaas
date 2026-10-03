@@ -6,12 +6,13 @@ import { type ClipboardEvent, type FormEvent, useEffect, useRef, useState } from
 import { toast } from "sonner";
 import { ApiError } from "@/lib/auth-api";
 import { readQuestionImage, type QuestionAttachment } from "@/lib/doubt-image";
-import { askDoubt, clearStudyProfile, getStudyProfile, getConversation, updateStudyProfile, type DoubtSource, type StudyProfile, type PyqResult, type PracticeResult } from "@/lib/study-api";
+import { askDoubt, clearStudyProfile, getStudyProfile, getConversation, updateStudyProfile, type DoubtSource, type StudyProfile, type PyqResult, type PaperSolutionResult, type PracticeResult } from "@/lib/study-api";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import StudyCompanion, { CompanionMark } from "../components/StudyCompanion";
 import s from "./doubt-solver.module.css";
 import PyqResults from "./PyqResults";
+import PaperSolutions from "./PaperSolutions";
 import PracticeResults from "./PracticeResults";
 import RequestStatus from "./RequestStatus";
 import ChatHistory from "./ChatHistory";
@@ -24,7 +25,7 @@ type ChatMessage = {
   id: string; role: "user" | "assistant"; content: string;
   sources?: DoubtSource[]; grounded?: boolean; followUps?: string[];
   error?: boolean; retryQuestion?: string; retryPaperId?: string; imageName?: string;
-  pyqResult?: PyqResult | null; practiceResult?: PracticeResult | null; answerKind?: string;
+  pyqResult?: PyqResult | PaperSolutionResult | null; practiceResult?: PracticeResult | null; answerKind?: string;
 };
 
 function AnswerContent({ content }: { content: string }) {
@@ -225,15 +226,18 @@ function DoubtSolverWorkspace() {
             <div className={s.messageContent}>
               <div className={s.messageHeading}>
                 <span className={s.messageAuthor}>{message.role === "user" ? "You" : "Abhyaas"}</span>
-                {message.pyqResult && message.pyqResult.kind !== "clarification" && <span className={s.answerKind}><BookOpen size={11} /> {message.pyqResult.kind === "archive_info" ? "Archive coverage · based on your last search" : "From the paper archive · not AI-generated"}</span>}
+                {message.pyqResult && message.pyqResult.kind !== "clarification" && <span className={s.answerKind}><BookOpen size={11} /> {message.pyqResult.kind === "paper_solution" ? "Paper solutions · answer status shown per question" : message.pyqResult.kind === "archive_info" ? "Archive coverage · based on your last search" : "From the paper archive · not AI-generated"}</span>}
                 {message.role === "assistant" && !message.error && !message.pyqResult && <span className={s.answerKind}>{message.answerKind === "practice" ? <><Sparkles size={11} /> Generated practice · not actual PYQs</> : message.answerKind === "clarification" ? "Choose a topic to continue" : message.grounded ? <><Check size={11} /> Sources included</> : <><Sparkles size={11} /> AI explanation · verify important facts</>}</span>}
               </div>
               {message.imageName && <span className={s.sentImage}><ImagePlus size={13} />{message.imageName}</span>}
               {message.error ? <div className={s.errorAnswer}><p>{message.content}</p><button disabled={loading} onClick={() => { if(message.retryPaperId){void submitQuestion(message.retryQuestion ?? "Explain this question",message.retryPaperId);}else{setQuestion(message.retryQuestion ?? ""); inputRef.current?.focus();} }}><RotateCcw size={13} /> {message.retryPaperId ? "Retry explanation" : "Edit & retry"}</button></div> : <AnswerContent content={message.content} />}
-              {message.pyqResult && <PyqResults result={message.pyqResult} loading={loading} onExplain={(id, label) => void submitQuestion(label, id)} />}
+              {message.pyqResult?.kind === "paper_solution" ? <PaperSolutions result={message.pyqResult}
+                current={message.id === messages.at(-1)?.id} disabled={loading || readingImage || historyLoading || !!question.trim() || !!attachment}
+                onContinue={() => void submitQuestion("Continue solving")} />
+                : message.pyqResult && <PyqResults result={message.pyqResult} loading={loading} onExplain={(id, label) => void submitQuestion(label, id)} />}
               {message.practiceResult && <PracticeResults result={message.practiceResult} />}
               {!!message.sources?.length && <details className={s.sources}><summary><BookOpen size={13} /> {message.sources.length} {message.sources.length === 1 ? "source" : "sources"}<ChevronDown size={13} /></summary><div>{message.sources.map((source) => <article key={source.id}><small>{source.id} · {source.publisher}</small><strong>{source.title}</strong><p>{source.excerpt}</p>{source.source_url && <a href={source.source_url} target="_blank" rel="noreferrer">Open source <ExternalLink size={11} /></a>}</article>)}</div></details>}
-              {!!message.followUps?.length && <div className={s.followups}>{message.followUps.map((text) => <button key={text} disabled={loading} onClick={() => { setQuestion(text); inputRef.current?.focus(); }}>{text}<ArrowUpRight size={12} /></button>)}</div>}
+              {message.pyqResult?.kind !== "paper_solution" && !!message.followUps?.length && <div className={s.followups}>{message.followUps.map((text) => <button key={text} disabled={loading} onClick={() => { setQuestion(text); inputRef.current?.focus(); }}>{text}<ArrowUpRight size={12} /></button>)}</div>}
             </div>
           </article>)}
           {loading && <RequestStatus hasImage={!!messages.at(-1)?.imageName} />}

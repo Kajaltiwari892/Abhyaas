@@ -1,0 +1,25 @@
+{
+  "2026-I-english": {
+    "source_checksum": "448a3c97245b5c9a2b84bf6ccf118aea295726460d96ca3512c8dd90ab294d51",
+    "provenance": "Existing ENGLISH_2026_SECTIONS in Frontend/abhyaas/app/papers/page.tsx; reader context, not answer-key verification",
+    "sections": [
+      {"from": 1, "to": 10, "sectionTitle": "Pair of words", "directions": "A pair of words is provided. Select the option that most appropriately describes the meaning of both words."},
+      {"from": 11, "to": 20, "sectionTitle": "Nearest meaning", "directions": "Select the option nearest in meaning to the underlined word in the given sentence."},
+      {"from": 21, "to": 30, "sectionTitle": "Word meaning", "directions": "Select the most appropriate meaning of the given word from the options provided."},
+      {"from": 31, "to": 40, "sectionTitle": "Ordering of sentences", "directions": "The first and sixth sentences are fixed as S1 and S6. Arrange the four jumbled sentences P, Q, R and S in the correct sequence."},
+      {"from": 41, "to": 50, "sectionTitle": "Idioms and phrases", "directions": "Select the most appropriate meaning of the given idiom or phrase."},
+      {"from": 51, "to": 60, "sectionTitle": "Opposite meaning", "directions": "Select the option opposite in meaning to the underlined word in the given sentence."},
+      {"from": 61, "to": 70, "sectionTitle": "Word class", "directions": "Identify the word class to which the underlined word belongs."},
+      {"from": 71, "to": 80, "sectionTitle": "Fill in the blank", "directions": "Select the most appropriate preposition or determiner for the blank space."},
+      {"from": 81, "to": 90, "sectionTitle": "Usage of similar-sounding words", "directions": "Review the similar-sounding words and select the sentences in which they have been used appropriately."},
+      {"from": 91, "to": 100, "sectionTitle": "Relationship between sentences", "directions": "Select the most appropriate relationship of the second sentence to the first."},
+      {"from": 101, "to": 110, "sectionTitle": "Match the following", "directions": "Match List I with List II and select the correct answer using the code given below the lists."},
+      {"from": 111, "to": 115, "sectionTitle": "Spotting errors", "directions": "Identify the underlined part containing an error. If there is no error, select option D."},
+      {
+        "from": 116, "to": 120, "sectionTitle": "Reading comprehension",
+        "directions": "Read the passage carefully and answer the question using only the information in the passage.",
+        "passage": "As the new century begins, it is becoming evident to urban dwellers, whether in industrial or developing countries, that there is an immanent conflict between the automobile and the city. Urban air pollution, often from automobiles, claims millions of lives. Congestion also takes a direct economic toll in rising costs in time and the use of petrol.\n\nAnother cost of cities that are devoted to cars is a psychological one, a deprivation of contact with the natural world—an ‘asphalt complex’. There is a growing body of evidence that there is an innate human need for contact with nature. Both ecologists and psychologists have been aware of this for some time. Ecologists, led by Harvard University biologist E. O. Wilson, have formulated the ‘biophilia hypothesis’, which argues that those who are deprived of contact with nature suffer psychologically and that this deprivation leads to a measurable decline in well-being.\n\nMeanwhile psychologists have coined their own term—ecopsychology—in which they make the same argument. Theodore Roszak, a leader in this field, cites a study that documents humans’ dependence on nature by looking at the rate of recovery of patients in a hospital in Pennsylvania. Those whose rooms overlooked gardens with grass, trees, flowers, and birds recovered from illnesses more quickly than those who were in rooms overlooking the parking lot."
+      }
+    ]
+  }
+}

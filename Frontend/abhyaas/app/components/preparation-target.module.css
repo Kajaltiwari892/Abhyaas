@@ -1,0 +1,36 @@
+.panel {
+  --target-text: #dde6cf;
+  --target-muted: #a5b296;
+  --target-accent: #bdce84;
+  --target-line: #34412b;
+  --target-soft: #27331c;
+  margin: 16px 0 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--target-line);
+  border-radius: 13px;
+  background: linear-gradient(110deg, #34432133, transparent 80%);
+  color: var(--target-text);
+}
+.row { display: flex; align-items: center; gap: 12px; }
+.icon { display: grid; place-items: center; flex-shrink: 0; width: 39px; height: 39px; border-radius: 11px; background: var(--target-soft); color: var(--target-accent); }
+.copy { flex: 1; min-width: 0; }
+.copy strong { display: block; font-size: 13px; font-weight: 600; }
+.copy p { font-size: 11px; line-height: 1.65; color: var(--target-muted); margin: 5px 0 0; }
+.panel a { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; color: var(--target-accent); font-size: 11px; text-decoration: none; }
+.row > a { flex-shrink: 0; }
+.panel a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.panel a:focus-visible { outline: 2px solid var(--target-accent); outline-offset: 4px; border-radius: 5px; }
+.next { margin: 15px 0 0 51px; padding-top: 13px; border-top: 1px solid var(--target-line); }
+.next > span { color: var(--target-muted); font-size: 11px; }
+.next > div { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 9px; }
+.next a { border: 1px solid var(--target-line); border-radius: 8px; padding: 0 12px; }
+.next small { display: block; margin-top: 11px; font-size: 10px; line-height: 1.6; color: var(--target-muted); }
+.loading { margin: 18px 0; color: #a5b296; font-size: 12px; }
+:global(html[data-theme="light"]) .panel { --target-text: #283323; --target-muted: #5d6955; --target-accent: #526c2d; --target-line: #d3dbc9; --target-soft: #e5ecd9; background: #f5f8ef; }
+@media (max-width: 600px) {
+  .panel { padding: 14px; }
+  .row { flex-wrap: wrap; align-items: flex-start; gap: 9px; }
+  .copy { flex-basis: calc(100% - 48px); }
+  .row > a { margin-left: 48px; min-height: 30px; }
+  .next { margin-left: 0; }
+}

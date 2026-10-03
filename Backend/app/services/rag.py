@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.models.papers import PreviousPaper
 from app.models.practice import Subject
 from app.models.rag import KnowledgeChunk, KnowledgeDocument
+from app.services.paper_solver import PaperSolutionError, solution_request, solve_paper
 from app.services.practice_sets import (
     PracticeUnavailableError,
     generate_practice_set,
@@ -398,7 +399,9 @@ class RagService:
         for paper in papers:
             verified = sum(question.is_verified for question in paper.questions)
             excerpt = (
-                f"{paper.title} was held on {paper.exam_date:%d %B %Y}. It contains "
+                f"{paper.title}. "
+                + (f"It was held on {paper.exam_date:%d %B %Y}. " if paper.exam_date else "")
+                + "It contains "
                 f"{paper.official_question_count} questions for {paper.total_marks:g} marks with "
                 f"a duration of {paper.duration_seconds // 60} minutes. Abhyaas currently has "
                 f"{len(paper.questions)} questions available and {verified} answer-key entries "
@@ -482,6 +485,25 @@ class RagService:
                 personalization=personalization,
                 image_data=image_data,
             )
+        paper_request = (
+            None if image_data else solution_request(question, subject, pyq_context, history)
+        )
+        if paper_request is not None:
+            try:
+                solved = await solve_paper(db, paper_request, self._generate_paper_json)
+            except PaperSolutionError as exc:
+                raise RagUnavailableError(str(exc)) from exc
+            return RagAnswer(
+                answer=solved["message"],
+                confidence=0.6,
+                sources=[],
+                follow_up_questions=solved["follow_up_questions"],
+                pyq_result=solved,
+                answer_kind="paper_solution",
+            )
+        # A new lesson or practice request must not inherit an earlier paper cursor.
+        if pyq_context and pyq_context.get("kind") == "paper_solution":
+            pyq_context = None
         if wants_practice(question, pyq_context, practice_context):
             try:
                 practice = await generate_practice_set(
@@ -825,6 +847,9 @@ LATEST QUESTION
         count = min(50, int(count_match[1])) if count_match else 10
         return await self._generate_json(prompt, practice_batch=True, practice_count=count)
 
+    async def _generate_paper_json(self, prompt: str, count: int) -> dict[str, Any]:
+        return await self._generate_json(prompt, solution_count=count)
+
     async def _generate_json(
         self,
         prompt: str,
@@ -832,6 +857,7 @@ LATEST QUESTION
         image_data: str | None = None,
         practice_batch: bool = False,
         practice_count: int = 10,
+        solution_count: int = 0,
     ) -> dict[str, Any]:
         parts: list[dict[str, Any]] = [{"text": prompt}]
         if image_data:
@@ -842,7 +868,11 @@ LATEST QUESTION
                 "responseMimeType": "application/json",
                 "temperature": 0.15,
                 "maxOutputTokens": (
-                    min(24576, max(8192, practice_count * 450 + 2048)) if practice_batch else 4096
+                    12288
+                    if solution_count
+                    else min(24576, max(8192, practice_count * 450 + 2048))
+                    if practice_batch
+                    else 4096
                 ),
             },
         }
@@ -876,6 +906,34 @@ LATEST QUESTION
                 "required": ["questions"],
                 "additionalProperties": False,
             }
+        if solution_count:
+            request_body["generationConfig"]["responseJsonSchema"] = {
+                "type": "object",
+                "properties": {
+                    "solutions": {
+                        "type": "array",
+                        "minItems": solution_count,
+                        "maxItems": solution_count,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "number": {"type": "integer"},
+                                "status": {"type": "string", "enum": ["solved", "uncertain"]},
+                                "answer_index": {
+                                    "type": ["integer", "null"],
+                                    "minimum": 0,
+                                    "maximum": 3,
+                                },
+                                "explanation": {"type": "string"},
+                            },
+                            "required": ["number", "status", "answer_index", "explanation"],
+                            "additionalProperties": False,
+                        },
+                    }
+                },
+                "required": ["solutions"],
+                "additionalProperties": False,
+            }
         candidate_models = list(
             dict.fromkeys(
                 model
@@ -892,7 +950,12 @@ LATEST QUESTION
         rate_limited = False
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(
-                (95 if practice_count > 25 else 45) if practice_batch else 22, connect=6
+                45
+                if solution_count
+                else (95 if practice_count > 25 else 45)
+                if practice_batch
+                else 22,
+                connect=6,
             )
         ) as client:
             for model in candidate_models:
@@ -906,9 +969,9 @@ LATEST QUESTION
                     generation.pop("temperature", None)
                 # Keep a reasoning budget, but leave room for the full question set.
                 # Model-specific settings: Gemini 3 uses levels, 2.5 uses token budgets.
-                if practice_batch and model.startswith("gemini-3"):
+                if (practice_batch or solution_count) and model.startswith("gemini-3"):
                     generation["thinkingConfig"] = {"thinkingLevel": "low"}
-                elif practice_batch and model.startswith("gemini-2.5-flash"):
+                elif (practice_batch or solution_count) and model.startswith("gemini-2.5-flash"):
                     generation["thinkingConfig"] = {"thinkingBudget": 1024}
                 response = None
                 for connection_attempt in range(2):

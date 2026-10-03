@@ -90,6 +90,25 @@ def test_catalog_and_practice_flow_are_persisted(client: TestClient) -> None:
     assert data["questions_attempted"] == 3
     assert data["practice_seconds"] == 90
 
+    # A preparation preference must not reset scores, saved answers or elapsed time.
+    unfinished = client.post(
+        "/api/v1/practice/attempts", headers=headers,
+        json={"subject_slug": "english", "question_count": 3, "allow_repeats": True},
+    )
+    assert unfinished.status_code == 201
+    unfinished_id = unfinished.json()["id"]
+    before = client.get(f"/api/v1/practice/attempts/{unfinished_id}", headers=headers)
+    assert before.status_code == 200
+    for target in ["ota", "ima", None]:
+        saved_target = client.patch(
+            "/api/v1/users/me/preferences", headers=headers, json={"target_academy": target}
+        )
+        assert saved_target.status_code == 200
+        assert client.get("/api/v1/progress/dashboard", headers=headers).json() == data
+        assert client.get(
+            f"/api/v1/practice/attempts/{unfinished_id}", headers=headers
+        ).json() == before.json()
+
 
 def test_attempts_require_authentication(client: TestClient) -> None:
     response = client.post(

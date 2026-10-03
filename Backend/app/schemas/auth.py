@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -31,6 +32,16 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+AcademyTarget = Literal["ima", "ina", "afa", "ota"]
+
+
+class UserPreferencesRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Required key; explicit null clears the preference. Never infer eligibility.
+    target_academy: AcademyTarget | None
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +50,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     is_verified: bool
     created_at: datetime
+    target_academy: AcademyTarget | None = None
 
 
 class AuthResponse(BaseModel):

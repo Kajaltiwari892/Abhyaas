@@ -1,3 +1,5 @@
+import type { AcademyTarget } from "./academy-preference";
+
 export const API_ROOT = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
 
 export type AuthUser = {
@@ -6,6 +8,7 @@ export type AuthUser = {
   email: string;
   is_verified: boolean;
   created_at: string;
+  target_academy: AcademyTarget | null;
 };
 
 export type AuthSession = {
@@ -108,6 +111,14 @@ export function restoreAuthSession(): Promise<AuthSession | null> {
 
 export function logoutAccount() {
   return apiRequest<MessageResponse>("/auth/logout", { method: "POST" });
+}
+
+export function saveAcademyPreference(accessToken: string, target: AcademyTarget | null) {
+  return apiRequest<AuthUser>("/users/me/preferences", {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ target_academy: target }),
+  });
 }
 
 export function getGoogleSignInUrl() {

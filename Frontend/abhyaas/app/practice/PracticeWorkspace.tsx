@@ -6,13 +6,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkpointPracticeAttempt, completePracticeAttempt, getPracticeAttempt, getPracticeHistory, getPracticeResult, getPracticeAvailability, getSubjects, startPracticeAttempt, type AttemptSummary, type PracticeAttempt, type PracticeHistoryItem, type PracticeAvailability, type PracticeProvenance, type Subject } from "@/lib/study-api";
 import { useAuth } from "../components/AuthProvider";
+import PreparationTarget from "../components/PreparationTarget";
+import { getPreparationTarget, partitionPreparationSubjects } from "@/lib/academy-preference";
 import s from "./practice.module.css";
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 const message = (error: unknown) => error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
 export default function PracticeWorkspace({ initialSubject, initialTopic = "", initialView = "practice", onBack }: { initialSubject: string; initialTopic?: string; initialView?: "practice" | "history"; onBack?: () => void }) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -44,6 +46,9 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const questionBody = useRef<HTMLDivElement>(null);
   const latestSave = useRef<(() => Promise<void>) | null>(null);
   const subject = subjects.find((item) => item.slug === subjectSlug) ?? subjects[0];
+  const target = getPreparationTarget(user?.target_academy);
+  const subjectGroups = partitionPreparationSubjects(subjects, user?.target_academy);
+  const isExtraPractice = subjectGroups.optional.some((item) => item.slug === subjectSlug);
   const topic = subject?.topics.find((item) => item.slug === topicSlug);
   const availabilityKey = `${subjectSlug}:${topicSlug}:${historyVersion}`;
   const pool = availability?.key === availabilityKey ? availability.data : undefined;
@@ -191,6 +196,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
       </div>
       <div className={s.tabs}><button aria-pressed={tab === "practice"} disabled={busy} onClick={() => setTab("practice")}>Practice</button><button aria-pressed={tab === "history"} disabled={busy} onClick={() => void leave(undefined, undefined, "history")}><History size={15} /> History</button></div>
     </header>
+    {!attempt && !summary && tab === "practice" && <PreparationTarget />}
     {error && <div role="alert" className={s.error}>{error} <button className={s.secondary} onClick={() => { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); }}>Retry</button></div>}
     {tab === "history" ? <section className={s.panel} aria-label="Practice history">
       <div className={s.sectionTitle}><h2>Your saved sets</h2><button disabled={historyLoading} onClick={() => setHistoryVersion((v) => v + 1)}>Refresh</button></div>
@@ -235,7 +241,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
       </section>
     </> : <>
       <div className={s.filters}>
-        {!onBack && <label>Subject<select value={subject?.slug ?? ""} disabled={busy || !subjects.length} onChange={(e) => void leave(e.target.value)}>{!subjects.length && <option>Loading subjects…</option>}{subjects.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>}
+        {!onBack && <label>Subject<select value={subject?.slug ?? ""} disabled={busy || !subjects.length} onChange={(e) => void leave(e.target.value)}>{!subjects.length && <option>Loading subjects…</option>}{target ? <><optgroup label={`${target.code} written subjects`}>{subjectGroups.required.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</optgroup>{subjectGroups.optional.length > 0 && <optgroup label={`Extra practice · not required for ${target.code}`}>{subjectGroups.optional.map((item) => <option key={item.id} value={item.slug}>{item.name} (optional)</option>)}</optgroup>}</> : subjects.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>}
         <label>Topic<select value={topic?.slug ?? ""} disabled={busy || !subject} onChange={(e) => void leave(subject?.slug, e.target.value)}><option value="">All topics</option>{subject?.topics.filter((item) => item.question_count > 0).map((item) => <option key={item.id} value={item.slug}>{item.name} ({item.question_count})</option>)}</select></label>
         {!active && <><label>Set size<select value={count} onChange={(e) => setCount(Number(e.target.value))}>{[10,25,50,100,120].map((n) => <option value={n} key={n}>{n} questions</option>)}</select></label><label>Question selection<select value={allowRepeats ? "revision" : "fresh"} onChange={(e) => setAllowRepeats(e.target.value === "revision")}><option value="fresh">Fresh questions only</option><option value="revision">Revision · allow repeats</option></select></label></>}
         {active && <span className={s.filterNote}>Changing filters saves this set for later.</span>}
@@ -254,7 +260,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
         <footer className={s.footer}><button className={s.secondary} disabled={busy || paused || current === 0} onClick={() => setCurrent((i) => i - 1)}><ArrowLeft size={15} /> Previous</button><span className={s.saveStatus} role="status">{busy ? "Saving…" : saveStatus}</span><button className={current === attempt.questions.length - 1 || remaining === 0 ? s.primary : s.secondary} disabled={busy} onClick={() => void finish()}>Submit set</button>{current < attempt.questions.length - 1 && remaining > 0 && <button className={s.primary} disabled={busy || paused} onClick={() => void next()}>{answers[question.id] !== undefined ? "Save & next" : "Skip & next"}<ArrowRight size={15} /></button>}</footer>
       </section> : <section className={[s.panel, s.start].join(" ")}>
         <span className={s.startIcon}><Target size={28} /></span><h2>Practice at the paper’s level.</h2>
-        <p>{topic?.name || subject?.name || "Choose a subject"} · {subjectSlug === "elementary-mathematics" ? "CDS Maths · not required for OTA" : "CDS / OTA"}</p>
+        <p>{topic?.name || subject?.name || "Choose a subject"} · {target ? isExtraPractice ? `Extra practice · not required for ${target.code}` : `${target.code} preparation` : subjectSlug === "elementary-mathematics" ? "CDS Maths · not required for OTA" : "CDS / OTA"}</p>
         {pool ? <><div className={s.setFacts}><span><strong>{setSize}</strong> questions in this set</span><span><strong>{clock(setSize * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</strong> practice time</span><span><strong>{pool.unseen}</strong> fresh in this pool</span></div>
           {setSize < count && <p className={s.muted}>You selected {count}; {available} {allowRepeats ? "" : "fresh "}questions are available for this filter. We won’t pad the set with duplicates or unrelated topics.</p>}
           {allowRepeats && <p className={s.muted}>Revision includes previously assigned questions, with new and least-seen questions first.</p>}

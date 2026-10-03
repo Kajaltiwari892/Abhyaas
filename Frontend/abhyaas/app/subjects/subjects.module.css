@@ -1,4 +1,10 @@
 .subjects { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:20px 0 26px; }
+.focusedSubjects { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.extraSubjects { border-top:1px solid #303b27; padding-top:12px; }
+.extraSubjects summary { cursor:pointer; padding:12px 0; color:#c6d3b1; font-size:13px; }
+.extraSubjects summary > span { color:#99a88a; font-size:11px; margin-left:9px; }
+.extraSubjects summary:focus-visible { outline:2px solid #bdce84; outline-offset:3px; border-radius:6px; }
+.extraSubjects p { color:#99a88a; font-size:12px; line-height:1.6; margin:8px 0; }
 .subjects button { display:flex; align-items:center; gap:12px; padding:20px 16px; text-align:left; background:#11190f; color:#d5dfc7; border:1px solid #303b27; border-radius:15px; transition:background .15s,border-color .15s; }
 .subjects button[aria-pressed=true] { background:linear-gradient(120deg,#29351d,#141d11); border-color:#97a963; }
 .subjects button:hover { border-color:#97a963; }

@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -75,7 +76,12 @@ async def ask_doubt(
         await owned_conversation(db, payload.conversation_id, user_id)
     # Larger, bounded sets need time for several provider batches. The lease must
     # outlive that budget; a second request must not overlap a still-running set.
-    processing_seconds = 150 if (requested_count(question) or 0) > 10 or wants_all(question) else 75
+    processing_seconds = (
+        150 if (
+            (requested_count(question) or 0) > 10 or wants_all(question)
+            or re.search(r"\b(?:solve|solving|answers?|solutions?|continue)\b", question, re.I)
+        ) else 75
+    )
     if payload.conversation_id:
         pending_practice = await db.scalar(
             select(DoubtMessage.practice_result)
@@ -250,7 +256,10 @@ async def ask_doubt(
             answer=result.answer,
             confidence=result.confidence,
             grounded=bool(result.sources)
-            or bool(result.pyq_result and result.pyq_result["questions"]),
+            or bool(
+                result.pyq_result and result.pyq_result.get("kind") != "paper_solution"
+                and result.pyq_result["questions"]
+            ),
             sources=[DoubtSourceResponse.model_validate(source) for source in citations],
             follow_up_questions=result.follow_up_questions,
             pyq_result=result.pyq_result,

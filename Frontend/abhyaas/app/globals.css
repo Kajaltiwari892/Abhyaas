@@ -1842,3 +1842,10 @@ html[data-theme="light"] .answer-content { color: #536055; }
 html[data-theme="light"] .app-sidebar .sidebar-profile-details { background: #f3f6ed; border-color: #c3ceb3; }
 html[data-theme="light"] .sidebar-account-name { color: #35432d; }
 @media (max-width: 850px) { .app-sidebar { bottom: calc(66px + env(safe-area-inset-bottom)); } }
+
+/* Source figures stay uncropped and readable inside the existing paper solver. */
+.paper-original-figure { margin: 18px 0; }
+.paper-original-figure a { display: block; max-width: 780px; }
+.paper-original-figure img { display: block; width: 100%; height: auto; border-radius: 8px; background: #fff; }
+.paper-original-figure figcaption { margin-top: 7px; color: #99a38f; font-size: 12px; }
+.paper-sheet u { text-underline-offset: 3px; text-decoration-thickness: 1px; }
