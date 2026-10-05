@@ -6,11 +6,24 @@ const publicPaths = new Set(["/", "/login", "/about", "/privacy", "/auth/callbac
 // read window.location during rendering (it can lag behind a client transition).
 export function authRedirect(pathname: string, status: AuthStatus): string | null {
   if (status === "loading") return null;
-  if (status === "authenticated" && ["/login", "/auth/callback"].includes(pathname)) {
+  if (status === "authenticated" && pathname === "/login") {
     return "/progress";
   }
   if (status === "anonymous" && !publicPaths.has(pathname)) {
     return `/login?next=${encodeURIComponent(pathname)}`;
   }
   return null;
+}
+
+// Do not briefly render the login form while a returning session is restored.
+// This must not block the public landing page or other public routes.
+export function shouldWaitForSession(pathname: string, status: AuthStatus): boolean {
+  return pathname === "/login" && status === "loading";
+}
+
+// The callback owns its redirect; the provider must not race it back to Login.
+export function googleCallbackRedirect(status: AuthStatus, error: string | null): string | null {
+  if (error) return `/login?google_error=${encodeURIComponent(error)}`;
+  if (status === "loading") return null;
+  return status === "authenticated" ? "/progress" : "/login?google_error=session_unavailable";
 }

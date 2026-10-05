@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { authRedirect } from "@/lib/auth-routing";
+import { authRedirect, shouldWaitForSession } from "@/lib/auth-routing";
 import type { AcademyTarget } from "@/lib/academy-preference";
 import {
   logoutAccount,
@@ -144,8 +144,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     [completeAuthentication, refreshSession, saveTargetAcademy, session, signOut, status],
   );
 
-  if (redirectTo) {
-    return <main className="auth-route-loading" aria-label="Checking your session"><span /><p>Opening Abhyaas…</p></main>;
+  if (redirectTo || shouldWaitForSession(pathname, status)) {
+    return <main className="auth-route-loading" role="status" aria-live="polite"><span aria-hidden="true" /><p>{redirectTo ? "Opening Abhyaas…" : "Checking your session…"}</p></main>;
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -23,6 +23,7 @@ type FormStatus = { kind: "success" | "error" | "info"; message: string } | null
 type AuthNotice = { title: string; message: string; action?: "login" } | null;
 
 const googleErrorNotices: Record<string, Exclude<AuthNotice, null>> = {
+  session_unavailable: { title: "Your sign-in session could not be opened", message: "We could not restore your session after returning from Google. Please try signing in again. If this continues, check that cookies are allowed for Abhyaas." },
   provider_unavailable: { title: "Could not reach Google", message: "The server could not finish Google's secure verification. Try again shortly, or sign in with your email and password." },
   expired_code: { title: "Google sign-in expired", message: "This one-time sign-in link expired or was already used. Start Google sign-in again from this page." },
   clock_skew: { title: "The server clock needs attention", message: "Google's token time did not match the server clock. The server's date and time need to be synchronized." },

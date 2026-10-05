@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
 import PaperArchiveSkeleton from "../components/PaperArchiveSkeleton";
+import PaperQuestionSkeleton from "../components/PaperQuestionSkeleton";
 import PaperText from "../components/PaperText";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
@@ -101,6 +102,8 @@ export default function PapersPage() {
   const [cycle, setCycle] = useState("");
   const [subject, setSubject] = useState("");
   const [mode, setMode] = useState<PaperMode>(null);
+  const [openingPaper, setOpeningPaper] = useState<{ paper: PaperListItem; mode: "mock" | "review" } | null>(null);
+  const openingRequest = useRef<AbortController | null>(null);
   const [detail, setDetail] = useState<PaperDetail | null>(null);
   const [attempt, setAttempt] = useState<PaperAttempt | null>(null);
   const [summary, setSummary] = useState<PaperAttemptSummary | null>(null);
@@ -116,6 +119,8 @@ export default function PapersPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const questionPanelRef = useRef<HTMLDivElement>(null);
+  const closePaperRef = useRef<HTMLButtonElement>(null);
+  const workspaceOpen = Boolean(mode || openingPaper);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,18 +133,35 @@ export default function PapersPage() {
   }, []);
 
   const closeWorkspace = useCallback(() => {
-    if (busy) return;
+    if (busy && !openingRequest.current) return;
+    const pending = openingRequest.current;
+    openingRequest.current = null;
+    pending?.abort();
+    setOpeningPaper(null); setBusy(false);
     window.speechSynthesis?.cancel();
     setMode(null); setDetail(null); setAttempt(null); setSummary(null); setCurrent(0); setAnswers({}); setAnswerBusy(""); setMarked({}); setRevealed({}); setAiExplanations({}); setAiBusy(""); setSpeakingQuestion(""); setError("");
   }, [busy]);
 
   useEffect(() => {
-    if (!mode) return;
+    if (!workspaceOpen) return;
     const handleKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeWorkspace(); };
     document.body.classList.add("paper-dialog-open");
     window.addEventListener("keydown", handleKey);
     return () => { document.body.classList.remove("paper-dialog-open"); window.removeEventListener("keydown", handleKey); };
-  }, [closeWorkspace, mode]);
+  }, [closeWorkspace, workspaceOpen]);
+
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    const trigger = document.activeElement;
+    closePaperRef.current?.focus();
+    return () => { if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus(); };
+  }, [workspaceOpen]);
+
+  useEffect(() => () => {
+    const pending = openingRequest.current;
+    openingRequest.current = null;
+    pending?.abort();
+  }, []);
 
   useEffect(() => {
     if (mode !== "mock" || !attempt || remaining <= 0) return;
@@ -160,32 +182,47 @@ export default function PapersPage() {
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
-  const openReview = async (paper: PaperListItem) => {
-    if (!accessToken) return;
+  const openPaper = async (paper: PaperListItem, requestedMode: "mock" | "review") => {
+    // The ref guards rapid double-clicks before React has rendered disabled buttons.
+    if (!accessToken || busy || openingRequest.current) return;
+    const request = new AbortController();
+    openingRequest.current = request;
+    setOpeningPaper({ paper, mode: requestedMode });
     setBusy(true); setError("");
-    try {
-      const paperDetail = await getPaper(accessToken, paper.id);
-      setDetail(paperDetail); setCurrent(0); setAnswers({}); setRevealed({}); setMode("review");
-    }
-    catch (reason) { setError(messageFor(reason, "The official paper could not be opened.")); }
-    finally { setBusy(false); }
-  };
-
-  const openMock = async (paper: PaperListItem) => {
-    if (!accessToken) return;
-    setBusy(true); setError("");
+    const timeout = window.setTimeout(() => request.abort(), 30_000);
     try {
       const [next, paperDetail] = await Promise.all([
-        startPaperAttempt(accessToken, paper.id),
-        getPaper(accessToken, paper.id),
+        requestedMode === "mock" ? startPaperAttempt(accessToken, paper.id, request.signal) : Promise.resolve(null),
+        getPaper(accessToken, paper.id, request.signal),
       ]);
-      const restoredAnswers = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.selected_index]));
-      const restoredMarked = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.marked_for_review]));
-      const firstUnanswered = next.questions.findIndex(question => restoredAnswers[question.id] === undefined);
-      setAttempt(next); setDetail(paperDetail); setRemaining(Math.max(0, next.duration_seconds - next.elapsed_seconds)); setAnswers(restoredAnswers); setAnswerBusy(""); setMarked(restoredMarked); setRevealed({}); setCurrent(firstUnanswered >= 0 ? firstUnanswered : Math.max(0, next.questions.length - 1)); setSummary(null); setMode("mock");
-      if (next.resumed) toast.success("Paper resumed", { description: `${next.answers.length} saved ${next.answers.length === 1 ? "answer" : "answers"} restored.` });
-    } catch (reason) { setError(messageFor(reason, "The timed paper could not be started.")); }
-    finally { setBusy(false); }
+      // Closing, navigating away or opening another paper invalidates this response.
+      if (openingRequest.current !== request) return;
+      if (!(next?.questions ?? paperDetail.questions).length) {
+        throw new ApiError("No interactive questions are available for this paper. Please open its official PDF.", 409);
+      }
+      setDetail(paperDetail); setRevealed({}); setSummary(null);
+      if (next) {
+        const restoredAnswers = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.selected_index]));
+        const restoredMarked = Object.fromEntries(next.answers.map(answer => [answer.question_id, answer.marked_for_review]));
+        const firstUnanswered = next.questions.findIndex(question => restoredAnswers[question.id] === undefined);
+        setAttempt(next); setRemaining(Math.max(0, next.duration_seconds - next.elapsed_seconds)); setAnswers(restoredAnswers); setAnswerBusy(""); setMarked(restoredMarked); setCurrent(firstUnanswered >= 0 ? firstUnanswered : Math.max(0, next.questions.length - 1));
+        if (next.resumed) toast.success("Paper resumed", { description: `${next.answers.length} saved ${next.answers.length === 1 ? "answer" : "answers"} restored.` });
+      } else {
+        setAttempt(null); setCurrent(0); setAnswers({});
+      }
+      setMode(requestedMode);
+    } catch (reason) {
+      if (openingRequest.current === request) {
+        setError(request.signal.aborted ? "Opening this paper took too long. Please try again." : messageFor(reason, "The paper could not be opened. Please try again."));
+      }
+    } finally {
+      window.clearTimeout(timeout);
+      request.abort();
+      if (openingRequest.current === request) {
+        openingRequest.current = null;
+        setOpeningPaper(null); setBusy(false);
+      }
+    }
   };
 
   const submitMock = useCallback(async () => {
@@ -342,17 +379,17 @@ export default function PapersPage() {
         <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>{paperAvailability(paper) === "pdf" ? "Complete original UPSC PDF. Interactive questions have not been prepared for this paper yet." : paperAvailability(paper) === "interactive" ? "Interactive paper · every question available to practise." : `${paper.available_question_count} interactive questions available. Use the PDF for the complete paper.`}</p></div>
         <div className="paper-card-meta"><span><strong>{paper.official_question_count}</strong><small>Paper questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
         <p className="paper-key-status"><ShieldCheck size={14} /> {paperAvailability(paper) === "pdf" ? "Official PDF · online scoring not available" : paper.verified_question_count ? `${paper.verified_question_count} verified answers available` : "Answer verification pending"}</p>
-        <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openMock(paper)} disabled={busy}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openReview(paper)}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
+        <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openPaper(paper, "mock")} disabled={busy}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openPaper(paper, "review")}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
         {paper.available_question_count > 0 && <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>}
       </article>)}</div>
     </section>)}</div>
     {!papers.length && listingLoading && <PaperArchiveSkeleton />}
     {!filteredPapers.length && !listingLoading && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>This combination is not in the available official archive. Try another year, cycle, or subject.</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
     <section className="paper-method"><div><span className="workspace-kicker">Archive coverage</span><h2>Original papers. Clear availability.</h2></div><div><article><strong>01 · Official PDFs</strong><p>Coverage follows UPSC’s currently available online listings, not every historical CDS sitting. The older archive begins with CDS II 2016. <a href="https://www.upsc.gov.in/examinations/previous-question-papers/archives" target="_blank" rel="noreferrer">Check the UPSC archive.</a></p></article><article><strong>02 · Interactive practice</strong><p>PDF-only papers are not presented as ready-to-score mocks. Interactive papers retain your saved attempts; marks use verified answers only.</p></article></div></section>
-    {mode && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
-      <section className="paper-dialog" role="dialog" aria-label={mode === "review" ? "Official paper review" : "Timed paper"}>
-        <header className="paper-dialog-header"><div><small>{mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button aria-label="Close paper" onClick={closeWorkspace}><X size={19} /></button></header>
-        {mode === "summary" && summary ? <PaperSummary summary={summary} questions={attempt?.questions ?? []} onClose={closeWorkspace} marksPerQuestion={marksPerQuestion} negativeMarkFraction={detail?.negative_mark_fraction ?? 0} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} answered` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalAttemptQuestions} aria-valuenow={answeredCount}><span style={{ width: `${progressPercent}%` }} /></div>{mode === "mock" && <span className="paper-inline-marking" title={`Correct: +${marksPerQuestion.toFixed(2)} · Wrong: −${penaltyPerWrongAnswer.toFixed(2)} · Unattempted: 0`}><ShieldCheck size={14} /> −{penaltyPerWrongAnswer.toFixed(2)} per wrong</span>}</div><div className="paper-question-layout">
+    {workspaceOpen && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
+      <section className="paper-dialog" role="dialog" aria-label={(openingPaper?.mode ?? mode) === "review" ? "Official paper review" : "Timed paper"}>
+        <header className="paper-dialog-header"><div><small>{openingPaper ? "Opening paper" : mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{openingPaper?.paper.title ?? detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && !openingPaper && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button ref={closePaperRef} aria-label="Close paper" onClick={closeWorkspace} disabled={busy && !openingPaper}><X size={19} /></button></header>
+        {openingPaper ? <PaperQuestionSkeleton subject={openingPaper.paper.subject_name} /> : mode === "summary" && summary ? <PaperSummary summary={summary} questions={attempt?.questions ?? []} onClose={closeWorkspace} marksPerQuestion={marksPerQuestion} negativeMarkFraction={detail?.negative_mark_fraction ?? 0} /> : activeQuestion && <><div className="paper-attempt-progress" aria-label={`${answeredCount} of ${totalAttemptQuestions} questions answered`}><div><span>{mode === "mock" ? `${answeredCount} of ${totalAttemptQuestions} answered` : `${visibleQuestionCount} questions`}</span><small>{mode === "mock" ? `${progressPercent}% complete` : "Review mode"}</small></div><div className="paper-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalAttemptQuestions} aria-valuenow={answeredCount}><span style={{ width: `${progressPercent}%` }} /></div>{mode === "mock" && <span className="paper-inline-marking" title={`Correct: +${marksPerQuestion.toFixed(2)} · Wrong: −${penaltyPerWrongAnswer.toFixed(2)} · Unattempted: 0`}><ShieldCheck size={14} /> −{penaltyPerWrongAnswer.toFixed(2)} per wrong</span>}</div><div className="paper-question-layout">
           <div className="paper-question-panel">
             <div className="paper-question-toolbar">
               <nav className="paper-question-navigation" aria-label="Question navigation"><label><span>Go to</span><select value={current} onChange={event => setCurrent(Number(event.target.value))}>{(mode === "review" ? detail?.questions : attempt?.questions)?.map((question, index) => <option key={question.id} value={index}>Question {question.number}{answers[question.id] !== undefined ? " - answered" : ""}</option>)}</select></label><div><span>Question</span><strong>{activeQuestion.number}</strong><span>of {visibleQuestionCount}</span></div></nav>

@@ -79,7 +79,7 @@ async function requestRestoredSession(): Promise<AuthSession | null> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return validateAuthSession(
-        await apiRequest<AuthSession>("/auth/refresh", { method: "POST" }),
+        await apiRequest<AuthSession>("/auth/refresh", { method: "POST", signal: AbortSignal.timeout(15_000) }),
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null;

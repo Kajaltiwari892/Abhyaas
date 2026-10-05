@@ -316,11 +316,11 @@ export const getPapers = (filters: { year?: number; cycle?: string; subject?: st
   return apiRequest<PaperListItem[]>(`/papers${query}`);
 };
 
-export const getPaper = (token: string, paperId: string) =>
-  apiRequest<PaperDetail>(`/papers/${paperId}`, authorized(token));
+export const getPaper = (token: string, paperId: string, signal?: AbortSignal) =>
+  apiRequest<PaperDetail>(`/papers/${paperId}`, authorized(token, { signal }));
 
-export const startPaperAttempt = (token: string, paperId: string) =>
-  apiRequest<PaperAttempt>(`/papers/${paperId}/attempts`, authorized(token, { method: "POST" }));
+export const startPaperAttempt = (token: string, paperId: string, signal?: AbortSignal) =>
+  apiRequest<PaperAttempt>(`/papers/${paperId}/attempts`, authorized(token, { method: "POST", signal }));
 
 export const generatePaperExplanation = (token: string, paperId: string, questionId: string) =>
   apiRequest<PaperAIExplanation>(`/papers/${paperId}/questions/${questionId}/ai-explanation`, authorized(token, { method: "POST" }));
