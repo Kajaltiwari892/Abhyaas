@@ -58,6 +58,12 @@ def digest_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def replacement_refresh_token(previous_token: str, replacement_id: str) -> str:
+    """Reproduce one rotation's result for a bounded retry, without storing raw tokens."""
+    message = f"abhyaas-refresh-v1:{replacement_id}:{previous_token}".encode()
+    return hmac.new(get_settings().jwt_secret.encode(), message, hashlib.sha256).hexdigest()
+
+
 def digest_identifier(value: str) -> str:
     settings = get_settings()
     return hmac.new(settings.jwt_secret.encode(), value.encode(), hashlib.sha256).hexdigest()

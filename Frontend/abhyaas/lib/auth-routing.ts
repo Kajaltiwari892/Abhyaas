@@ -1,4 +1,4 @@
-type AuthStatus = "loading" | "authenticated" | "anonymous";
+import type { AuthStatus } from "./session-controller";
 
 const publicPaths = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
 
@@ -21,9 +21,14 @@ export function shouldWaitForSession(pathname: string, status: AuthStatus): bool
   return pathname === "/login" && status === "loading";
 }
 
+export function shouldShowSessionRecovery(pathname: string, status: AuthStatus): boolean {
+  return status === "unavailable"
+    && (!publicPaths.has(pathname) || pathname === "/login" || pathname === "/auth/callback");
+}
+
 // The callback owns its redirect; the provider must not race it back to Login.
 export function googleCallbackRedirect(status: AuthStatus, error: string | null): string | null {
   if (error) return `/login?google_error=${encodeURIComponent(error)}`;
-  if (status === "loading") return null;
+  if (status === "loading" || status === "unavailable") return null;
   return status === "authenticated" ? "/progress" : "/login?google_error=session_unavailable";
 }

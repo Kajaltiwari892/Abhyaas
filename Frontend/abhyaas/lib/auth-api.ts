@@ -1,4 +1,5 @@
 import type { AcademyTarget } from "./academy-preference";
+import { createSessionController } from "./session-controller";
 
 export const API_ROOT = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
 
@@ -30,18 +31,19 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function rawApiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_ROOT}${path}`, {
       ...init,
       cache: "no-store",
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...init.headers },
+      headers: new Headers({ "Content-Type": "application/json", ...Object.fromEntries(new Headers(init.headers)) }),
     });
-  } catch {
+  } catch (error) {
+    if (init.signal?.aborted) throw error;
     throw new ApiError(
-      "The Abhyaas server is unavailable. Start the FastAPI backend and try again.",
+      "Couldn't connect to Abhyaas. Check your connection and try again.",
       0,
     );
   }
@@ -59,58 +61,94 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return payload;
 }
 
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  const token = headers.get("Authorization")?.replace(/^Bearer /i, "");
+  if (!token || path.startsWith("/auth/") || !sessionController.ownsToken(token)) {
+    return rawApiRequest<T>(path, init);
+  }
+  const generation = sessionController.getGeneration();
+  const withCurrentToken = () => {
+    init.signal?.throwIfAborted();
+    const session = sessionController.getSnapshot().session;
+    if (!session || generation !== sessionController.getGeneration()) {
+      throw new ApiError("Your session has changed. Please try again.", 401);
+    }
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+    return { ...init, headers };
+  };
+  const session = sessionController.getSnapshot().session;
+  if (session && Date.parse(session.expires_at) <= Date.now() + 5_000) {
+    await restoreAuthSession();
+  }
+  try {
+    return await rawApiRequest<T>(path, withCurrentToken());
+  } catch (error) {
+    // Only an explicit auth rejection is safe to replay, never an ambiguous
+    // network/5xx failure (a write might already have reached the server).
+    if (!(error instanceof ApiError) || error.status !== 401
+      || generation !== sessionController.getGeneration()) throw error;
+    init.signal?.throwIfAborted();
+    await restoreAuthSession();
+    return rawApiRequest<T>(path, withCurrentToken());
+  }
+}
+
 export function registerAccount(input: { name: string; email: string; password: string }) {
-  return apiRequest<AuthSession>("/auth/register", {
+  return withAuthCookieLock(() => rawApiRequest<AuthSession>("/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
-  }).then(validateAuthSession);
+  }).then(validateAuthSession));
 }
 
 export function loginAccount(input: { email: string; password: string }) {
-  return apiRequest<AuthSession>("/auth/login", {
+  return withAuthCookieLock(() => rawApiRequest<AuthSession>("/auth/login", {
     method: "POST",
     body: JSON.stringify(input),
-  }).then(validateAuthSession);
+  }).then(validateAuthSession));
 }
 
-let refreshPromise: Promise<AuthSession | null> | null = null;
+export const sessionController = createSessionController(
+  () => withAuthCookieLock(requestRestoredSession),
+);
 
 async function requestRestoredSession(): Promise<AuthSession | null> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return validateAuthSession(
-        await apiRequest<AuthSession>("/auth/refresh", { method: "POST", signal: AbortSignal.timeout(15_000) }),
+        await rawApiRequest<AuthSession>("/auth/refresh", { method: "POST", signal: AbortSignal.timeout(15_000) }),
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null;
-      const transientFailure = error instanceof ApiError
-        && (error.status === 0 || error.status >= 500);
+      const transientFailure = (error instanceof ApiError
+        && (error.status === 0 || error.status >= 500))
+        || (error instanceof Error && error.name === "TimeoutError");
       if (!transientFailure || attempt === 1) throw error;
-      await new Promise((resolve) => window.setTimeout(resolve, 700));
+      await new Promise((resolve) => setTimeout(resolve, 700));
     }
   }
   return null;
 }
 
-async function restoreWithCrossTabLock(): Promise<AuthSession | null> {
+async function withAuthCookieLock<T>(operation: () => Promise<T>): Promise<T> {
   if (typeof navigator !== "undefined" && navigator.locks) {
-    return await navigator.locks.request("abhyaas-session-refresh", requestRestoredSession);
+    return await navigator.locks.request("abhyaas-session-refresh", operation);
   }
-  return requestRestoredSession();
+  return operation();
 }
 
 export function restoreAuthSession(): Promise<AuthSession | null> {
-  if (!refreshPromise) {
-    refreshPromise = restoreWithCrossTabLock()
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-  return refreshPromise;
+  return sessionController.refresh();
 }
 
 export function logoutAccount() {
-  return apiRequest<MessageResponse>("/auth/logout", { method: "POST" });
+  return withAuthCookieLock(async () => {
+    const response = await rawApiRequest<MessageResponse>("/auth/logout", {
+      method: "POST", signal: AbortSignal.timeout(15_000),
+    });
+    sessionController.endSession();
+    return response;
+  });
 }
 
 export function saveAcademyPreference(accessToken: string, target: AcademyTarget | null) {
@@ -147,7 +185,8 @@ export function resetPassword(token: string, password: string) {
 }
 
 function validateAuthSession(session: AuthSession): AuthSession {
-  if (!session?.access_token || !session.user?.id || !session.user?.email) {
+  if (!session?.access_token || !session.user?.id || !session.user?.email
+    || !Number.isFinite(Date.parse(session.expires_at))) {
     throw new ApiError("The authentication server returned an invalid session.", 502);
   }
   return session;

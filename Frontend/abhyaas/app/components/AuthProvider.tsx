@@ -1,18 +1,20 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { authRedirect, shouldWaitForSession } from "@/lib/auth-routing";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { toast } from "sonner";
+import { authRedirect, shouldShowSessionRecovery, shouldWaitForSession } from "@/lib/auth-routing";
+import { initialSessionSnapshot, nextRefreshDelay, type AuthStatus } from "@/lib/session-controller";
 import type { AcademyTarget } from "@/lib/academy-preference";
 import {
   logoutAccount,
   restoreAuthSession,
   saveAcademyPreference,
+  sessionController,
   type AuthSession,
   type AuthUser,
 } from "@/lib/auth-api";
-
-type AuthStatus = "loading" | "authenticated" | "anonymous";
+import styles from "./SessionRecovery.module.css";
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -25,59 +27,39 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const serverSnapshot = () => initialSessionSnapshot;
+const retryInBackground = () => { void restoreAuthSession().catch(() => {}); };
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const preferenceVersion = useRef(0);
-  const authVersion = useRef(0);
+  const snapshot = useSyncExternalStore(sessionController.subscribe, sessionController.getSnapshot, serverSnapshot);
+  const { status, session, retryCount } = snapshot;
   const savingPreference = useRef(false);
+  const signingOut = useRef(false);
   const redirectTo = authRedirect(pathname, status);
 
-  const refreshSession = useCallback(async () => {
-    const startedPreferenceVersion = preferenceVersion.current;
-    const startedAuthVersion = authVersion.current;
-    try {
-      const restored = await restoreAuthSession();
-      if (startedAuthVersion !== authVersion.current) return null;
-      setSession((current) => {
-        // A refresh started before a completed save must not restore the old target.
-        if (restored && current?.user.id === restored.user.id
-          && startedPreferenceVersion !== preferenceVersion.current) {
-          return { ...restored, user: { ...restored.user, target_academy: current.user.target_academy } };
-        }
-        return restored;
-      });
-      setStatus(restored ? "authenticated" : "anonymous");
-      return restored;
-    } catch {
-      if (startedAuthVersion !== authVersion.current) return null;
-      setSession(null);
-      setStatus("anonymous");
-      return null;
-    }
+  const refreshSession = restoreAuthSession;
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) retryInBackground(); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
-    queueMicrotask(() => void refreshSession());
-  }, [refreshSession]);
-
-  useEffect(() => {
-    if (!session) return;
-    const refreshIn = Math.max(1_000, new Date(session.expires_at).getTime() - Date.now() - 60_000);
-    const timer = window.setTimeout(() => void refreshSession(), refreshIn);
+    const refreshIn = nextRefreshDelay(snapshot);
+    if (refreshIn === null) return;
+    const timer = window.setTimeout(retryInBackground, refreshIn);
     return () => window.clearTimeout(timer);
-  }, [refreshSession, session]);
+  }, [snapshot]);
 
   useEffect(() => {
-    if (!session) return;
-
     const refreshExpiredAccessToken = () => {
+      const current = sessionController.getSnapshot();
       const refreshThreshold = Date.now() + 60_000;
-      if (new Date(session.expires_at).getTime() <= refreshThreshold) {
-        void refreshSession();
+      if (current.retryCount || (current.session && Date.parse(current.session.expires_at) <= refreshThreshold)) {
+        retryInBackground();
       }
     };
     const handleVisibilityChange = () => {
@@ -86,32 +68,34 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     window.addEventListener("focus", refreshExpiredAccessToken);
     window.addEventListener("pageshow", refreshExpiredAccessToken);
+    window.addEventListener("online", refreshExpiredAccessToken);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       window.removeEventListener("focus", refreshExpiredAccessToken);
       window.removeEventListener("pageshow", refreshExpiredAccessToken);
+      window.removeEventListener("online", refreshExpiredAccessToken);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [refreshSession, session]);
+  }, []);
 
   useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
   }, [redirectTo, router]);
 
   const completeAuthentication = useCallback((nextSession: AuthSession) => {
-    authVersion.current += 1;
-    setSession(nextSession);
-    setStatus("authenticated");
+    sessionController.completeAuthentication(nextSession);
   }, []);
 
   const signOut = useCallback(async () => {
-    authVersion.current += 1;
+    if (signingOut.current) return;
+    signingOut.current = true;
     try {
       await logoutAccount();
-    } finally {
-      setSession(null);
-      setStatus("anonymous");
       router.replace("/login");
+    } catch {
+      toast.error("Couldn't confirm sign out", { description: "Check your connection and try again." });
+    } finally {
+      signingOut.current = false;
     }
   }, [router]);
 
@@ -119,13 +103,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     if (!session) throw new Error("Sign in to save your preparation target.");
     if (savingPreference.current) throw new Error("Your target is already being saved.");
     savingPreference.current = true;
-    const startedAuthVersion = authVersion.current;
+    const startedAuthVersion = sessionController.getGeneration();
     try {
       const updated = await saveAcademyPreference(session.access_token, target);
-      if (startedAuthVersion !== authVersion.current) return;
-      preferenceVersion.current += 1;
-      setSession((current) => current?.user.id === updated.id
-        ? { ...current, user: updated } : current);
+      sessionController.updateUser(updated, startedAuthVersion);
     } finally {
       savingPreference.current = false;
     }
@@ -144,11 +125,28 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     [completeAuthentication, refreshSession, saveTargetAcademy, session, signOut, status],
   );
 
+  if (shouldShowSessionRecovery(pathname, status)) {
+    return <main className={styles.recovery}>
+      <div role="status" aria-live="polite">
+        <h1>Let’s reconnect</h1>
+        <p>We couldn’t check your session. This doesn’t mean you’ve been signed out.</p>
+        <p>We’ll retry automatically when your connection is available.</p>
+      </div>
+      <button type="button" onClick={retryInBackground}>Retry connection</button>
+    </main>;
+  }
+
   if (redirectTo || shouldWaitForSession(pathname, status)) {
     return <main className="auth-route-loading" role="status" aria-live="polite"><span aria-hidden="true" /><p>{redirectTo ? "Opening Abhyaas…" : "Checking your session…"}</p></main>;
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>
+    {children}
+    {session && retryCount > 0 && <aside className={styles.notice} role="status" aria-live="polite">
+      <p>Connection interrupted. Reconnecting without signing you out.</p>
+      <button type="button" onClick={retryInBackground}>Retry</button>
+    </aside>}
+  </AuthContext.Provider>;
 }
 
 export function useAuth() {

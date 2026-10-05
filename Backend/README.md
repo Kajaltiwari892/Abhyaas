@@ -81,6 +81,30 @@ The background local backend does not auto-reload code: restart it after changes
 - Console email provider for local development and authenticated SMTP delivery in production.
 - PostgreSQL migration and automated authentication tests.
 
+The seven-day limit is measured from sign-in, not extended on every visit. The
+frontend renews the short-lived access token before expiry and on return to the
+tab. Network failures keep the current UI/session and retry with bounded backoff;
+only a confirmed invalid refresh cookie sends the student back to sign-in.
+Protected API requests can renew and retry once after a 401. Network/5xx failures
+of writes are never automatically replayed, to avoid duplicate saves/submissions.
+
+Migration `20261005_20` adds refresh-session lineage without resetting existing
+expiry dates. Renewals take a PostgreSQL user-row lock. For 60 seconds, a retry of
+the immediate predecessor returns the same successor, allowing recovery after a
+lost response. Only token hashes are stored. Older-token reuse revokes that login
+family; logout and password reset cannot be reversed by the retry window.
+
+Apply `alembic upgrade head` and restart the backend when installing this change.
+Already invalidated cookies may require one new sign-in. Deploy both backend and
+frontend for the live site to receive the complete fix; changing localhost alone
+does not update production. Keep `JWT_SECRET` stable across deployments.
+
+Run `python -m pytest tests/test_auth.py tests/test_refresh_recovery.py` for auth
+regressions. `python -m scripts.check_refresh_concurrency` checks eight overlapping
+renewals and concurrent logout in a disposable local PostgreSQL schema, removes
+only that schema afterward, and refuses remote databases. Frontend recovery and
+request-replay checks run with `node --test tests/*.test.mjs` in `Frontend/abhyaas`.
+
 ## Manual setup reference
 
 ### 1. Install PostgreSQL on Windows

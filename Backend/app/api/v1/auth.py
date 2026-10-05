@@ -20,20 +20,22 @@ from app.auth.service import (
     create_email_token,
     create_refresh_session,
     find_user_by_email,
+    locked_refresh_session,
     normalize_email,
+    renew_refresh_session,
+    revoke_refresh_family,
     set_new_password,
 )
 from app.core.config import get_settings
 from app.core.security import (
     create_access_token,
     digest_identifier,
-    digest_token,
     hash_password,
     verify_password,
 )
 from app.db.session import get_db
 from app.email.provider import EmailMessage, get_email_provider
-from app.models.auth import LoginAttempt, RefreshSession, User
+from app.models.auth import LoginAttempt, User
 from app.schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
@@ -68,7 +70,8 @@ TrustedOrigin = Annotated[None, Depends(require_trusted_origin)]
 
 def set_refresh_cookie(response: Response, token: str, expires_at: datetime) -> None:
     max_age = max(0, int((expires_at - datetime.now(UTC)).total_seconds()))
-    response.delete_cookie(key=REFRESH_COOKIE, path=f"{settings.api_v1_prefix}/auth")
+    if not settings.cookie_secure:
+        response.delete_cookie(key=REFRESH_COOKIE, path=f"{settings.api_v1_prefix}/auth")
     response.set_cookie(
         key=REFRESH_COOKIE,
         value=token,
@@ -84,8 +87,11 @@ def set_refresh_cookie(response: Response, token: str, expires_at: datetime) -> 
 
 
 def clear_refresh_cookie(response: Response) -> None:
-    response.delete_cookie(key=REFRESH_COOKIE, path="/")
-    response.delete_cookie(key=REFRESH_COOKIE, path=f"{settings.api_v1_prefix}/auth")
+    response.delete_cookie(
+        key=REFRESH_COOKIE, path="/", secure=settings.cookie_secure, httponly=True, samesite="lax"
+    )
+    if not settings.cookie_secure:
+        response.delete_cookie(key=REFRESH_COOKIE, path=f"{settings.api_v1_prefix}/auth")
 
 
 def set_oauth_cookie(response: Response, key: str, value: str) -> None:
@@ -230,25 +236,17 @@ async def refresh(
     if refresh_token is None:
         raise unauthorized
 
-    result = await db.execute(
-        select(RefreshSession, User)
-        .join(User, User.id == RefreshSession.user_id)
-        .where(RefreshSession.token_digest == digest_token(refresh_token))
-    )
-    row = result.one_or_none()
+    row = await locked_refresh_session(db, refresh_token)
     if row is None:
         raise unauthorized
     session, user = row
-    expires_at = session.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    if session.revoked_at is not None or expires_at <= datetime.now(UTC) or not user.is_active:
+    if not user.is_active:
         raise unauthorized
-
-    session.revoked_at = datetime.now(UTC)
-    next_refresh_token, next_refresh_expiry = await create_refresh_session(
-        db, user, expires_at=expires_at
-    )
+    renewed = await renew_refresh_session(db, session, refresh_token)
+    if renewed is None:
+        await db.commit()  # Persist family revocation when an old token is replayed.
+        raise unauthorized
+    next_refresh_token, next_refresh_expiry = renewed
     access_token, access_expires_at = create_access_token(user.id)
     await db.commit()
     set_refresh_cookie(response, next_refresh_token, next_refresh_expiry)
@@ -267,15 +265,9 @@ async def logout(
     refresh_token: RefreshCookie = None,
 ) -> MessageResponse:
     if refresh_token is not None:
-        result = await db.execute(
-            select(RefreshSession).where(
-                RefreshSession.token_digest == digest_token(refresh_token),
-                RefreshSession.revoked_at.is_(None),
-            )
-        )
-        session = result.scalar_one_or_none()
-        if session is not None:
-            session.revoked_at = datetime.now(UTC)
+        row = await locked_refresh_session(db, refresh_token)
+        if row is not None:
+            await revoke_refresh_family(db, row[0].family_id)
             await db.commit()
     clear_refresh_cookie(response)
     return MessageResponse(message="Signed out successfully")
