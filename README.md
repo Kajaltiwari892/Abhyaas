@@ -54,7 +54,7 @@ PostgreSQL saves questions, accounts, attempts, and chats. Study memory personal
 You need **Python 3.12+**, **Node.js 24**, and **PostgreSQL**. AI features also need a Gemini API key.
 
 1. Follow the [backend setup](Backend/README.md#manual-setup-reference) to configure the database and start the API.
-2. Follow the [frontend setup](Frontend/abhyaas/README.md) to start the website.
+2. In `Frontend/abhyaas`, copy `.env.example` to `.env.local` if you don't already have one. Run `npm ci`, then `npm run dev`.
 3. Open [localhost:3000](http://localhost:3000).
 
 Configuration templates: [backend](Backend/.env.example) · [frontend](Frontend/abhyaas/.env.example). Never commit real credentials.

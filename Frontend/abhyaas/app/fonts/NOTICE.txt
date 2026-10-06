@@ -1,0 +1,12 @@
+Geist and Geist Mono by Vercel and its font contributors.
+Upstream: https://github.com/vercel/geist-font
+License: SIL Open Font License 1.1 (see OFL.txt).
+
+These unmodified Latin variable-font files (normal, weights 100-900) are the
+same Google Fonts subsets served by Abhyaas in production on 7 October 2026.
+They are bundled here so local development and builds do not depend on a
+connection to Google Fonts. Existing font sizes and CSS variables are unchanged.
+
+Production asset names:
+Geist: caa3a2e1cccd8315-s.p.0zr6hhvz-h9nw.woff2
+Geist Mono: 797e433ab948586e-s.p.1v5bejj26fx9h.woff2
