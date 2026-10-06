@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authRedirect, googleCallbackRedirect, shouldWaitForSession } from "../lib/auth-routing.ts";
+import { authRedirect, googleCallbackRedirect, shouldShowSessionRecovery, shouldWaitForSession } from "../lib/auth-routing.ts";
 
 test("Home renders without waiting for auth and never redirects signed-in students", () => {
   for (const status of ["loading", "authenticated", "anonymous"]) {
@@ -46,7 +46,29 @@ test("Login hides the form only until session restoration resolves", () => {
   assert.equal(shouldWaitForSession("/login", "loading"), true);
   assert.equal(shouldWaitForSession("/login", "anonymous"), false);
   assert.equal(shouldWaitForSession("/login", "authenticated"), false);
-  for (const path of ["/", "/about", "/privacy", "/auth/callback", "/progress"]) {
+  for (const path of ["/", "/about", "/privacy", "/auth/callback"]) {
     assert.equal(shouldWaitForSession(path, "loading"), false);
   }
+});
+
+test("protected pages never flash before the initial session check finishes", () => {
+  for (const path of ["/progress", "/practice", "/papers", "/subjects", "/subjects/english", "/doubt-solver", "/profile"]) {
+    assert.equal(shouldWaitForSession(path, "loading"), true);
+    assert.equal(authRedirect(path, "loading"), null);
+    assert.equal(authRedirect(path, "anonymous"), `/login?next=${encodeURIComponent(path)}`);
+    assert.equal(shouldWaitForSession(path, "authenticated"), false);
+    assert.equal(authRedirect(path, "authenticated"), null);
+  }
+});
+
+test("a failed initial check offers recovery instead of rendering Progress or redirecting to Login", () => {
+  assert.equal(shouldShowSessionRecovery("/progress", "unavailable"), true);
+  assert.equal(authRedirect("/progress", "unavailable"), null);
+  assert.equal(shouldShowSessionRecovery("/", "unavailable"), false);
+});
+
+test("background renewal keeps an authenticated practice page mounted", () => {
+  assert.equal(shouldWaitForSession("/practice", "authenticated"), false);
+  assert.equal(shouldShowSessionRecovery("/practice", "authenticated"), false);
+  assert.equal(authRedirect("/practice", "authenticated"), null);
 });

@@ -15,10 +15,11 @@ export function authRedirect(pathname: string, status: AuthStatus): string | nul
   return null;
 }
 
-// Do not briefly render the login form while a returning session is restored.
-// This must not block the public landing page or other public routes.
+// Neither a protected page nor the login form can render until we know whether
+// the browser's refresh cookie restores a session. Keep public pages instant;
+// the OAuth callback owns its own loading UI and redirect.
 export function shouldWaitForSession(pathname: string, status: AuthStatus): boolean {
-  return pathname === "/login" && status === "loading";
+  return status === "loading" && (pathname === "/login" || !publicPaths.has(pathname));
 }
 
 export function shouldShowSessionRecovery(pathname: string, status: AuthStatus): boolean {
