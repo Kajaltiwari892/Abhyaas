@@ -16,10 +16,12 @@ Abhyaas connects them: **learn a topic, practise it, clear your doubts, and revi
 
 ## What you can do
 
-- **Focused practice:** choose your subject, topic, set size, and academy target.
+- **Subjects and practice together:** choose a topic, practise bank questions or create 10–50 similar AI questions, and save your results.
 - **Previous papers:** solve source-linked questions and resume saved attempts.
-- **AI doubt solver:** ask questions, paste question images, and reopen past chats.
+- **AI doubt solver:** type or paste questions, and reopen past chats.
 - **Results and progress:** review complete sets, skipped questions, and practice history.
+- **Mistake notebook:** revisit wrong and skipped answers with short, saved revision sets.
+- **Your daily roadmap:** follow a dated subject plan, meet your friendly 3D companion, and take a 50-question quiz after studying. Finish the first pass two months before your exam, then revise.
 - **A personal study space:** manage study memory and meet an animated 3D companion.
 
 ## How it works
@@ -45,7 +47,7 @@ PostgreSQL saves questions, accounts, attempts, and chats. Study memory personal
 | Website | Next.js, React, TypeScript, Tailwind CSS, CSS Modules |
 | Backend | FastAPI, Pydantic, SQLAlchemy |
 | Data and search | PostgreSQL, Alembic, Qdrant |
-| AI | Google Gemini for explanations, embeddings, and image questions |
+| AI | Google Gemini for explanations and embeddings |
 | Interaction | Three.js companion, Motion animations, Recharts progress charts |
 | Testing and hosting | Pytest, Node tests, ESLint, TypeScript, Vercel |
 
@@ -63,7 +65,7 @@ Deploying? Follow the [deployment guide](VERCEL_DEPLOYMENT.md) and update both f
 
 ## What's next
 
-Planned: daily practice missions, a personal mistake notebook, and scheduled revision.
+Next: spaced revision and a larger checked question bank.
 
 ---
 

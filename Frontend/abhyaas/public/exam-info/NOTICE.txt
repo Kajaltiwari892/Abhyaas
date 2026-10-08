@@ -15,6 +15,6 @@ Government Open Data License–India (GODL-India).
 https://data.gov.in/sites/default/files/Gazette_Notification_OGDL.pdf
 Files downloaded 3 October 2026. Originals retained; displayed with CSS cropping
 and colour treatment. No endorsement by the photographers or government implied.
-Visible attribution is available in the page's Photo credits disclosure.
+Attribution and original source links are retained in this notice.
 
 IMA uses the pre-existing project asset assets/img6.jpg; no new copy was added.

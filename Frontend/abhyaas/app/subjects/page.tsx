@@ -1,41 +1,52 @@
 "use client";
 
-import { ArrowRight, BookOpen, Globe2, Languages, Sigma } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getSubjects, type Subject } from "@/lib/study-api";
-import { getPreparationTarget, partitionPreparationSubjects } from "@/lib/academy-preference";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../components/AuthProvider";
-import PreparationTarget from "../components/PreparationTarget";
 import PracticeWorkspace from "../practice/PracticeWorkspace";
-import p from "../practice/practice.module.css";
-import s from "./subjects.module.css";
+import s from "../practice/practice.module.css";
+import { getStudyTask, type StudyTask } from "@/lib/study-plan-api";
+
+function SubjectsWorkspace() {
+  const params = useSearchParams();
+  const { user } = useAuth();
+  const subject = params.get("subject") || "english";
+  const topic = params.get("topic") || "";
+  const view = params.get("view") === "history" ? "history" : "practice";
+  const daily = params.get("daily");
+
+  if (daily) return <DailyQuizWorkspace key={`${user?.id}:${daily}`} taskId={daily} />;
+
+  return <PracticeWorkspace
+    key={`${user?.id ?? "guest"}:${subject}:${topic}:${view}`}
+    initialSubject={subject}
+    initialTopic={topic}
+    initialView={view}
+  />;
+}
+
+function DailyQuizWorkspace({taskId}:{taskId:string}) {
+  const {accessToken} = useAuth();
+  const [task,setTask] = useState<StudyTask>();
+  const [error,setError] = useState("");
+  const [version,setVersion] = useState(0);
+  useEffect(()=>{
+    if(!accessToken)return;
+    let alive=true;
+    getStudyTask(accessToken,taskId).then(data=>{if(alive){setTask(data);setError("");}}).catch(e=>{if(alive)setError(e instanceof Error?e.message:"Couldn't open today's quiz.");});
+    return()=>{alive=false;};
+  },[accessToken,taskId,version]);
+  if (!task) return <main className={s.workspace}><Link className={s.secondary} href="/progress#today">← Back to today’s plan</Link>{error?<div className={s.error} role="alert">{error}<button className={s.secondary} onClick={()=>setVersion(v=>v+1)}>Retry</button></div>:<div className={s.panel} role="status">Opening your topic quiz…</div>}</main>;
+  if (task.completed || task.deferred || !task.study_done) return <main className={s.workspace}><section className={s.panel}><h1>{task.completed ? "Today’s target is complete" : task.deferred ? "This target is moved to tomorrow" : "Study this topic first"}</h1><p className={s.muted}>{task.subject_name} · {task.topic_name}</p><Link className={s.primary} href="/progress#today">Back to today’s plan →</Link></section></main>;
+  return <PracticeWorkspace initialSubject={task.subject_slug} initialTopic={task.topic_slug} dailyTask={task} />;
+}
 
 export default function SubjectsPage() {
-  const { user } = useAuth();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [selected, setSelected] = useState<string>();
-  const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
-  const target = getPreparationTarget(user?.target_academy);
-  const groups = partitionPreparationSubjects(subjects, user?.target_academy);
-  function subjectCard(item: Subject, optional = false) {
-    const Icon = item.slug === "english" ? Languages : item.slug === "general-knowledge" ? Globe2 : Sigma;
-    return <button key={item.id} onClick={() => setSelected(item.slug)}><span className={s.icon}><Icon size={22} aria-hidden="true" /></span><span><strong>{item.name}</strong><small>{optional ? `Extra practice · not required for ${target?.code}` : target ? `Your ${target.code} written subjects` : item.slug === "elementary-mathematics" ? "CDS · not required for OTA" : "CDS / OTA"}</small><small>{item.topics.filter((t) => t.question_count > 0).length} available topics · {item.question_count} questions</small></span><ArrowRight size={16} aria-hidden="true" /></button>;
-  }
-  useEffect(() => {
-    let alive = true;
-    getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Could not load subjects."); });
-    return () => { alive = false; };
-  }, [retry]);
-  return <AppShell active="Subjects">{selected ? <PracticeWorkspace key={(user?.id ?? "guest") + selected} initialSubject={selected} onBack={() => setSelected(undefined)} /> : <main className={p.workspace}>
-    <header className={p.header}><div><span className={p.eyebrow}><BookOpen size={14} /> Choose your focus</span><h1>Subjects</h1></div><Link href="/practice?view=history" className={p.secondary}>Practice history <ArrowRight size={14} /></Link></header>
-    <PreparationTarget />
-    <p className={p.muted}>Choose a subject, then practice here. Topic filters, larger sets, saved progress and results — in one place.</p>
-    {error && <div className={p.error} role="alert">{error} <button onClick={() => setRetry((v) => v+1)}>Retry</button></div>}
-    <div className={`${s.subjects} ${groups.optional.length ? s.focusedSubjects : ""}`} role="group" aria-label="Choose a subject">{groups.required.map((item) => subjectCard(item))}</div>
-    {groups.optional.length > 0 && <details className={s.extraSubjects}><summary>Explore other subjects <span>Optional for your target</span></summary><p>These stay available for extra practice. Opening them won’t change your saved target.</p><div className={s.subjects}>{groups.optional.map((item) => subjectCard(item, true))}</div></details>}
-    {!subjects.length && !error && <p className={p.muted} role="status">Loading subjects…</p>}
-  </main>}</AppShell>;
+  return <AppShell active="Subjects">
+    <Suspense fallback={<main className={s.workspace}><p className={s.muted} role="status">Opening your subjects…</p></main>}>
+      <SubjectsWorkspace />
+    </Suspense>
+  </AppShell>;
 }

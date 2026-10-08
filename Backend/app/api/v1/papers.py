@@ -28,6 +28,7 @@ from app.schemas.papers import (
     SavedPaperAnswerResponse,
     SavePaperAnswerRequest,
 )
+from app.services.paper_answers import grade_paper, refresh_attempt_grade, stored_answer
 
 router = APIRouter(tags=["previous papers"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
@@ -41,7 +42,9 @@ def parse_ai_json(text: str) -> dict:
     return json.loads(cleaned)
 
 
-def list_item(paper: PreviousPaper, available: int, verified: int) -> PaperListItemResponse:
+def list_item(
+    paper: PreviousPaper, available: int, verified: int, reviewed: int = 0
+) -> PaperListItemResponse:
     return PaperListItemResponse(
         id=paper.id,
         year=paper.year,
@@ -55,6 +58,8 @@ def list_item(paper: PreviousPaper, available: int, verified: int) -> PaperListI
         official_question_count=paper.official_question_count,
         available_question_count=available,
         verified_question_count=verified,
+        scorable_question_count=verified + reviewed,
+        reviewed_question_count=reviewed,
         academy_tracks=paper.academy_tracks,
         source_url=paper.source_url,
         solutions_available=available > 0,
@@ -72,7 +77,9 @@ async def list_papers(
         select(
             PreviousPaper,
             func.count(PaperQuestion.id).label("available"),
-            func.count(PaperQuestion.id).filter(PaperQuestion.is_verified.is_(True)).label("verified"),
+            func.count(PaperQuestion.id)
+            .filter(PaperQuestion.is_verified.is_(True))
+            .label("verified"),
         )
         .join(Subject, Subject.id == PreviousPaper.subject_id)
         .outerjoin(PaperQuestion, PaperQuestion.paper_id == PreviousPaper.id)
@@ -89,7 +96,23 @@ async def list_papers(
         query = query.where(Subject.slug == subject)
     # List metadata without loading every question/transcription into memory.
     papers = (await db.execute(query)).all()
-    return [list_item(paper, available, verified) for paper, available, verified in papers]
+    reviewed_counts: dict[str, int] = {}
+    reviewed = (
+        await db.scalars(
+            select(PaperQuestion).where(
+                PaperQuestion.paper_id.in_([p.id for p, _, _ in papers]),
+                PaperQuestion.is_verified.is_(False),
+                PaperQuestion.answer_review.is_not(None),
+            )
+        )
+    ).all()
+    for question in reviewed:
+        if stored_answer(question):
+            reviewed_counts[question.paper_id] = reviewed_counts.get(question.paper_id, 0) + 1
+    return [
+        list_item(paper, available, verified, reviewed_counts.get(paper.id, 0))
+        for paper, available, verified in papers
+    ]
 
 
 async def get_paper_or_404(db: AsyncSession, paper_id: str) -> PreviousPaper:
@@ -108,8 +131,11 @@ async def get_paper_or_404(db: AsyncSession, paper_id: str) -> PreviousPaper:
     return paper
 
 
-def public_question(question: PaperQuestion) -> PaperQuestionResponse:
+def public_question(
+    question: PaperQuestion, paper: PreviousPaper | None = None
+) -> PaperQuestionResponse:
     text = question.transcription or {}
+    key = stored_answer(question, paper)
     return PaperQuestionResponse(
         id=question.id,
         number=question.number,
@@ -119,6 +145,8 @@ def public_question(question: PaperQuestion) -> PaperQuestionResponse:
         options=text.get("options", question.options),
         asset_url=question.asset_url,
         is_verified=question.is_verified,
+        is_scorable=key is not None,
+        answer_basis=key.basis if key else "pending",
         transcription=question.transcription,
     )
 
@@ -133,16 +161,20 @@ async def paper_detail(
         paper,
         len(questions),
         sum(question.is_verified for question in questions),
+        sum(
+            not question.is_verified and stored_answer(question, paper) is not None
+            for question in questions
+        ),
     )
     return PaperDetailResponse(
         **item.model_dump(),
         negative_mark_fraction=paper.negative_mark_fraction,
         questions=[
             PaperSolutionResponse(
-                **public_question(question).model_dump(),
-                correct_index=question.correct_index if question.is_verified else None,
-                explanation=question.explanation if question.is_verified else None,
-                source_label=question.source_label,
+                **public_question(question, paper).model_dump(),
+                correct_index=key.index if (key := stored_answer(question, paper)) else None,
+                explanation=key.explanation if key else None,
+                source_label=key.source_label if key else question.source_label,
             )
             for question in questions
         ],
@@ -169,8 +201,7 @@ async def generate_paper_explanation(
 
     frontend_origin = settings.cors_origins[0].rstrip("/")
     question_image_url = (
-        f"{question.asset_url.rsplit('/', 1)[0]}/questions/"
-        f"question-{question.number:03d}.webp"
+        f"{question.asset_url.rsplit('/', 1)[0]}/questions/question-{question.number:03d}.webp"
     )
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         image_response = await client.get(f"{frontend_origin}{question_image_url}")
@@ -258,19 +289,21 @@ async def start_paper_attempt(
     if not questions:
         raise HTTPException(status_code=409, detail="Questions are not available yet")
     attempt = (
-        await db.execute(
-            select(PaperAttempt)
-            .options(
-                selectinload(PaperAttempt.answers).selectinload(PaperAnswer.question)
+        (
+            await db.execute(
+                select(PaperAttempt)
+                .options(selectinload(PaperAttempt.answers).selectinload(PaperAnswer.question))
+                .where(
+                    PaperAttempt.paper_id == paper.id,
+                    PaperAttempt.user_id == user.id,
+                    PaperAttempt.status == "in_progress",
+                )
+                .order_by(PaperAttempt.started_at.desc())
             )
-            .where(
-                PaperAttempt.paper_id == paper.id,
-                PaperAttempt.user_id == user.id,
-                PaperAttempt.status == "in_progress",
-            )
-            .order_by(PaperAttempt.started_at.desc())
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     resumed = attempt is not None
     if attempt is None:
         attempt = PaperAttempt(
@@ -301,7 +334,7 @@ async def start_paper_attempt(
             )
             for answer in stored_answers
         ],
-        questions=[public_question(question) for question in questions],
+        questions=[public_question(question, paper) for question in questions],
     )
 
 
@@ -331,38 +364,30 @@ async def paper_attempt_summary(
     paper: PreviousPaper,
 ) -> PaperAttemptSummaryResponse:
     questions = list(paper.questions)
-    scored_questions = [question for question in questions if question.is_verified]
-    scored_ids = {question.id for question in scored_questions}
     answers = {
         answer.question_id: answer
         for answer in (
             await db.execute(select(PaperAnswer).where(PaperAnswer.attempt_id == attempt.id))
         ).scalars()
     }
-    scored_answers = [
-        answer for question_id, answer in answers.items() if question_id in scored_ids
-    ]
-    correct = sum(1 for answer in scored_answers if answer.is_correct)
-    incorrect = len(scored_answers) - correct
-    marks_per_question = paper.total_marks / paper.official_question_count
-    score = (
-        round((correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2)
-        if scored_questions
-        else None
-    )
-    max_score = round(len(scored_questions) * marks_per_question, 2) if scored_questions else None
+    grade = grade_paper(paper, questions, list(answers.values()))
+    keys = grade["keys"]
     return PaperAttemptSummaryResponse(
         attempt_id=attempt.id,
         total_questions=len(questions),
         answered_questions=len(answers),
-        scored_questions=len(scored_questions),
-        unscored_questions=len(questions) - len(scored_questions),
-        correct_answers=correct,
-        incorrect_answers=incorrect,
+        scored_questions=len(keys),
+        official_answers=grade["official"],
+        reviewed_answers=grade["reviewed"],
+        provisional_answers=grade["provisional"],
+        score_basis="official" if keys and grade["official"] == len(keys) else "practice",
+        unscored_questions=len(questions) - len(keys),
+        correct_answers=grade["correct"],
+        incorrect_answers=grade["incorrect"],
         unanswered_questions=len(questions) - len(answers),
-        score=score,
-        max_score=max_score,
-        accuracy=round(correct * 100 / len(scored_questions), 1) if scored_questions else None,
+        score=grade["score"],
+        max_score=grade["max_score"],
+        accuracy=round(grade["correct"] * 100 / len(keys), 1) if keys else None,
         duration_seconds=attempt.duration_seconds or 0,
         review=[
             PaperAnswerReviewResponse(
@@ -370,12 +395,15 @@ async def paper_attempt_summary(
                 selected_index=answers[question.id].selected_index
                 if question.id in answers
                 else None,
-                correct_index=question.correct_index if question.is_verified else None,
-                is_correct=(answers[question.id].is_correct if question.id in answers else False)
-                if question.is_verified
+                correct_index=keys[question.id].index if question.id in keys else None,
+                is_correct=grade["choices"].get(question.id) == keys[question.id].index
+                if question.id in keys
                 else None,
-                explanation=question.explanation if question.is_verified else None,
-                source_label=question.source_label,
+                explanation=keys[question.id].explanation if question.id in keys else None,
+                source_label=keys[question.id].source_label
+                if question.id in keys
+                else question.source_label,
+                answer_basis=keys[question.id].basis if question.id in keys else "pending",
             )
             for question in questions
         ],
@@ -404,7 +432,9 @@ async def save_paper_answer(
     ).scalar_one_or_none()
     if question is None:
         raise HTTPException(status_code=404, detail="Question is not part of this paper")
-    if payload.selected_index >= len(question.options):
+    if payload.selected_index >= len(
+        (question.transcription or {}).get("options", question.options)
+    ):
         raise HTTPException(status_code=422, detail="Selected option is invalid")
     answer = (
         await db.execute(
@@ -418,14 +448,12 @@ async def save_paper_answer(
         answer = PaperAnswer(attempt_id=attempt.id, question_id=question.id)
         db.add(answer)
     answer.selected_index = payload.selected_index
-    # Unverified scan questions remain answerable, but are deliberately excluded from marks.
-    answer.is_correct = question.is_verified and payload.selected_index == question.correct_index
+    key = stored_answer(question)
+    answer.is_correct = bool(key and payload.selected_index == key.index)
     answer.marked_for_review = payload.marked_for_review
     answer.answered_at = datetime.now(UTC)
     if payload.elapsed_seconds is not None:
-        attempt.duration_seconds = max(
-            attempt.duration_seconds or 0, payload.elapsed_seconds
-        )
+        attempt.duration_seconds = max(attempt.duration_seconds or 0, payload.elapsed_seconds)
     await db.commit()
     return SavedPaperAnswerResponse(
         question_id=question.id,
@@ -454,8 +482,6 @@ async def complete_paper_attempt(
     if attempt.status != "in_progress":
         raise HTTPException(status_code=409, detail="This paper attempt cannot be completed")
     questions = list(paper.questions)
-    scored_questions = [question for question in questions if question.is_verified]
-    scored_ids = {question.id for question in scored_questions}
     questions_by_id = {question.id: question for question in questions}
     answers = {
         answer.question_id: answer
@@ -469,7 +495,9 @@ async def complete_paper_attempt(
             raise HTTPException(
                 status_code=422, detail="Submitted question is not part of this paper"
             )
-        if submitted.selected_index >= len(question.options):
+        if submitted.selected_index >= len(
+            (question.transcription or {}).get("options", question.options)
+        ):
             raise HTTPException(status_code=422, detail="Selected option is invalid")
         answer = answers.get(question.id)
         if answer is None:
@@ -477,26 +505,12 @@ async def complete_paper_attempt(
             answers[question.id] = answer
             db.add(answer)
         answer.selected_index = submitted.selected_index
-        answer.is_correct = (
-            question.is_verified and submitted.selected_index == question.correct_index
-        )
+        key = stored_answer(question, paper)
+        answer.is_correct = bool(key and submitted.selected_index == key.index)
         answer.marked_for_review = submitted.marked_for_review
         answer.answered_at = datetime.now(UTC)
-    scored_answers = [
-        answer for question_id, answer in answers.items() if question_id in scored_ids
-    ]
-    correct = sum(1 for answer in scored_answers if answer.is_correct)
-    incorrect = len(scored_answers) - correct
-    marks_per_question = paper.total_marks / paper.official_question_count
-    score = (
-        round((correct - incorrect * paper.negative_mark_fraction) * marks_per_question, 2)
-        if scored_questions
-        else None
-    )
+    refresh_attempt_grade(attempt, paper, questions, list(answers.values()))
     attempt.status = "completed"
-    attempt.correct_answers = correct
-    attempt.scored_questions = len(scored_questions)
-    attempt.score = score
     attempt.duration_seconds = payload.duration_seconds
     attempt.completed_at = datetime.now(UTC)
     await db.commit()

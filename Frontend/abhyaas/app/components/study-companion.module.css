@@ -11,7 +11,13 @@
 .compact .character {pointer-events:auto;}
 .compact .bubble {left:auto;right:calc(100% - 3px);bottom:16px;border-radius:12px 12px 3px 12px;}
 .compact .fallback {width:38px;height:38px;left:20px;top:18px;}
+.inline { width:82px!important; height:82px!important; margin:0!important; flex-shrink:0; }
+.inline .bubble { display:none; }
+.inline .fallback { width:45px; height:45px; top:17px; left:18px; }
+.stage {flex-shrink:0;margin:0!important;}
+.stage .bubble {display:none;}
+.illustrationFallback {object-fit:contain;padding:5px;}
 :global(html[data-theme="light"]) .bubble {background:#f5f7ed;color:#52633c;border-color:#b5c49666;}
-@media(max-width:600px){.companion:not(.compact){width:138px;height:116px;}.bubble{max-width:125px;font-size:9px;left:calc(100% - 35px);}.compact .bubble{left:auto;}}
-@media(max-height:650px){.companion:not(.compact){width:110px;height:84px;margin-bottom:22px;}}
+@media(max-width:600px){.companion:not(.compact):not(.stage){width:138px;height:116px;}.bubble{max-width:125px;font-size:9px;left:calc(100% - 35px);}.compact .bubble{left:auto;}}
+@media(max-height:650px){.companion:not(.compact):not(.stage){width:110px;height:84px;margin-bottom:22px;}}
 @media(prefers-reduced-motion:reduce){.bubble{transition:none;}}

@@ -45,6 +45,6 @@ test("exploring and saving are separate, and target advice stays outside active 
   const practice = readFileSync(new URL("../app/practice/PracticeWorkspace.tsx", import.meta.url), "utf8");
   assert.match(practice, /!attempt && !summary && tab === "practice" && <PreparationTarget/);
   assert.match(practice, /subjectGroups.optional.map/);
-  const page = readFileSync(new URL("../app/practice/page.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../app/subjects/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(page, /target_academy/); // A preference change must not remount a set.
 });

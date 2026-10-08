@@ -46,7 +46,7 @@
 .glowFrame::before, .glowFrame::after { content: ""; position: absolute; pointer-events: none; z-index: -1; border-radius: inherit; transition: opacity .3s, filter .3s; }
 .glowFrame::before { inset: -4px; background: linear-gradient(115deg, #c9ad6570, transparent 26%, #8fa84e88 46%, #c4d99a99 61%, transparent 77%, #d2bf7a80); background-size: 300% 200%; filter: blur(12px); opacity: .75; animation: auroraFlow 12s ease-in-out infinite; }
 .glowFrame::after { inset: -15px -7px; background: radial-gradient(ellipse at 18% 30%, #cbbb5c44, transparent 45%), radial-gradient(ellipse at 82% 70%, #92b16444, transparent 45%); filter: blur(24px); opacity: .65; animation: auroraDrift 9s ease-in-out infinite alternate; }
-.glowFrame:focus-within::before, .glowFrame.dragging::before { opacity: .95; filter: blur(13px); }
+.glowFrame:focus-within::before { opacity: .95; filter: blur(13px); }
 .composer { position: relative; padding: 17px 17px 12px; border-radius: 22px; background: var(--field); box-shadow: inset 0 1px 1px #ffffff06; }
 .composer textarea { width: 100%; min-height: 55px; max-height: 115px; margin: 0; padding: 1px 4px 10px; resize: vertical; display: block; border: 0; outline: none; background: transparent; color: var(--text); font-family: inherit; font-size: 15px; line-height: 1.6; }
 .composer textarea::placeholder { color: #a0aaa2; }
@@ -54,24 +54,14 @@
 .composerTools { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .composerTools > div { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .composerTools button { display: grid; place-items: center; flex: none; cursor: pointer; }
-.attachButton { width: 35px; height: 35px; border: 1px solid #a5b8a32b; color: #9ba69c; background: #ffffff03; border-radius: 50%; transition: background .2s, color .2s, transform .2s; }
-.attachButton:hover:not(:disabled) { color: #d1dbbf; background: #a1b56614; transform: rotate(90deg); }
 .subjectSelect { position: relative; display: flex; align-items: center; border: 1px solid #a5b8a32b; border-radius: 999px; }
 .subjectSelect select { max-width: 170px; height: 33px; padding: 0 30px 0 12px; appearance: none; background: transparent; border: 0; border-radius: inherit; color: #9ba69c; font-family: inherit; font-size: 11px; cursor: pointer; }
 .subjectSelect select option { background: var(--field); color: var(--text); }
 .subjectSelect svg { position: absolute; right: 10px; pointer-events: none; color: #7e8c7c; }
-.pasteHint { display: flex; align-items: center; gap: 5px; color: #657166; font-size: 10px; }
-.fileInput { display: none; }
 .composerTools .sendButton { width: 38px; height: 38px; padding: 0; color: #1a2512; background: linear-gradient(145deg, #dbc994, #b5c97c 48%, #82994e); border: 1px solid #c6d39782; border-radius: 50%; box-shadow: inset 0 1px #ffffff55, 0 3px 17px #9cb96533; transition: transform .2s, box-shadow .2s, opacity .2s; }
 .sendButton:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 22px #a7bb6a55; }
 .composerTools button:disabled { opacity: .45; cursor: not-allowed; }
-.attachment { max-width: 340px; margin-bottom: 13px; display: flex; align-items: center; gap: 10px; padding: 7px; border: 1px solid var(--line); background: #ffffff03; border-radius: 11px; }
-.attachment img { object-fit: cover; border-radius: 6px; }
-.attachment > div { min-width: 0; display: grid; gap: 4px; }
-.attachment strong { font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.attachment small { color: var(--subtle); font-size: 9px; }
-.attachment button { margin-left: auto; align-self: flex-start; background: none; border: 0; color: var(--subtle); cursor: pointer; }
-.inputHint { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 12px; margin: 13px 5px 0; color: #606c62; font-size: 9px; }
+.inputHint { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 5px 12px; margin: 13px 5px 0; color: #899485; font-size: 9px; }
 .fieldError { color: #dfa087 !important; margin: 12px 4px 0; font-size: 11px; line-height: 1.5; }
 .suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 24px; flex: none; }
 .suggestions button { min-width: 0; display: grid; grid-template-columns: 18px minmax(0,1fr) 12px; align-items: center; gap: 9px; min-height: 76px; padding: 14px; text-align: left; color: #a3afa1; background: linear-gradient(130deg, #9db07808, transparent); border: 1px solid #a8b88b1c; border-radius: 13px; cursor: pointer; transition: transform .22s, background .22s, border-color .22s; }
@@ -115,7 +105,6 @@
 .errorAnswer { border-left: 2px solid #d39170; padding-left: 12px; }
 .errorAnswer p { color: #ccac98; font-size: 12px; line-height: 1.6; }
 .errorAnswer button { display: flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 0; color: #b6c483; font-size: 11px; cursor: pointer; }
-.sentImage { display: flex; align-items: center; gap: 6px; color: #9cae86; font-size: 10px; margin-bottom: 7px; overflow-wrap: anywhere; }
 .thinking { display: flex; align-items: center; gap: 5px; color: #8d9d84; font-size: 11px; margin: 5px 0 10px; }
 .thinking > span { margin-right: 7px; width: 30px; height: 30px; display: grid; place-items: center; color: #b0c878; }
 .thinking i { height: 3px; width: 3px; border-radius: 50%; background: #9eb468; animation: dot 1.3s ease-in-out infinite; }
@@ -156,7 +145,7 @@
   .encouragement { font-size: 11px; }
   .composer { padding: 14px 12px 10px; }
   .composer textarea { font-size: 14px; }
-  .pasteHint, .shiftHint { display: none; }
+  .shiftHint { display: none; }
   .inputHint { font-size: 8px; }
   .suggestions { gap: 7px; margin-top: 21px; }
   .suggestions button { grid-template-columns: 1fr; align-content: start; padding: 11px 9px; gap: 7px; min-height: 96px; }

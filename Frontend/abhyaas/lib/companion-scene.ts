@@ -5,7 +5,8 @@ import { autonomousAction, companionPose, type CompanionAction } from "./compani
 export type CompanionMood = "hello" | "thinking" | "happy" | "idle" | "retry";
 
 /** A procedural model: no downloaded images, trackers, model files or render service. */
-export function createCompanionScene(host: HTMLElement, initialMood: CompanionMood) {
+export function createCompanionScene(host: HTMLElement, initialMood: CompanionMood, variant: "robot" | "commando" = "robot") {
+  const commando = variant === "commando";
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setClearColor(0x000000, 0);
@@ -20,7 +21,7 @@ export function createCompanionScene(host: HTMLElement, initialMood: CompanionMo
   key.position.set(-3, 4, 6); scene.add(key);
   const rim = new THREE.DirectionalLight(0xb8d27c, 2);
   rim.position.set(3, 1, -2); scene.add(rim);
-  const shell = new THREE.MeshStandardMaterial({ color: 0xe6e6d5, roughness: .28, metalness: .18 });
+  const shell = new THREE.MeshStandardMaterial({ color: commando ? 0x3d4b36 : 0xe6e6d5, roughness: .28, metalness: .18 });
   const olive = new THREE.MeshStandardMaterial({ color: 0x87974d, roughness: .32, metalness: .3 });
   const gold = new THREE.MeshStandardMaterial({ color: 0xc6b46d, roughness: .3, metalness: .5 });
   const glass = new THREE.MeshStandardMaterial({ color: 0x101d17, roughness: .18, metalness: .32 });
@@ -49,11 +50,28 @@ export function createCompanionScene(host: HTMLElement, initialMood: CompanionMo
   }
   mesh(new THREE.CylinderGeometry(.024,.03,.23,8),gold,head,0,.76,0);
   const antenna = mesh(new THREE.SphereGeometry(.095,16,12),glow,head,0,.91,0);
+  if (commando) {
+    // Original low-poly tactical companion, not a textured copy of a photograph.
+    mesh(new THREE.SphereGeometry(.94,24,16,0,Math.PI*2,0,Math.PI/2),olive,head,0,.33,-.04).scale.set(1,.57,.64);
+    rounded(.48,.24,.20,.055,glass,head,0,.54,.52);
+    rounded(.24,.18,.13,.035,gold,head,0,.54,.64);
+    for (const side of [-1,1]) {
+      rounded(.25,.48,.48,.10,glass,head,side*.99,-.02,0);
+      rounded(.20,.33,.32,.06,olive,head,side*1.04,-.02,.04);
+    }
+    rounded(.65,.22,.07,.06,olive,head,0,-.42,.50);
+    antenna.visible = false;
+  }
   const body = mesh(new THREE.SphereGeometry(.62,24,20),shell,robot,0,-.55,0);
   body.scale.set(1,1.04,.74);
   rounded(.90,.45,.65,.19,olive,robot,0,-.33,.04);
   mesh(new THREE.CylinderGeometry(.16,.16,.04,24),gold,robot,0,-.38,.41).rotation.x=Math.PI/2;
   mesh(new THREE.SphereGeometry(.11,16,12),glow,robot,0,-.38,.44).scale.z=.25;
+  if (commando) {
+    rounded(.92,.57,.24,.09,olive,robot,0,-.62,.33);
+    for (const x of [-.27,.27]) rounded(.23,.32,.12,.04,gold,robot,x,-.63,.49);
+    rounded(.49,.07,.04,.015,shell,robot,0,-.86,.47);
+  }
   const arms: THREE.Group[]=[];
   for (const side of [-1,1]) {
     const arm = new THREE.Group(); arm.position.set(side*.74,-.32,0); robot.add(arm); arms.push(arm);

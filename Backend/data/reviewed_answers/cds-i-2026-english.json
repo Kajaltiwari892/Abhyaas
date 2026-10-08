@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "year": 2026,
+  "cycle": "I",
+  "subject_slug": "english",
+  "series": "A",
+  "source_checksum": "448a3c97245b5c9a2b84bf6ccf118aea295726460d96ca3512c8dd90ab294d51",
+  "description": "Independently checked practice answers. Not an official UPSC answer key. Source options visually checked on the original Series A pages.",
+  "questions": [
+    {
+      "number": 1,
+      "content_fingerprint": "3422eb07a50cd5c6d0302c6075b498a965e0e85dd5a5ef8fa11f6b1e4917432f",
+      "correct_index": 2,
+      "explanation": "A pontoon can support a temporary floating bridge; a platoon is a military unit made up of soldiers."
+    },
+    {
+      "number": 2,
+      "content_fingerprint": "1aec95031afaac59a9564303b8d7a2ddebebac38aded5f50eb902480fa40cf1a",
+      "correct_index": 1,
+      "explanation": "To invoke a law is to call on it for use. To revoke permission or an agreement is to cancel it officially."
+    },
+    {
+      "number": 3,
+      "content_fingerprint": "993518efb1d3d99b768b2dd74353da683259cb254e3d53ceffdefcf74f42415e",
+      "correct_index": 3,
+      "explanation": "Imminent describes something about to happen. Eminent describes a distinguished or highly respected person."
+    },
+    {
+      "number": 4,
+      "content_fingerprint": "355092cf6717613f21d8bc98e0d98e2249245d4cfa2b4110d6cba111c782bfa1",
+      "correct_index": 0,
+      "explanation": "Liable means legally responsible. Libel refers to a false published statement that damages someone's reputation."
+    },
+    {
+      "number": 5,
+      "content_fingerprint": "a41c75f04f38789e8528c7c200c1322935589f372c1429977086407b5a8b1469",
+      "correct_index": 1,
+      "explanation": "Incredible means difficult to believe; incredulous describes someone who is unwilling or unable to believe something."
+    },
+    {
+      "number": 6,
+      "content_fingerprint": "7ebee309489ac92a1732ac49c6899087172b4dd5112854b7bbd5ea861fad57f0",
+      "correct_index": 0,
+      "explanation": "Climatic relates to climate. Climactic relates to the climax, or most intense part, of a story or event."
+    },
+    {
+      "number": 7,
+      "content_fingerprint": "0df5ec132df1c9ca7292bd62d9aec07d39940f885b5ad47540010f998f14879a",
+      "correct_index": 3,
+      "explanation": "A cursor is an on-screen pointer. A cursory action is quick and superficial rather than careful or thorough."
+    },
+    {
+      "number": 8,
+      "content_fingerprint": "6d5ba873980f665d1666859591f4579e2d5ddaff4cfe8a2d4bd0291bb9192d5e",
+      "correct_index": 1,
+      "explanation": "Affect commonly means to influence, whereas effect commonly names the result or consequence of an action."
+    },
+    {
+      "number": 9,
+      "content_fingerprint": "1fa349b4450bcfea174a8dab8746f62f890c5716cf75c456ba513a82827d2424",
+      "correct_index": 0,
+      "explanation": "Hard can mean difficult or demanding. Hardly means scarcely or almost not; it does not mean very hard."
+    },
+    {
+      "number": 10,
+      "content_fingerprint": "bfc8910b38e90ad7dcc00597839dd06529c660330f2577133c513f9c5d6ce73b",
+      "correct_index": 2,
+      "explanation": "Conscious means aware or able to perceive. Conscience is the inner moral sense of right and wrong."
+    },
+    {
+      "number": 21,
+      "content_fingerprint": "ffe5b7c512dacd18a843919dc14e9a3eae2c345de2bcdf0e94cd3bea48f4e13c",
+      "correct_index": 2,
+      "explanation": "An iconoclast challenges established beliefs or traditions; the term is not simply a critic of a celebrity."
+    },
+    {
+      "number": 22,
+      "content_fingerprint": "8d43a5020505bcaadd9a47fe06687efcba86964d3540f672ceefc79980b4bf2b",
+      "correct_index": 1,
+      "explanation": "An axiom is a statement or principle accepted as true without requiring proof within the system being used."
+    },
+    {
+      "number": 23,
+      "content_fingerprint": "b98b15c13afe4fdd598b3a97012f354bf5f5782e1c5a5aeaca0b5485730f94f8",
+      "correct_index": 0,
+      "explanation": "A holistic approach considers the complete system and the relationships between its parts, not isolated parts alone."
+    },
+    {
+      "number": 24,
+      "content_fingerprint": "fa9c1a470540bde713f387d63d116dd1eda377d468ab272261090f5ae119cbbb",
+      "correct_index": 1,
+      "explanation": "Obsequious describes someone excessively eager to please, serve or obey, especially a person with authority."
+    },
+    {
+      "number": 25,
+      "content_fingerprint": "50680d2fe792714960a367b228bbe244488c91e94f7d2d709760d010814683ca",
+      "correct_index": 0,
+      "explanation": "Pachyderm traditionally describes a thick-skinned mammal, such as an elephant, rhinoceros or hippopotamus."
+    },
+    {
+      "number": 26,
+      "content_fingerprint": "0afc27e8740024d135fe07e3f305a99b0653857462aeeca82349ce09b501b2a8",
+      "correct_index": 2,
+      "explanation": "Ubiquitous means present or found everywhere, so wide presence is the best of these options."
+    },
+    {
+      "number": 27,
+      "content_fingerprint": "353d7b96ed4e2b4db3cfed43f16f04c7c1a0f4410fa534425e68a49226c3683e",
+      "correct_index": 2,
+      "explanation": "To desiccate is to remove moisture or dry something thoroughly; chopping and slicing do not imply drying."
+    },
+    {
+      "number": 28,
+      "content_fingerprint": "a042459ec75a1a52ed6d46afd57157bcdf222cce62e56a18cf341b18c4097b1a",
+      "correct_index": 2,
+      "explanation": "Deleterious means harmful or damaging. It is not the process of deleting something."
+    },
+    {
+      "number": 29,
+      "content_fingerprint": "2b375adc887753593ff62864b5a724f492fa0abf456bd6ccb639409c6acb7bef",
+      "correct_index": 3,
+      "explanation": "To equivocate is to avoid a clear commitment by using ambiguous or evasive language, often concealing the truth."
+    },
+    {
+      "number": 30,
+      "content_fingerprint": "e8867e5dcef5e1d14cf86396e197da9ce7af39a97a4c35f298b9e295f412e5b7",
+      "correct_index": 0,
+      "explanation": "Indolent means lazy or disinclined to exert effort. It does not mean generous, indulgent or poor."
+    },
+    {
+      "number": 41,
+      "content_fingerprint": "46395be87fa35d1541684c50610073bb12fc2443b1020a3e212acbc769599698",
+      "correct_index": 2,
+      "explanation": "Mealy-mouthed describes a person who avoids speaking plainly or directly, especially through fear or excessive caution."
+    },
+    {
+      "number": 42,
+      "content_fingerprint": "bd40b50fc8eebb6b389795ecbe73e7a71c60244902bcc421bcaa7c27eb1a4688",
+      "correct_index": 3,
+      "explanation": "To live in each other's pockets means to spend an excessive amount of time together, not to share money."
+    },
+    {
+      "number": 43,
+      "content_fingerprint": "98713376a7d1026954bef482c8d17eb5ff2c2031662e2dbd171440f113c22f52",
+      "correct_index": 0,
+      "explanation": "To play possum means to pretend to be dead or inactive, drawing on the defensive behaviour of an opossum."
+    },
+    {
+      "number": 44,
+      "content_fingerprint": "ab13a654a72ee50a00210d0b338b2213eda7c462c6737b30e58dadf666e5c156",
+      "correct_index": 2,
+      "explanation": "To work like a dog means to work very hard; the expression emphasises effort rather than loyalty or reward."
+    },
+    {
+      "number": 45,
+      "content_fingerprint": "8d0ab4f1035c6ac87402e714195c34498079180d9fc2fa2115e6c976abc5abd5",
+      "correct_index": 1,
+      "explanation": "Opening a can of worms means creating or uncovering a complicated situation with many troublesome problems."
+    },
+    {
+      "number": 46,
+      "content_fingerprint": "6f23c97ec9301042afdbe803a56e15ddaafacc5232f9a23859e59b7df1011b21",
+      "correct_index": 2,
+      "explanation": "More than meets the eye means that something has hidden significance or complexity beyond what is immediately apparent."
+    },
+    {
+      "number": 47,
+      "content_fingerprint": "65a0803d00f8137f3fc237c62d6a10e24be511fc6e09f10e258d8bf481e352cc",
+      "correct_index": 3,
+      "explanation": "To hold the fort means to take responsibility and keep things running while the usual person is absent."
+    },
+    {
+      "number": 48,
+      "content_fingerprint": "8077fd3c7e7e150a25b023c4ec4f1721f2b93a9dc1bbd3abf76db099b313597e",
+      "correct_index": 2,
+      "explanation": "It's all Greek to me means that the speaker cannot understand something at all, not merely that it is foreign."
+    },
+    {
+      "number": 49,
+      "content_fingerprint": "4e1390deae7b0f682aee52fcb8e7bce7d658b44f9b5c21f2e5baed10ecb0182f",
+      "correct_index": 3,
+      "explanation": "To close ranks means to unite and support each other against criticism or opposition in defence of a shared interest."
+    },
+    {
+      "number": 50,
+      "content_fingerprint": "760cee3263fb5a411c3e12bcc23b80d12e9d147d5d0991e4e8d4cff15115fad1",
+      "correct_index": 0,
+      "explanation": "To be under a cloud means to be viewed with suspicion or disapproval; it does not simply mean being unhappy."
+    }
+  ]
+}

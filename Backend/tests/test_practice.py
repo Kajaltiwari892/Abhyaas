@@ -92,7 +92,8 @@ def test_catalog_and_practice_flow_are_persisted(client: TestClient) -> None:
 
     # A preparation preference must not reset scores, saved answers or elapsed time.
     unfinished = client.post(
-        "/api/v1/practice/attempts", headers=headers,
+        "/api/v1/practice/attempts",
+        headers=headers,
         json={"subject_slug": "english", "question_count": 3, "allow_repeats": True},
     )
     assert unfinished.status_code == 201
@@ -105,9 +106,10 @@ def test_catalog_and_practice_flow_are_persisted(client: TestClient) -> None:
         )
         assert saved_target.status_code == 200
         assert client.get("/api/v1/progress/dashboard", headers=headers).json() == data
-        assert client.get(
-            f"/api/v1/practice/attempts/{unfinished_id}", headers=headers
-        ).json() == before.json()
+        assert (
+            client.get(f"/api/v1/practice/attempts/{unfinished_id}", headers=headers).json()
+            == before.json()
+        )
 
 
 def test_attempts_require_authentication(client: TestClient) -> None:
@@ -296,7 +298,7 @@ def test_history_has_unfinished_sets_and_is_paginated(client: TestClient) -> Non
     assert first["items"][0]["id"] != second["items"][0]["id"]
 
 
-def test_fresh_sets_exhaust_pool_without_repeating_and_revision_is_explicit(client: TestClient):
+def test_only_answered_questions_leave_the_fresh_pool(client: TestClient):
     headers = auth_headers(client)
     endpoint = "/api/v1/practice/attempts"
     availability = "/api/v1/practice/availability?subject_slug=english&topic_slug=grammar"
@@ -307,9 +309,48 @@ def test_fresh_sets_exhaust_pool_without_repeating_and_revision_is_explicit(clie
     second = client.post(
         endpoint, headers=headers, json={"subject_slug": "english", "question_count": 2}
     ).json()
-    assert len(first["questions"]) == 2 and len(second["questions"]) == 1
-    assert first["duration_seconds"] == 120 and second["duration_seconds"] == 60
-    assert not {q["id"] for q in first["questions"]} & {q["id"] for q in second["questions"]}
+    assert len(first["questions"]) == len(second["questions"]) == 2
+    assert first["duration_seconds"] == second["duration_seconds"] == 120
+    # Opening or abandoning sets is not evidence that a student answered their questions.
+    assert client.get(availability, headers=headers).json() == {"total": 3, "seen": 0, "unseen": 3}
+    answered_id = first["questions"][0]["id"]
+    assert (
+        client.put(
+            f"{endpoint}/{first['id']}/answers/{answered_id}",
+            headers=headers,
+            json={"selected_index": 0},
+        ).status_code
+        == 200
+    )
+    assert client.get(availability, headers=headers).json() == {"total": 3, "seen": 1, "unseen": 2}
+    remaining = client.post(
+        endpoint, headers=headers, json={"subject_slug": "english", "question_count": 50}
+    ).json()
+    assert len(remaining["questions"]) == 2
+    assert answered_id not in {q["id"] for q in remaining["questions"]}
+    # An omitted answer on submit remains available for future practice.
+    assert (
+        client.post(
+            f"{endpoint}/{first['id']}/complete",
+            headers=headers,
+            json={"duration_seconds": 30},
+        ).status_code
+        == 200
+    )
+    assert client.get(availability, headers=headers).json()["unseen"] == 2
+    assert (
+        client.post(
+            f"{endpoint}/{remaining['id']}/complete",
+            headers=headers,
+            json={
+                "duration_seconds": 30,
+                "answers": [
+                    {"question_id": q["id"], "selected_index": 1} for q in remaining["questions"]
+                ],
+            },
+        ).status_code
+        == 200
+    )
     assert client.get(availability, headers=headers).json() == {"total": 3, "seen": 3, "unseen": 0}
     assert (
         client.post(endpoint, headers=headers, json={"subject_slug": "english"}).status_code == 409
@@ -319,6 +360,18 @@ def test_fresh_sets_exhaust_pool_without_repeating_and_revision_is_explicit(clie
     ).json()
     assert len(revision["questions"]) == 3 and revision["repeated_questions"] == 3
     assert client.get(availability).status_code == 401
+    # Another student's answers do not change this student's availability.
+    other = client.post(
+        "/api/v1/auth/register",
+        json={"name": "Other", "email": "other@example.com", "password": "secure123"},
+    ).json()
+    assert (
+        client.get(
+            availability, headers={"Authorization": f"Bearer {other['access_token']}"}
+        ).json()["unseen"]
+        == 3
+    )
+    assert client.get(f"{endpoint}/{second['id']}", headers=headers).json()["answers"] == []
 
 
 def test_saved_set_keeps_all_questions_elapsed_time_and_position(client: TestClient):

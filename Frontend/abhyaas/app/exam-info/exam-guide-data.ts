@@ -2,7 +2,7 @@
 // label and qualifications together when updating to another exam cycle.
 export const examSource = {
   label: "CDS II 2026 notification",
-  reviewed: "3 October 2026",
+  reviewed: "7 October 2026",
   notification: "https://www.upsc.gov.in/sites/default/files/Notif-CDS-II-2026-Engl-200526.pdf",
   examinations: "https://www.upsc.gov.in/examinations/active-exams",
 };
@@ -12,31 +12,54 @@ export const academies = [
     id: "ima", code: "IMA", name: "Indian Military Academy", service: "Indian Army",
     location: "Dehradun", commission: "Permanent Commission", papers: 3,
     education: "Recognised university degree or equivalent.",
-    eligibilityNote: "Check the birth-date window and unmarried-male eligibility conditions in the notification.",
+    entry: "Men only", age: "19–24 years",
+    birthDates: "Born between 1 July 2003 and 1 July 2008, including both dates.",
+    menEligibility: "Unmarried men can apply.",
+    womenEligibility: "This CDS entry is for men. Women can apply to OTA.",
     photoAlt: "Chetwode Building at the Indian Military Academy, Dehradun",
   },
   {
     id: "ina", code: "INA", name: "Indian Naval Academy", service: "Indian Navy",
     location: "Ezhimala", commission: "Permanent Commission", papers: 3,
-    education: "Engineering degree, or B.Sc. with Physics as a core/elective subject and Physics & Mathematics at 10+2, under the linked 2026 notice.",
-    eligibilityNote: "Check the exact qualification, birth-date window and unmarried-male eligibility conditions for your cycle.",
+    education: "Engineering degree, or B.Sc. with Physics as a core or elective subject and Physics & Mathematics in Class 12.",
+    entry: "Men only", age: "19–24 years",
+    birthDates: "Born between 1 July 2003 and 1 July 2008, including both dates.",
+    menEligibility: "Unmarried men can apply.",
+    womenEligibility: "This CDS entry is for men. Women can apply to OTA.",
     photoAlt: "Passing-out parade at the Indian Naval Academy, Ezhimala, in 2017",
   },
   {
     id: "afa", code: "AFA", name: "Air Force Academy", service: "Indian Air Force",
     location: "Dundigal", commission: "Permanent Commission", papers: 3,
-    education: "Recognised degree with Physics & Mathematics at 10+2, or a Bachelor of Engineering.",
-    eligibilityNote: "Check age, marital-status and flying-branch conditions, including any pilot-licence relaxation.",
+    education: "Recognised university degree with Physics & Mathematics in Class 12, or a Bachelor of Engineering.",
+    entry: "Men only", age: "20–24 years on 1 July 2027",
+    birthDates: "Born between 1 July 2003 and 1 July 2007, including both dates.",
+    menEligibility: "Men under 25 must be unmarried. A valid DGCA Commercial Pilot Licence raises the upper age limit to 26; see the notice for the conditions.",
+    womenEligibility: "This CDS entry is for men. Women can apply to OTA.",
     photoAlt: "Graduation parade at the Air Force Academy, Dundigal, in 2014",
   },
   {
     id: "ota", code: "OTA", name: "Officers Training Academy", service: "Indian Army",
     location: "Chennai", commission: "Short Service Commission", papers: 2,
     education: "Recognised university degree or equivalent.",
-    eligibilityNote: "Men’s and women’s entries share the written papers; their age and marital-status conditions must be checked separately.",
+    entry: "Men & women", age: "19–25 years",
+    birthDates: "Born between 1 July 2002 and 1 July 2008, including both dates.",
+    menEligibility: "Unmarried men can apply.",
+    womenEligibility: "Unmarried women can apply. Widows and divorced women can also apply if they have no children and have not remarried; divorced applicants need divorce documents.",
     photoAlt: "Officers Training Academy campus in Chennai, photographed in 2023",
   },
 ] as const;
+
+export function getAcademyGuide(id: AcademyId) {
+  const academy = academies.find((item) => item.id === id)!;
+  const papers = writtenPapers.filter((paper) => id !== "ota" || paper.ota);
+  return {
+    academy,
+    papers,
+    writtenMarks: papers.reduce((total, paper) => total + paper.marks, 0),
+    writtenHours: papers.reduce((total, paper) => total + paper.hours, 0),
+  };
+}
 
 export type AcademyId = typeof academies[number]["id"];
 

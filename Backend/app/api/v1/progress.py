@@ -19,6 +19,7 @@ from app.schemas.practice import (
     SubjectStrengthResponse,
     TrendPointResponse,
 )
+from app.services.paper_answers import grade_paper
 
 router = APIRouter(tags=["progress"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
@@ -58,7 +59,11 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
         (
             await db.execute(
                 select(PaperAttempt)
-                .options(selectinload(PaperAttempt.paper).selectinload(PreviousPaper.subject))
+                .options(
+                    selectinload(PaperAttempt.paper).selectinload(PreviousPaper.subject),
+                    selectinload(PaperAttempt.paper).selectinload(PreviousPaper.questions),
+                    selectinload(PaperAttempt.answers),
+                )
                 .where(
                     PaperAttempt.user_id == user.id,
                     PaperAttempt.status == "completed",
@@ -67,6 +72,10 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
             )
         ).scalars()
     )
+    paper_grades = {
+        attempt.id: grade_paper(attempt.paper, list(attempt.paper.questions), list(attempt.answers))
+        for attempt in paper_attempts
+    }
     results = [
         CompletedResult(
             id=attempt.id,
@@ -88,9 +97,9 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
             subject_name=attempt.paper.subject.name,
             topic_name="Previous paper",
             completed_at=attempt.completed_at,
-            correct_answers=attempt.correct_answers or 0,
+            correct_answers=paper_grades[attempt.id]["correct"],
             total_questions=attempt.total_questions,
-            scored_questions=attempt.scored_questions,
+            scored_questions=len(paper_grades[attempt.id]["keys"]),
             duration_seconds=attempt.duration_seconds or 0,
         )
         for attempt in paper_attempts
@@ -138,9 +147,7 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
         completed_sets=len(results),
         questions_attempted=total_questions,
         correct_answers=total_correct,
-        overall_accuracy=round(total_correct * 100 / total_scored, 1)
-        if total_scored
-        else None,
+        overall_accuracy=round(total_correct * 100 / total_scored, 1) if total_scored else None,
         practice_seconds=practice_seconds,
         subject_strengths=strengths,
         history=history,

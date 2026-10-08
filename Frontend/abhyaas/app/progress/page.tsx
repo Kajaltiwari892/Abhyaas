@@ -10,6 +10,8 @@ import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
 import { getProgressDashboard, type ProgressDashboard } from "@/lib/study-api";
+import TodayPlan from "./TodayPlan";
+import planStyles from "./today-plan.module.css";
 
 const formatDuration = (seconds: number) => seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
 
@@ -52,9 +54,12 @@ export default function ProgressPage() {
 
   const hasAttempts = Boolean(dashboard?.completed_sets);
 
-  return <AppShell active="Progress"><main className="workspace progress-workspace">
-    <header className="workspace-header"><div><span className="workspace-kicker">{user ? `Signed in as ${user.email}` : "Your preparation, honestly measured"}</span><h1>{firstName ? `Welcome, ${firstName}.` : "Progress"}</h1><p>Your completed practice sets update this dashboard automatically.</p></div><div className="workspace-badge"><CalendarDays size={15} /> {dashboard ? `${dashboard.completed_sets} completed sets` : "Loading activity"}</div></header>
-    <PreparationTarget practiceLinks />
+  return <AppShell active="Progress"><main className={`workspace progress-workspace ${planStyles.page}`}>
+    <header className={planStyles.pageHeader}><div><h1>{firstName ? `Welcome, ${firstName}.` : "Your study space"}</h1><p>Your plan for today. Your progress over time.</p></div><a href="#stats">View progress <ArrowRight size={14} /></a></header>
+    <TodayPlan key={user?.id ?? "guest"} />
+    <section id="stats" className={planStyles.statsHeading}><h2>Your progress</h2><span>{dashboard ? `${dashboard.completed_sets} completed sets` : "Loading activity"}</span></section>
+    <PreparationTarget />
+    <div className="mistake-notebook-shortcut"><BookOpen size={18} /><div><strong>Mistake notebook</strong><span>Turn wrong and skipped answers into quick revision.</span></div><PrimaryButton href="/mistake-notebook" size="sm">Open notebook <ArrowRight size={14} /></PrimaryButton></div>
     <section className="progress-stat-grid" aria-label="All-time progress across all subjects">
       <article><span className="stat-icon"><Target size={19} /></span><div><small>Overall accuracy</small><strong>{dashboard?.overall_accuracy != null ? `${dashboard.overall_accuracy}%` : "—"}</strong><p>{hasAttempts ? `${dashboard?.correct_answers} correct answers` : "Complete a set to begin"}</p></div></article>
       <article><span className="stat-icon"><Clock3 size={19} /></span><div><small>Practice time</small><strong>{dashboard ? formatDuration(dashboard.practice_seconds) : "—"}</strong><p>{hasAttempts ? "Across completed sessions" : "No sessions recorded"}</p></div></article>
@@ -62,13 +67,13 @@ export default function ProgressPage() {
     </section>
     <div className="dashboard-grid">
       <section className="dashboard-card accuracy-card"><header><div><span>Accuracy over time</span><small>Based only on completed sets</small></div><span className="card-tag">{hasAttempts ? "Live data" : "Awaiting data"}</span></header>
-        {!hasAttempts ? <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We never populate this chart with sample performance.</p><PrimaryButton href="/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
+        {!hasAttempts ? <div className="empty-visual"><div className="ghost-chart"><span /><span /><span /><span /><span /><span /><span /></div><BarChart3 size={24} /><strong>Your trend starts with one practice set</strong><p>We never populate this chart with sample performance.</p><PrimaryButton href="/subjects" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton></div>
           : <StudentProgressChart trend={dashboard?.trend ?? []} />}
       </section>
       <section className="dashboard-card strength-card"><header><div><span>Subject strength</span><small>Accuracy by syllabus area</small></div></header><div className="subject-empty-list">{(dashboard?.subject_strengths ?? []).map(item => <div key={item.subject}><span>{item.subject}</span><div><i style={{ width: `${item.accuracy ?? 0}%` }} /></div><small>{item.accuracy == null ? "—" : `${item.accuracy}%`}</small></div>)}</div><p className="card-footnote">A subject receives a strength score only after relevant attempts.</p></section>
       <section className="dashboard-card history-card"><header><div><span>Practice history</span><small>Your recent completed sessions</small></div></header>
         {!hasAttempts ? <div className="history-empty"><CalendarDays size={25} /><strong>No practice history yet</strong><p>Completed sets will be logged here by date.</p></div>
-          : <div className="practice-history-list">{dashboard?.history.map(item => <article key={item.attempt_id}><div><strong>{item.subject}</strong><small>{item.topic ?? "Mixed topics"} · {new Date(item.completed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{item.scored_questions ? `${item.correct_answers}/${item.scored_questions}` : `${item.total_questions} done`}</span><b>{item.accuracy == null ? "Key pending" : `${item.accuracy}%`}</b><time>{formatDuration(item.duration_seconds)}</time></article>)}</div>}
+          : <div className="practice-history-list">{dashboard?.history.map(item => <article key={item.attempt_id}><div><strong>{item.subject}</strong><small>{item.topic ?? "Mixed topics"} · {new Date(item.completed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{item.scored_questions ? `${item.correct_answers}/${item.scored_questions}` : `${item.total_questions} done`}</span><b>{item.accuracy == null ? "Under review" : `${item.accuracy}%`}</b><time>{formatDuration(item.duration_seconds)}</time></article>)}</div>}
       </section>
     </div>
   </main></AppShell>;

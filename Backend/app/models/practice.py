@@ -56,6 +56,9 @@ class Question(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     topic_id: Mapped[str] = mapped_column(ForeignKey("topics.id", ondelete="CASCADE"), index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     prompt: Mapped[str] = mapped_column(Text)
     context: Mapped[str | None] = mapped_column(Text, nullable=True)
     options: Mapped[list[str]] = mapped_column(JSON)
@@ -83,6 +86,7 @@ class PracticeAttempt(Base):
     time_limit_seconds: Mapped[int] = mapped_column(Integer, default=1800, server_default="1800")
     current_position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     negative_mark_fraction: Mapped[float] = mapped_column(Float, default=0, server_default="0")
+    question_mode: Mapped[str] = mapped_column(String(20), default="bank", server_default="bank")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

@@ -21,7 +21,7 @@ export default function PreparationTarget({ practiceLinks = false }: { practiceL
     </div>
     {practiceLinks && target && <div className={styles.next}>
       <span>Start a focused set</span>
-      <div>{target.subjects.map((subject) => <Link key={subject.slug} href={`/practice?subject=${subject.slug}`}>{subject.name}<ArrowRight size={13} aria-hidden="true" /></Link>)}</div>
+      <div>{target.subjects.map((subject) => <Link key={subject.slug} href={`/subjects?subject=${subject.slug}`}>{subject.name}<ArrowRight size={13} aria-hidden="true" /></Link>)}</div>
       <small>Your stats and history below still include every subject, even after changing your target.</small>
     </div>}
   </section>;

@@ -25,6 +25,14 @@ class StartAttemptRequest(BaseModel):
     topic_slug: str | None = None
     question_count: int = Field(default=25, ge=1, le=120)
     allow_repeats: bool = False
+    study_task_id: str | None = Field(default=None, min_length=36, max_length=36)
+
+
+class StartSimilarAttemptRequest(BaseModel):
+    subject_slug: str = Field(min_length=1, max_length=80)
+    topic_slug: str | None = Field(default=None, max_length=80)
+    question_count: int = Field(default=25, ge=1, le=50)
+    focus_detail: str | None = Field(default=None, max_length=800)
 
 
 class PracticeQuestionResponse(BaseModel):
@@ -59,6 +67,7 @@ class AttemptResponse(BaseModel):
     negative_mark_fraction: float = 0
     new_questions: int = 0
     repeated_questions: int = 0
+    question_mode: str = "bank"
     answers: list[SavedAnswerResponse] = Field(default_factory=list)
     questions: list[PracticeQuestionResponse]
 
@@ -104,6 +113,7 @@ class AttemptSummaryResponse(BaseModel):
     duration_seconds: int
     score: float
     negative_mark_fraction: float
+    question_mode: str = "bank"
     review: list[AnswerReviewResponse]
 
 
@@ -119,6 +129,7 @@ class PracticeHistoryItem(BaseModel):
     correct_answers: int | None
     duration_seconds: int
     time_limit_seconds: int
+    question_mode: str = "bank"
 
 
 class PracticeHistoryPage(BaseModel):

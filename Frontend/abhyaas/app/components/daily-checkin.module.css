@@ -1,0 +1,16 @@
+.card{position:fixed;right:26px;bottom:24px;z-index:55;width:min(495px,calc(100vw - 32px));display:flex;align-items:center;gap:6px;padding:22px 25px 22px 8px;background:linear-gradient(120deg,#293426,#16201b 70%);border:1px solid #b7c68655;border-radius:26px;box-shadow:0 18px 70px #0009,inset 0 1px #e9f4d416;color:#edf1e5;animation:arrive .5s ease both;}
+.close{position:absolute;right:12px;top:10px;width:30px;height:30px;display:grid;place-items:center;color:#abb69f;background:none;border:0;border-radius:50%;cursor:pointer;}
+.close:hover{background:#fff1;color:#fff;}
+.character{flex:0 0 155px;text-align:center;}
+.character small{display:block;font-size:9px;color:#b2bea4;margin-top:-8px;}
+.copy{min-width:0;flex:1;}.label{display:flex;align-items:center;gap:6px;font-size:10px;color:#c6d690;margin-bottom:10px;}
+.copy h2{font-family:var(--font-geist-sans),sans-serif;font-size:17px;line-height:1.35;margin:0 0 7px;font-weight:650;letter-spacing:-.3px;}
+.copy p{font-size:12px;line-height:1.6;color:#bec8b9;margin:0 0 7px;}.copy strong{font-size:12px;color:#e0e9cd;display:block;line-height:1.5;}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}.actions button,.actions a{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;border-radius:10px;padding:10px 11px;text-decoration:none;border:1px solid #cfdaae30;background:transparent;color:#dde4d2;cursor:pointer;}.actions button:first-child,.actions a{background:#bdcf8c;color:#192515;border-color:transparent;}.actions button:disabled{opacity:.5;cursor:wait;}
+.error{color:#f6b7a4!important;}.spin{animation:rotate 1s linear infinite;}
+@keyframes arrive{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}@keyframes rotate{to{transform:rotate(360deg)}}
+@media(max-width:700px){.card{left:16px;right:16px;width:auto;max-width:none;bottom:86px;padding:20px 18px 20px 4px;gap:0;border-radius:22px;}.character{flex-basis:120px;}.character>div{width:120px!important;height:135px!important;}.copy h2{font-size:15px;}.actions{gap:6px;}.actions button,.actions a{font-size:10px;padding:9px;}}
+@media(prefers-reduced-motion:reduce){.card,.spin{animation:none;}}
+:global(html[data-theme="light"]) .card{background:linear-gradient(120deg,#edf0dc,#fffef6);color:#243421;box-shadow:0 12px 55px #23371922;}
+:global(html[data-theme="light"]) .copy p,:global(html[data-theme="light"]) .copy strong,:global(html[data-theme="light"]) .label{color:#536641;}
+:global(html[data-theme="light"]) .actions button{color:#243421;border-color:#8c9d6c55;}

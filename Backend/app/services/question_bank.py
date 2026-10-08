@@ -662,6 +662,9 @@ def resolve_query(
 
 
 def question_card(question: PaperQuestion, paper: PreviousPaper) -> dict:
+    from app.services.paper_answers import stored_answer
+
+    key = stored_answer(question, paper)
     record = question.transcription or {}
     page = record.get("source_page")
     return {
@@ -683,8 +686,10 @@ def question_card(question: PaperQuestion, paper: PreviousPaper) -> dict:
         "topics": [CHAPTERS[tag][0] for tag in record.get("topics", []) if tag in CHAPTERS],
         "text_reviewed": record.get("text_reviewed", False),
         "answer_verified": question.is_verified,
-        "correct_index": question.correct_index if question.is_verified else None,
-        "explanation": question.explanation if question.is_verified else None,
+        "answer_scorable": key is not None,
+        "answer_basis": key.basis if key else "pending",
+        "correct_index": key.index if key else None,
+        "explanation": key.explanation if key else None,
     }
 
 

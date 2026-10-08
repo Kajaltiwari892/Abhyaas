@@ -1,11 +1,12 @@
 "use client";
 
-import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, ChevronRight, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, ShieldCheck, Sparkles, Swords, Target, UserRound, X } from "lucide-react";
+import { BadgeCheck, BarChart3, BookOpen, Bot, ChevronDown, ChevronRight, FileText, GraduationCap, Home, Info, LogOut, Mail, Menu, NotebookPen, ShieldCheck, Sparkles, Swords, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import ExamSwitcher from "./ExamSwitcher";
 import { useAuth } from "./AuthProvider";
 import NavigationHint from "./NavigationHint";
+import DailyCheckin from "./DailyCheckin";
 
 const desktopSections = [
   { label: "Learn", items: [
@@ -14,7 +15,7 @@ const desktopSections = [
     { label: "Subjects", href: "/subjects", icon: GraduationCap },
   ] },
   { label: "Prepare", items: [
-    { label: "Practice", href: "/practice", icon: Target },
+    { label: "Mistake notebook", href: "/mistake-notebook", icon: NotebookPen },
     { label: "Doubt solver", href: "/doubt-solver", icon: Bot },
     { label: "Previous papers", href: "/papers", icon: FileText },
     { label: "Progress", href: "/progress", icon: BarChart3 },
@@ -27,7 +28,7 @@ const desktopSections = [
 
 const desktopItems = desktopSections.flatMap((section) => section.items);
 
-const mobileItems = desktopItems.filter(({ label }) => ["Home", "Practice", "Doubt solver", "Previous papers", "Progress"].includes(label));
+const mobileItems = desktopItems.filter(({ label }) => ["Subjects", "Mistake notebook", "Doubt solver", "Previous papers", "Progress"].includes(label));
 
 export default function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -60,16 +61,19 @@ export default function AppShell({ active, children }: { active: string; childre
           <span className="app-user-copy"><strong>{user?.name ?? "Study workspace"}</strong><small>{user?.email ?? "CDS preparation"}</small></span>
           {user && <button className="app-signout" type="button" onClick={() => void signOut()} aria-label="Sign out"><LogOut size={15} /></button>}
         </div>
-        <button className="app-menu-toggle" onClick={() => setOpen(!open)} aria-label="Toggle navigation">{open ? <X /> : <Menu />}</button>
+        <button className="app-menu-toggle" type="button" onClick={() => setOpen(!open)} aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="study-sidebar">{open ? <X size={20} /> : <Menu size={20} />}</button>
       </header>
-      <aside className={`app-sidebar ${open ? "is-open" : ""}`}>
-        <div className="sidebar-intro"><span><Sparkles size={13} /> Study workspace</span><small>Everything for your CDS prep</small></div>
-        <nav className="sidebar-navigation">
+      <aside id="study-sidebar" className={`app-sidebar ${open ? "is-open" : ""}`}>
+        <div className="sidebar-intro">
+          <span className="sidebar-intro-mark" aria-hidden="true"><Sparkles size={16} /></span>
+          <div className="sidebar-intro-copy"><strong>Study workspace</strong><small>Your CDS preparation, together</small></div>
+        </div>
+        <nav className="sidebar-navigation" aria-label="Study navigation">
           {desktopSections.map((section) => <section className="sidebar-nav-section" key={section.label}>
             <span className="sidebar-section-label">{section.label}</span>
-            {section.items.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} href={href} key={label} onClick={() => setOpen(false)}>
-              <span className="sidebar-nav-icon"><Icon size={17} /></span>
-              <span className="sidebar-nav-copy">{label}</span>
+            {section.items.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} aria-current={active === label ? "page" : undefined} href={href} key={label} onClick={() => setOpen(false)}>
+              <span className="sidebar-nav-icon" data-nav-icon={href.slice(1) || "home"} aria-hidden="true"><Icon size={17} /></span>
+              <span className="sidebar-nav-copy">{label === "Progress" ? "Daily plan & progress" : label}</span>
               <ChevronRight className="sidebar-nav-arrow" size={14} />
               <NavigationHint />
             </Link>)}
@@ -90,8 +94,9 @@ export default function AppShell({ active, children }: { active: string; childre
         </div>
       </aside>
       <div className="app-content">{children}</div>
+      {user && <DailyCheckin />}
       <nav className="app-bottom-nav" aria-label="Application navigation">
-        {mobileItems.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} href={href} key={label}><Icon size={19} /><span>{label === "Previous papers" ? "Papers" : label === "Doubt solver" ? "Ask AI" : label}</span><NavigationHint /></Link>)}
+        {mobileItems.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} aria-current={active === label ? "page" : undefined} href={href} key={label}><Icon size={19} /><span>{label === "Previous papers" ? "Papers" : label === "Doubt solver" ? "Ask AI" : label === "Mistake notebook" ? "Mistakes" : label === "Progress" ? "Today" : label}</span><NavigationHint /></Link>)}
       </nav>
     </div>
   );

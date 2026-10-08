@@ -847,6 +847,49 @@ LATEST QUESTION
         count = min(50, int(count_match[1])) if count_match else 10
         return await self._generate_json(prompt, practice_batch=True, practice_count=count)
 
+    async def generate_similar_questions(self, prompt: str, topics: list[str]) -> dict[str, Any]:
+        if not self.settings.gemini_api_key:
+            raise RagUnavailableError("Similar practice is temporarily unavailable.")
+        count_match = re.search(r"Create exactly (\d+)", prompt)
+        count = min(50, int(count_match[1])) if count_match else 10
+        return await self._generate_json(
+            prompt, practice_batch=True, practice_count=count, practice_topics=topics
+        )
+
+    async def review_similar_questions(
+        self, questions: list[dict], *, focus_detail: str | None = None
+    ) -> dict[str, Any]:
+        """Independently solve new items, without seeing their proposed answer keys."""
+        if not self.settings.gemini_api_key:
+            raise RagUnavailableError("Similar practice is temporarily unavailable.")
+        items = [
+            {"number": i, "prompt": q["prompt"], "options": q["options"]}
+            for i, q in enumerate(questions, start=1)
+        ]
+        focus_instruction = (
+            "Review also for the exact lesson: " + focus_detail + ". "
+            "Reject unrelated topics and overly basic beginner trivia. Most items should "
+            "require CDS/OTA-level grammar, inference, statement reasoning or application.\n"
+            if focus_detail
+            else ""
+        )
+        prompt = (
+            focus_instruction
+            + """Review these original CDS-style MCQs independently. Solve each question.
+Return usable=true ONLY when it is self-contained, asks a clear question, has exactly
+one defensible correct option, and has no factual or language errors that prevent solving.
+Reject references to missing underlining, images or passages. For word-matching lists,
+check EVERY mapping, not merely the closest option. Reject ambiguous distractors and
+questions that merely reword an identical question or factual claim in this batch.
+Different examples of the same grammar skill or mathematical method are valid practice;
+do not reject them just for testing the same syllabus concept in a new context.
+Use answer_index=null and usable=false when no unique valid answer exists.
+Return JSON with reviews:[{number:1,usable:true,answer_index:0}].
+QUESTIONS: """
+            + json.dumps(items, ensure_ascii=False)
+        )
+        return await self._generate_json(prompt, review_count=len(items))
+
     async def _generate_paper_json(self, prompt: str, count: int) -> dict[str, Any]:
         return await self._generate_json(prompt, solution_count=count)
 
@@ -857,7 +900,9 @@ LATEST QUESTION
         image_data: str | None = None,
         practice_batch: bool = False,
         practice_count: int = 10,
+        practice_topics: list[str] | None = None,
         solution_count: int = 0,
+        review_count: int = 0,
     ) -> dict[str, Any]:
         parts: list[dict[str, Any]] = [{"text": prompt}]
         if image_data:
@@ -872,6 +917,8 @@ LATEST QUESTION
                     if solution_count
                     else min(24576, max(8192, practice_count * 450 + 2048))
                     if practice_batch
+                    else 8192
+                    if review_count
                     else 4096
                 ),
             },
@@ -906,6 +953,22 @@ LATEST QUESTION
                 "required": ["questions"],
                 "additionalProperties": False,
             }
+            if practice_topics:
+                questions_schema = request_body["generationConfig"]["responseJsonSchema"][
+                    "properties"
+                ]["questions"]
+                item_schema = questions_schema["items"]
+                # Nested fixed-length arrays and topic enums exceed the provider's
+                # schema-complexity limit. Keep the wire schema simple; the local
+                # validator still enforces four options, allowed topics, valid keys
+                # and the exact requested set size before anything is saved.
+                questions_schema.pop("minItems")
+                questions_schema.pop("maxItems")
+                item_schema["properties"]["options"].pop("minItems")
+                item_schema["properties"]["options"].pop("maxItems")
+                item_schema["properties"]["correct_index"] = {"type": "integer"}
+                item_schema["properties"]["topic_slug"] = {"type": "string"}
+                item_schema["required"].append("topic_slug")
         if solution_count:
             request_body["generationConfig"]["responseJsonSchema"] = {
                 "type": "object",
@@ -934,23 +997,47 @@ LATEST QUESTION
                 "required": ["solutions"],
                 "additionalProperties": False,
             }
+        if review_count:
+            request_body["generationConfig"]["responseJsonSchema"] = {
+                "type": "object",
+                "properties": {
+                    "reviews": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "number": {"type": "integer"},
+                                "usable": {"type": "boolean"},
+                                "answer_index": {"type": ["integer", "null"]},
+                            },
+                            "required": ["number", "usable", "answer_index"],
+                            "additionalProperties": False,
+                        },
+                    }
+                },
+                "required": ["reviews"],
+                "additionalProperties": False,
+            }
         candidate_models = list(
             dict.fromkeys(
                 model
                 for model in [
+                    self.settings.practice_ai_model if practice_topics or review_count else None,
                     self._working_model,
                     self.settings.gemini_model,
                     self.settings.gemini_fallback_model,
                     "gemini-2.5-flash",
                 ]
-                if model
+                if model and not ((practice_topics or review_count) and "lite" in model)
             )
         )
         response: httpx.Response | None = None
         rate_limited = False
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(
-                45
+                (30 if review_count > 25 else 20)
+                if review_count
+                else 45
                 if solution_count
                 else (95 if practice_count > 25 else 45)
                 if practice_batch
@@ -969,9 +1056,13 @@ LATEST QUESTION
                     generation.pop("temperature", None)
                 # Keep a reasoning budget, but leave room for the full question set.
                 # Model-specific settings: Gemini 3 uses levels, 2.5 uses token budgets.
-                if (practice_batch or solution_count) and model.startswith("gemini-3"):
+                if (practice_batch or solution_count or review_count) and model.startswith(
+                    "gemini-3"
+                ):
                     generation["thinkingConfig"] = {"thinkingLevel": "low"}
-                elif (practice_batch or solution_count) and model.startswith("gemini-2.5-flash"):
+                elif (practice_batch or solution_count or review_count) and model.startswith(
+                    "gemini-2.5-flash"
+                ):
                     generation["thinkingConfig"] = {"thinkingBudget": 1024}
                 response = None
                 for connection_attempt in range(2):
@@ -1009,7 +1100,7 @@ LATEST QUESTION
                 raise RagUnavailableError("The Gemini answer configuration was rejected")
             if rate_limited:
                 raise RagUnavailableError(
-                    "The AI provider is rate-limited. Please wait a minute before retrying."
+                    "The AI provider is rate-limited. Retry after its usage limit resets."
                 )
             raise RagUnavailableError("The AI answer service is temporarily unavailable")
         try:

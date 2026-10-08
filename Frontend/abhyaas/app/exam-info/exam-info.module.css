@@ -9,7 +9,7 @@
   max-width: 1420px;
   min-width: 0;
   margin: 0 auto;
-  padding: 32px clamp(22px, 3.5vw, 56px) 52px;
+  padding: 26px clamp(22px, 3.5vw, 56px) 44px;
   color: var(--guide-text);
 }
 .page :is(h1, h2, h3, h4, p) { margin: 0; }
@@ -24,7 +24,7 @@
 .mobileBreak { display: none; }
 .outlineLink { display: inline-flex; flex-shrink: 0; gap: 12px; align-items: center; min-height: 43px; padding: 0 15px; font-size: 11px; border: 1px solid var(--guide-line); border-radius: 9px; background: var(--guide-surface); transition: border-color .2s, color .2s; }
 .outlineLink:hover { border-color: var(--guide-accent); color: var(--guide-accent); }
-.sectionNav { display: flex; gap: 28px; margin: 28px 0 30px; border-bottom: 1px solid var(--guide-line); }
+.sectionNav { display: flex; gap: 28px; margin: 22px 0 26px; border-bottom: 1px solid var(--guide-line); }
 .sectionNav a { display: flex; align-items: center; gap: 9px; padding: 12px 0 14px; color: var(--guide-muted); font-size: 12px; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
 .sectionNav a:hover { color: var(--guide-text); border-color: var(--guide-accent); }
 .sectionNav span { color: var(--guide-accent); font: 10px var(--font-geist-mono), monospace; }
@@ -45,7 +45,8 @@
 .service { position: absolute; inset: 12px auto auto 12px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 10px; text-shadow: 0 1px 5px #000; }
 .academyCode { position: absolute; left: 14px; bottom: 9px; color: #fffef2; font: 400 31px Georgia, serif; letter-spacing: .025em; }
 .selectedTick { position: absolute; right: 12px; bottom: 12px; width: 24px; height: 24px; display: grid; place-items: center; color: #1e2913; background: #d0dda4; border-radius: 50%; }
-.academyCopy { display: grid; gap: 11px; padding: 14px; }
+.academyCopy { display: grid; gap: 8px; padding: 14px; }
+.entryTag { width: fit-content; color: var(--guide-accent); font-size: 10px; line-height: 1.4; }
 .academyCopy strong { font-size: 13px; font-weight: 550; min-height: 36px; line-height: 1.4; }
 .academyCopy > span { display: flex; align-items: center; gap: 4px; color: var(--guide-muted); font-size: 10px; }
 .cardArrow { display: flex; align-items: center; gap: 4px; margin-left: auto; color: var(--guide-accent); }
@@ -76,6 +77,9 @@
 .routeRequirements svg { color: var(--guide-muted); margin-top: 1px; }
 .routeRequirements h4 { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
 .routeRequirements p { color: var(--guide-muted); font-size: 12px; line-height: 1.65; max-width: 440px; }
+.eligibility { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 0 22px; padding: 16px 0 18px; border-top: 1px solid var(--guide-line); }
+.eligibility h4 { display: flex; align-items: center; gap: 7px; color: var(--guide-accent); font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.eligibility p { color: var(--guide-muted); font-size: 12px; line-height: 1.65; }
 .sourceNote { border-top: 1px solid var(--guide-line); display: flex; gap: 8px; align-items: baseline; padding: 10px 22px; color: var(--guide-muted); font-size: 10px; line-height: 1.7; }
 .sourceNote > svg { align-self: flex-start; margin-top: 2px; }
 .sourceNote a { color: var(--guide-accent); text-decoration: underline; text-underline-offset: 3px; display: inline; }
@@ -121,9 +125,9 @@
 .faqSection h2 { font: 400 28px/1.2 Georgia, serif; margin: 10px 0; }
 .faqList details { border-bottom: 1px solid var(--guide-line); }
 .faqList summary { min-height: 51px; padding: 14px 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; cursor: pointer; list-style: none; }
-.faqList summary::-webkit-details-marker, .credits summary::-webkit-details-marker { display: none; }
-.faqList summary svg, .credits summary svg { color: var(--guide-accent); transition: transform .2s; }
-.faqList details[open] summary svg, .credits[open] summary svg { transform: rotate(180deg); }
+.faqList summary::-webkit-details-marker { display: none; }
+.faqList summary svg { color: var(--guide-accent); transition: transform .2s; }
+.faqList details[open] summary svg { transform: rotate(180deg); }
 .faqList details[open] summary { color: var(--guide-accent); }
 .faqList details > p { padding: 0 25px 15px 0; color: var(--guide-muted); font-size: 12px; line-height: 1.8; }
 .faqList .textLink { margin-bottom: 12px; }
@@ -132,10 +136,6 @@
 .footerNote > p svg { margin-top: 2px; }
 .footerNote > p a { text-decoration: underline; text-underline-offset: 3px; }
 .footerNote small { font-size: 9px; }
-.credits { font-size: 10px; min-width: 118px; max-width: 290px; }
-.credits summary { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 28px; cursor: pointer; list-style: none; }
-.credits > div { margin-top: 12px; line-height: 1.7; }
-.credits a { display: flex; align-items: center; gap: 4px; margin: 9px 0; color: var(--guide-accent); }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 :global(html[data-theme="light"]) .page { --guide-text: #283323; --guide-muted: #5d6955; --guide-accent: #526c2d; --guide-gold: #79622e; --guide-line: #d3dbc9; --guide-surface: #fafbf5; --guide-soft: #e5ecd9; }
 @media (max-width: 1100px) {
@@ -179,6 +179,7 @@
   .routeIcon { width: 35px; height: 40px; }
   .routeSummary > a { margin-left: 45px; min-height: 26px; }
   .routeRequirements { grid-template-columns: 1fr; padding: 0 15px 17px; gap: 16px; }
+  .eligibility { grid-template-columns: 1fr; margin: 0 15px; gap: 16px; }
   .targetActions { padding: 15px; gap: 10px; }
   .page .targetFeedback { margin: 0 15px 15px; }
   .sourceNote { padding: 10px 15px; font-size: 10px; }
@@ -207,8 +208,6 @@
   .faqSection h2 br { display: none; }
   .faqSection h2 { font-size: 26px; }
   .footerNote { display: block; }
-  .credits { margin-top: 12px; max-width: none; }
-  .credits summary { justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) {
   .page *, .page *::before, .page *::after { transition: none !important; }

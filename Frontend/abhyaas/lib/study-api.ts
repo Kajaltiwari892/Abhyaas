@@ -11,7 +11,7 @@ export type Subject = {
   question_count: number;
 };
 
-export type PracticeProvenance = { kind: "pyq"; source_url: string; source_page_url: string; answer_key_url: string; text_reviewed: boolean; year: number; cycle: string; number: number };
+export type PracticeProvenance = { kind: "pyq"; source_url: string; source_page_url: string; answer_key_url: string | null; answer_basis?: "official" | "provisional" | "reviewed"; text_reviewed: boolean; year: number; cycle: string; number: number } | { kind: "generated"; answer_verified: false };
 export type PracticeQuestion = {
   id: string;
   position: number;
@@ -39,6 +39,7 @@ export type PracticeAttempt = {
   negative_mark_fraction: number;
   new_questions: number;
   repeated_questions: number;
+  question_mode: "bank" | "similar" | "daily";
   answers: PracticeAnswerInput[];
 };
 
@@ -47,6 +48,7 @@ export type PracticeHistoryItem = {
   id: string; subject: string; topic: string | null; status: string; started_at: string;
   completed_at: string | null; total_questions: number; answered_questions: number;
   correct_answers: number | null; duration_seconds: number; time_limit_seconds: number;
+  question_mode: "bank" | "similar" | "daily";
 };
 export type PageResult<T> = { items: T[]; total: number; has_more: boolean };
 export type CatalogQuestionPage = { questions: PracticeQuestion[]; total: number; has_more: boolean };
@@ -62,6 +64,7 @@ export type AttemptSummary = {
   score: number;
   negative_mark_fraction: number;
   duration_seconds: number;
+  question_mode: "bank" | "similar" | "daily";
   review: Array<{
     question_id: string;
     selected_index: number | null;
@@ -108,6 +111,8 @@ export type PaperListItem = {
   official_question_count: number;
   available_question_count: number;
   verified_question_count: number;
+  scorable_question_count: number;
+  reviewed_question_count: number;
   academy_tracks: string[];
   source_url: string;
   solutions_available: boolean;
@@ -127,6 +132,8 @@ export type PaperQuestion = {
   options: string[];
   asset_url: string | null;
   is_verified: boolean;
+  is_scorable: boolean;
+  answer_basis: "official" | "provisional" | "reviewed" | "pending";
   transcription: PaperTranscription | null;
 };
 
@@ -167,6 +174,10 @@ export type PaperAttemptSummary = {
   answered_questions: number;
   scored_questions: number;
   unscored_questions: number;
+  official_answers: number;
+  reviewed_answers: number;
+  provisional_answers: number;
+  score_basis: "official" | "practice";
   correct_answers: number;
   incorrect_answers: number;
   unanswered_questions: number;
@@ -181,6 +192,7 @@ export type PaperAttemptSummary = {
     is_correct: boolean | null;
     explanation: string | null;
     source_label: string;
+    answer_basis: "official" | "provisional" | "reviewed" | "pending";
   }>;
 };
 
@@ -219,6 +231,7 @@ export type PyqCard = {
   prompt: string; options: string[]; directions?: string; passage?: string; section_title?: string;
   has_visual: boolean; source_page?: number; source_page_url?: string; source_url: string;
   topics: string[]; text_reviewed: boolean; answer_verified: boolean;
+  answer_scorable?: boolean; answer_basis?: "official" | "provisional" | "reviewed" | "pending";
   correct_index: number | null; explanation: string | null;
 };
 export type PyqResult = {
@@ -236,7 +249,7 @@ export type PaperSolutionResult = {
     id: string; number: number; prompt: string; options: string[];
     directions?: string | null; passage?: string | null; additional_context?: string | null;
     text_reviewed: boolean; source_url: string;
-    solution: { status: "ai" | "verified" | "needs_source" | "uncertain" | "key_conflict" | "key_pending";
+    solution: { status: "ai" | "verified" | "reviewed" | "provisional" | "needs_source" | "uncertain" | "key_conflict" | "key_pending";
       answer_index: number | null; explanation: string };
   }>;
 };
@@ -267,6 +280,14 @@ export const startPracticeAttempt = (
   token: string,
   input: { subject_slug: string; topic_slug?: string; question_count?: number; allow_repeats?: boolean },
 ) => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input) }));
+
+export const startSimilarAttempt = (
+  token: string,
+  input: { subject_slug: string; topic_slug?: string; question_count: number },
+  signal?: AbortSignal,
+) => apiRequest<PracticeAttempt>("/practice/attempts/similar", authorized(token, {
+  method: "POST", body: JSON.stringify(input), signal,
+}));
 
 export const savePracticeAnswer = (
   token: string,

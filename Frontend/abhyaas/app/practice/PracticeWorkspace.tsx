@@ -1,27 +1,29 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Bookmark, Check, Clock3, History, Pause, Play, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bookmark, BookOpen, Check, Clock3, GraduationCap, History, LoaderCircle, Pause, Play, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { checkpointPracticeAttempt, completePracticeAttempt, getPracticeAttempt, getPracticeHistory, getPracticeResult, getPracticeAvailability, getSubjects, startPracticeAttempt, type AttemptSummary, type PracticeAttempt, type PracticeHistoryItem, type PracticeAvailability, type PracticeProvenance, type Subject } from "@/lib/study-api";
+import { checkpointPracticeAttempt, completePracticeAttempt, getPracticeAttempt, getPracticeHistory, getPracticeResult, getPracticeAvailability, getSubjects, startPracticeAttempt, startSimilarAttempt, type AttemptSummary, type PracticeAttempt, type PracticeHistoryItem, type PracticeAvailability, type PracticeProvenance, type Subject } from "@/lib/study-api";
+import { practiceChoices, practiceSetSize, type PracticeMode } from "@/lib/practice-plan";
 import { useAuth } from "../components/AuthProvider";
 import PreparationTarget from "../components/PreparationTarget";
 import { getPreparationTarget, partitionPreparationSubjects } from "@/lib/academy-preference";
 import s from "./practice.module.css";
+import { startDailyQuiz, type StudyTask } from "@/lib/study-plan-api";
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 const message = (error: unknown) => error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
-export default function PracticeWorkspace({ initialSubject, initialTopic = "", initialView = "practice", onBack }: { initialSubject: string; initialTopic?: string; initialView?: "practice" | "history"; onBack?: () => void }) {
+export default function PracticeWorkspace({ initialSubject, initialTopic = "", initialView = "practice", dailyTask }: { initialSubject: string; initialTopic?: string; initialView?: "practice" | "history"; dailyTask?: StudyTask }) {
   const { accessToken, user } = useAuth();
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [catalogVersion, setCatalogVersion] = useState(0);
   const [subjectSlug, setSubjectSlug] = useState(initialSubject);
   const [topicSlug, setTopicSlug] = useState(initialTopic);
-  const [count, setCount] = useState(50);
-  const [allowRepeats, setAllowRepeats] = useState(false);
+  const [count, setCount] = useState(dailyTask ? dailyTask.quiz_remaining || dailyTask.question_count : 50);
+  const [mode, setMode] = useState<PracticeMode>(dailyTask ? "mixed" : "fresh");
   const [availability, setAvailability] = useState<{ key: string; data: PracticeAvailability }>();
   const [preview, setPreview] = useState(false);
   const [attempt, setAttempt] = useState<PracticeAttempt | null>(null);
@@ -45,6 +47,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const timedOut = useRef(false);
   const questionBody = useRef<HTMLDivElement>(null);
   const latestSave = useRef<(() => Promise<void>) | null>(null);
+  const generation = useRef<AbortController | null>(null);
   const subject = subjects.find((item) => item.slug === subjectSlug) ?? subjects[0];
   const target = getPreparationTarget(user?.target_academy);
   const subjectGroups = partitionPreparationSubjects(subjects, user?.target_academy);
@@ -52,8 +55,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const topic = subject?.topics.find((item) => item.slug === topicSlug);
   const availabilityKey = `${subjectSlug}:${topicSlug}:${historyVersion}`;
   const pool = availability?.key === availabilityKey ? availability.data : undefined;
-  const available = pool ? (allowRepeats ? pool.total : pool.unseen) : 0;
-  const setSize = Math.min(count, available);
+  const setSize = practiceSetSize(mode, count, pool);
   const active = !!attempt && !summary && !preview;
   const question = attempt?.questions[current];
   const answerInput = useCallback(() => Object.entries(answers).map(([question_id, selected_index]) => ({ question_id, selected_index, marked_for_review: !!marked[question_id] })), [answers, marked]);
@@ -86,7 +88,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     await save;
   }, [accessToken, attempt, summary, preview, remaining, answerInput, current]);
   useEffect(() => { latestSave.current = active ? () => persist(true) : null; }, [active, persist]);
-  useEffect(() => () => { void latestSave.current?.().catch(() => {}); }, []);
+  useEffect(() => () => { generation.current?.abort(); void latestSave.current?.().catch(() => {}); }, []);
   useEffect(() => {
     if (!active) return;
     const save = () => { if (!mutation.current) void latestSave.current?.().catch(() => setSaveStatus("Connection lost — progress will retry")); };
@@ -140,13 +142,36 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     } catch (e) { setError(message(e)); }
     finally { mutation.current = false; setBusy(false); }
   };
-  const start = async () => {
+  const returnToPlan = async () => {
+    if (mutation.current) return;
+    mutation.current = true; setBusy(true); setError("");
+    try { if (active) await persist(); router.push("/progress#today"); }
+    catch(e) { setError(message(e)); }
+    finally { mutation.current = false; setBusy(false); }
+  };
+  const start = async (choice: PracticeMode = mode) => {
     if (!accessToken || !subject || mutation.current) return;
     mutation.current = true; setBusy(true); setError("");
     try {
-      const data = await startPracticeAttempt(accessToken, { subject_slug: subject.slug, topic_slug: topic?.slug, question_count: setSize, allow_repeats: allowRepeats });
-      setAttempt(data); setSummary(null); setPreview(false); setAnswers({}); setMarked({}); setCurrent(0); setRemaining(data.duration_seconds); setPaused(false); setSaveStatus(""); timedOut.current = false;
-    } catch (e) { setError(message(e)); }
+      const size = dailyTask ? 50 : practiceSetSize(choice, count, pool);
+      if (!size) return;
+      setMode(choice);
+      if (choice === "similar") setCount(size);
+      const controller = new AbortController();
+      generation.current = controller;
+      const timeout = window.setTimeout(() => controller.abort(), 165_000);
+      let data: PracticeAttempt;
+      try {
+        data = dailyTask ? await startDailyQuiz(accessToken, dailyTask.id, controller.signal) : choice === "similar"
+          ? await startSimilarAttempt(accessToken, { subject_slug: subject.slug, topic_slug: topic?.slug, question_count: size }, controller.signal)
+          : await startPracticeAttempt(accessToken, { subject_slug: subject.slug, topic_slug: topic?.slug, question_count: size, allow_repeats: choice === "mixed" });
+      } finally { window.clearTimeout(timeout); generation.current = null; }
+      setAttempt(data); setSummary(null); setPreview(false);
+      setAnswers(Object.fromEntries(data.answers.map(a => [a.question_id, a.selected_index])));
+      setMarked(Object.fromEntries(data.answers.map(a => [a.question_id, a.marked_for_review])));
+      setCurrent(Math.min(data.current_position ?? 0, data.questions.length - 1));
+      setRemaining(Math.max(0,data.duration_seconds - data.elapsed_seconds)); setPaused(false); setSaveStatus(""); timedOut.current = false;
+    } catch (e) { setError(e instanceof Error && e.name === "AbortError" ? dailyTask ? "Your full quiz couldn't be opened in time. Please retry; saved quizzes will resume." : "Preparing this set took too long. Try a smaller set or use the question bank." : message(e)); }
     finally { mutation.current = false; setBusy(false); }
   };
   const openHistory = async (item: PracticeHistoryItem) => {
@@ -159,6 +184,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
         if (data.status === "completed") { setSummary(await getPracticeResult(accessToken, item.id)); setAttempt(null); }
         else {
           setAttempt(data); setSummary(null); setSubjectSlug(data.subject_slug); setTopicSlug(data.topic_slug ?? "");
+          setMode(data.question_mode === "similar" ? "similar" : "fresh");
           setAnswers(Object.fromEntries(data.answers.map((a) => [a.question_id, a.selected_index])));
           setMarked(Object.fromEntries(data.answers.map((a) => [a.question_id, a.marked_for_review])));
           setCurrent(Math.min(data.current_position ?? 0, data.questions.length - 1)); setRemaining(Math.max(0, data.duration_seconds - data.elapsed_seconds)); setPaused(true); setPreview(true); timedOut.current = false;
@@ -182,37 +208,34 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     catch (e) { setHistoryError(message(e)); } finally { setHistoryLoading(false); }
   };
 
-  const back = async () => {
-    if (busy) return;
-    try { if (active) await persist(); onBack?.(); }
-    catch (e) { setError(message(e)); }
-  };
-
   return <main className={[s.workspace, active ? s.live : ""].join(" ")}>
     <header className={s.header}>
       <div className={s.headingGroup}>
-        {onBack ? <button className={s.back} disabled={busy} onClick={() => void back()}><ArrowLeft size={16} /> Subjects</button> : <Link className={s.back} href="/subjects" onClick={(event) => { if (active) { event.preventDefault(); void persist().then(() => router.push("/subjects")).catch((e) => setError(message(e))); } }}><ArrowLeft size={16} /> Subjects</Link>}
-        <h1>{onBack ? subject?.name || "Subject practice" : "Practice"}</h1>
+        <GraduationCap size={22} aria-hidden="true" />
+        <h1>{dailyTask ? "Today’s topic quiz" : "Subjects"}</h1>
       </div>
-      <div className={s.tabs}><button aria-pressed={tab === "practice"} disabled={busy} onClick={() => setTab("practice")}>Practice</button><button aria-pressed={tab === "history"} disabled={busy} onClick={() => void leave(undefined, undefined, "history")}><History size={15} /> History</button></div>
+      {dailyTask ? <Link className={s.secondary} href="/progress#today" onClick={event => { if (busy || active) { event.preventDefault(); if (!busy) void returnToPlan(); } }}><ArrowLeft size={14} /> Today’s plan</Link> : <div className={s.tabs} aria-label="Subject practice view"><button aria-pressed={tab === "practice"} disabled={busy} onClick={() => setTab("practice")}>Practise</button><button aria-pressed={tab === "history"} disabled={busy} onClick={() => void leave(undefined, undefined, "history")}><History size={15} /> History</button></div>}
     </header>
-    {!attempt && !summary && tab === "practice" && <PreparationTarget />}
-    {error && <div role="alert" className={s.error}>{error} <button className={s.secondary} onClick={() => { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); }}>Retry</button></div>}
+    {!dailyTask && !attempt && !summary && tab === "practice" && <PreparationTarget />}
+    {error && <div role="alert" className={s.error}>{error} <button className={s.secondary} disabled={busy} onClick={() => { if (!attempt && !summary && tab === "practice" && subject && mode === "similar") void start(); else { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); } }}>Retry</button></div>}
     {tab === "history" ? <section className={s.panel} aria-label="Practice history">
       <div className={s.sectionTitle}><h2>Your saved sets</h2><button disabled={historyLoading} onClick={() => setHistoryVersion((v) => v + 1)}>Refresh</button></div>
       <p className={s.muted}>Open the entire set to review your progress. Timers stay stopped until you choose Resume.</p>
       {historyError && <p role="alert" className={s.error}>{historyError}</p>}
       {!history.length && !historyLoading && !historyError && <div className={s.empty}>Your practice sessions will appear here.</div>}
       <div className={s.historyList}>{history.map((item) => <button key={item.id} disabled={busy} onClick={() => void openHistory(item)}>
-        <span><strong>{item.subject}</strong><small>{item.topic || "Mixed topics"} · {new Date(item.started_at).toLocaleDateString()}</small><small>{clock(item.duration_seconds)} spent · {item.total_questions} questions</small></span>
+        <span><strong>{item.subject}</strong><small>{item.topic || "Mixed topics"} · {new Date(item.started_at).toLocaleDateString()}{item.question_mode === "similar" ? " · Similar practice" : ""}</small><small>{clock(item.duration_seconds)} spent · {item.total_questions} questions</small></span>
         <span><strong>{item.status === "completed" ? item.correct_answers + "/" + item.total_questions + " correct" : item.answered_questions + "/" + item.total_questions + " answered"}</strong><small>{item.status === "completed" ? "Review result" : "Review saved set"} <ArrowRight size={12} /></small></span>
       </button>)}</div>
       {historyLoading && <p role="status" className={s.muted}>Loading saved sets…</p>}
       {historyMore && <button className={s.secondary} disabled={historyLoading} onClick={() => void moreHistory()}>Load more sets</button>}
     </section> : summary ? <>
       <section className={s.panel}>
-        <div className={s.sectionTitle}><div><span className={s.eyebrow}><Check size={14} /> Completed · saved to history</span><h2>{summary.subject} results</h2><p className={s.muted}>{summary.topic || "Mixed topics"} · {clock(summary.duration_seconds)} spent</p></div><button className={s.primary} onClick={() => void leave()}>New set <ArrowRight size={15} /></button></div>
+        <div className={s.sectionTitle}><div><span className={s.eyebrow}><Check size={14} /> Completed · saved to history</span><h2>{summary.subject} results</h2><p className={s.muted}>{summary.topic || "Mixed topics"} · {clock(summary.duration_seconds)} spent</p></div>{dailyTask ? <Link className={s.primary} href="/progress#today">Back to today’s plan <ArrowRight size={15} /></Link> : <button className={s.primary} onClick={() => void leave()}>New set <ArrowRight size={15} /></button>}</div>
+        {dailyTask && <p className={s.muted}>{summary.answered_questions === summary.total_questions ? "Your quiz answers are saved to today’s target." : "Your answers are saved. Return to today’s plan to practise the remaining questions."}</p>}
         <div className={s.stats}><div><strong>{summary.score}/{summary.total_questions}</strong><small>Net practice score</small></div><div><strong>{summary.correct_answers}</strong><small>Correct</small></div><div><strong>{summary.answered_questions - summary.correct_answers}</strong><small>Incorrect</small></div><div><strong>{summary.total_questions - summary.answered_questions}</strong><small>Skipped</small></div></div>
+        {summary.question_mode === "similar" && <p className={s.muted}>AI-created practice, not exam questions. Check the explanations; these answers are not an official key.</p>}
+        {summary.correct_answers < summary.total_questions && <Link className={s.secondary} href="/mistake-notebook"><BookOpen size={15} /> Revise wrong &amp; skipped questions <ArrowRight size={14} /></Link>}
         <p className={s.muted}>{summary.negative_mark_fraction ? "+1 correct · −⅓ incorrect · 0 skipped. Normalized practice points, not an official exam score." : "Legacy set: +1 correct, no negative marking."}</p>
       </section>
       <section aria-label="Answer review"><h2 className={s.reviewTitle}>All {summary.total_questions} questions</h2>
@@ -240,14 +263,14 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
         </article>)}
       </section>
     </> : <>
-      <div className={s.filters}>
-        {!onBack && <label>Subject<select value={subject?.slug ?? ""} disabled={busy || !subjects.length} onChange={(e) => void leave(e.target.value)}>{!subjects.length && <option>Loading subjects…</option>}{target ? <><optgroup label={`${target.code} written subjects`}>{subjectGroups.required.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</optgroup>{subjectGroups.optional.length > 0 && <optgroup label={`Extra practice · not required for ${target.code}`}>{subjectGroups.optional.map((item) => <option key={item.id} value={item.slug}>{item.name} (optional)</option>)}</optgroup>}</> : subjects.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>}
-        <label>Topic<select value={topic?.slug ?? ""} disabled={busy || !subject} onChange={(e) => void leave(subject?.slug, e.target.value)}><option value="">All topics</option>{subject?.topics.filter((item) => item.question_count > 0).map((item) => <option key={item.id} value={item.slug}>{item.name} ({item.question_count})</option>)}</select></label>
-        {!active && <><label>Set size<select value={count} onChange={(e) => setCount(Number(e.target.value))}>{[10,25,50,100,120].map((n) => <option value={n} key={n}>{n} questions</option>)}</select></label><label>Question selection<select value={allowRepeats ? "revision" : "fresh"} onChange={(e) => setAllowRepeats(e.target.value === "revision")}><option value="fresh">Fresh questions only</option><option value="revision">Revision · allow repeats</option></select></label></>}
+      {dailyTask ? <div className={s.dailyQuizContext}><span><Sparkles size={14} /> Today’s target</span><strong>{dailyTask.subject_name} · {dailyTask.topic_name}</strong><small>Answer this topic’s questions to update your daily plan.</small></div> : <div className={s.filters}>
+        <label>Subject<select value={subject?.slug ?? ""} disabled={busy || !subjects.length} onChange={(e) => void leave(e.target.value)}>{!subjects.length && <option>Loading subjects…</option>}{target ? <><optgroup label={`${target.code} written subjects`}>{subjectGroups.required.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</optgroup>{subjectGroups.optional.length > 0 && <optgroup label={`Extra practice · not required for ${target.code}`}>{subjectGroups.optional.map((item) => <option key={item.id} value={item.slug}>{item.name} (optional)</option>)}</optgroup>}</> : subjects.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>
+        <label>Topic<select value={topic?.slug ?? ""} disabled={busy || !subject} onChange={(e) => void leave(subject?.slug, e.target.value)}><option value="">All topics</option>{subject?.topics.filter((item) => mode === "similar" ? !item.slug.startsWith("current") : item.question_count > 0).map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>
+        {!active && <><label>Set size<select value={mode === "similar" ? Math.min(count, 50) : count} disabled={busy} onChange={(e) => setCount(Number(e.target.value))}>{practiceChoices(mode).map((n) => <option value={n} key={n}>{n} questions</option>)}</select></label><label>Practice type<select value={mode} disabled={busy} onChange={(e) => { const choice = e.target.value as PracticeMode; setMode(choice); setError(""); if (choice === "similar") { setCount((n) => Math.min(n, 50)); if (topicSlug.startsWith("current")) setTopicSlug(""); } }}><option value="fresh">Unanswered questions</option><option value="mixed">Mixed revision</option><option value="similar">Similar practice · AI</option></select></label></>}
         {active && <span className={s.filterNote}>Changing filters saves this set for later.</span>}
-      </div>
+      </div>}
       {active && question ? <section className={s.session} aria-label="Practice session">
-        <div className={s.sessionHeader}><span>Question <strong>{current + 1}</strong> / {attempt.questions.length}</span><div className={s.timer}><Clock3 size={15} /><span>{clock(remaining)}</span><button disabled={busy || remaining === 0} onClick={() => setPaused((p) => !p)} aria-label={paused ? "Resume timer" : "Pause timer"}>{paused ? <Play size={15} /> : <Pause size={15} />}</button></div><button className={s.leave} disabled={busy} onClick={() => void leave(undefined, undefined, "history")}>Save & leave</button></div>
+        <div className={s.sessionHeader}><span>Question <strong>{current + 1}</strong> / {attempt.questions.length}</span><div className={s.timer}><Clock3 size={15} /><span>{clock(remaining)}</span><button disabled={busy || remaining === 0} onClick={() => setPaused((p) => !p)} aria-label={paused ? "Resume timer" : "Pause timer"}>{paused ? <Play size={15} /> : <Pause size={15} />}</button></div><button className={s.leave} disabled={busy} onClick={() => dailyTask ? void returnToPlan() : void leave(undefined, undefined, "history")}>Save & leave</button></div>
         <nav className={s.palette} aria-label="Question navigator">{attempt.questions.map((q, i) => <button key={q.id} aria-label={"Question " + (i+1) + (answers[q.id] !== undefined ? ", answered" : ", unanswered") + (marked[q.id] ? ", marked" : "")} aria-current={i === current ? "step" : undefined} className={[answers[q.id] !== undefined ? s.answered : "", marked[q.id] ? s.flagged : ""].join(" ")} disabled={busy || paused} onClick={() => setCurrent(i)}>{i + 1}</button>)}</nav>
         <div className={s.sessionLegend}>{Object.keys(answers).length} answered · {attempt.questions.length - Object.keys(answers).length} unanswered · {Object.values(marked).filter(Boolean).length} marked</div>
         <div className={s.questionBody} ref={questionBody}>{paused ? <div className={s.empty}><Pause size={24} /><h2>Take a breather.</h2><p>The timer is paused.</p><button className={s.primary} onClick={() => setPaused(false)}>Resume practice</button></div> : <>
@@ -258,16 +281,19 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
           <p className={s.muted}>Answers are evaluated after submission. {attempt.negative_mark_fraction ? "+1 correct · −⅓ incorrect · 0 skipped." : "Legacy set: no negative marking."}</p>
         </>}</div>
         <footer className={s.footer}><button className={s.secondary} disabled={busy || paused || current === 0} onClick={() => setCurrent((i) => i - 1)}><ArrowLeft size={15} /> Previous</button><span className={s.saveStatus} role="status">{busy ? "Saving…" : saveStatus}</span><button className={current === attempt.questions.length - 1 || remaining === 0 ? s.primary : s.secondary} disabled={busy} onClick={() => void finish()}>Submit set</button>{current < attempt.questions.length - 1 && remaining > 0 && <button className={s.primary} disabled={busy || paused} onClick={() => void next()}>{answers[question.id] !== undefined ? "Save & next" : "Skip & next"}<ArrowRight size={15} /></button>}</footer>
-      </section> : <section className={[s.panel, s.start].join(" ")}>
-        <span className={s.startIcon}><Target size={28} /></span><h2>Practice at the paper’s level.</h2>
+      </section> : dailyTask ? <section className={[s.panel,s.start].join(" ")}><span className={s.startIcon}><Target size={28}/></span><h2>Check today’s topic.</h2><p>{dailyTask.topic_name} · 50 questions · {clock(50 * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</p><p className={s.muted}>CDS-style practice with relevant PYQs when available. Your answers and result stay saved.</p>{busy && <div className={s.generating} role="status"><LoaderCircle size={21}/><strong>Preparing your full quiz…</strong><span>Finding relevant questions and checking new answers. This can take a minute or two.</span></div>}<button className={s.primary} disabled={busy || !accessToken || !subject} onClick={()=>void start()}>{busy ? "Preparing 50 questions…" : dailyTask.quiz_status === "in_progress" ? "Resume quiz" : "Start 50-question quiz"}<ArrowRight size={16}/></button></section> : <section className={[s.panel, s.start].join(" ")}>
+        <span className={s.startIcon}><Target size={28} /></span><h2>Ready to practise?</h2>
         <p>{topic?.name || subject?.name || "Choose a subject"} · {target ? isExtraPractice ? `Extra practice · not required for ${target.code}` : `${target.code} preparation` : subjectSlug === "elementary-mathematics" ? "CDS Maths · not required for OTA" : "CDS / OTA"}</p>
-        {pool ? <><div className={s.setFacts}><span><strong>{setSize}</strong> questions in this set</span><span><strong>{clock(setSize * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</strong> practice time</span><span><strong>{pool.unseen}</strong> fresh in this pool</span></div>
-          {setSize < count && <p className={s.muted}>You selected {count}; {available} {allowRepeats ? "" : "fresh "}questions are available for this filter. We won’t pad the set with duplicates or unrelated topics.</p>}
-          {allowRepeats && <p className={s.muted}>Revision includes previously assigned questions, with new and least-seen questions first.</p>}
-        </> : <p className={s.muted}>{accessToken ? "Checking your question pool…" : "Sign in to save your practice."}</p>}
-        <button className={s.primary} disabled={busy || !accessToken || !setSize} onClick={() => void start()}>{busy ? "Preparing your set…" : "Start " + setSize + "-question set"}<ArrowRight size={16} /></button>
-        {pool && !available && <p className={s.muted}>{pool.total ? "You’ve already received every question in this filter. Resume a saved set from History, or choose Revision." : "No eligible questions in this topic yet. Choose another topic."}</p>}
-        <small className={s.muted}>Paper-linked questions, scored with official keys. Transcriptions still need editorial review; original pages are linked.</small>
+        {pool || mode === "similar" ? <><div className={s.setFacts}><span><strong>{setSize}</strong> questions in this set</span><span><strong>{clock(setSize * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</strong> practice time</span>{mode !== "similar" && <span><strong>{pool?.unseen}</strong> not yet answered</span>}</div>
+          {mode === "similar" ? <p className={s.muted}>New CDS-style questions with explanations. AI-created, not actual exam questions.</p> : mode === "mixed" ? <p className={s.muted}>A shuffled set, including questions you’ve answered before.</p> : !!setSize && setSize < count && <p className={s.muted}>{setSize} unanswered questions in this selection. Want a full {Math.min(count, 50)}-question set? Create similar practice below.</p>}
+        </> : <p className={s.muted}>{accessToken ? "Loading your questions…" : "Sign in to save your practice."}</p>}
+        {busy && mode === "similar" ? <div className={s.generating} role="status"><LoaderCircle size={21} /><strong>Preparing {setSize} new questions…</strong><span>This may take a minute. Your set will open here when it’s ready.</span></div> : <>
+          {!!setSize && <button className={s.primary} disabled={busy || !accessToken || !subject} onClick={() => void start()}>{busy ? "Preparing your set…" : mode === "similar" ? `Create ${setSize} similar questions` : `Start ${setSize}-question set`}{mode === "similar" ? <Sparkles size={16} /> : <ArrowRight size={16} />}</button>}
+          {mode !== "similar" && pool && setSize < count && <>
+            {!setSize && <p className={s.muted}>{pool.total ? "No unanswered bank questions in this selection. Keep practising with a new similar set or mixed revision." : "This topic’s question bank is still growing. You can create a similar practice set now."}</p>}
+            <div className={s.continuePractice}><button className={s.secondary} disabled={busy || !accessToken || topicSlug.startsWith("current")} onClick={() => void start("similar")}><Sparkles size={15} /> Create {Math.min(count, 50)} similar questions</button>{mode === "fresh" && !!pool.total && <button className={s.secondary} disabled={busy} onClick={() => void start("mixed")}>Start mixed revision <ArrowRight size={15} /></button>}</div>
+          </>}
+        </>}
       </section>}
     </>}
   </main>;
@@ -279,7 +305,6 @@ function QuestionText({ text }: { text: string }) {
 }
 function QuestionSource({ label, source, hideKey = false }: { label: string; source: PracticeProvenance | null; hideKey?: boolean }) {
   return <div className={s.source}><small>{label}</small>{source?.kind === "pyq" && <>
-    <small>{source.text_reviewed ? "Text checked against source" : "Paper transcription · text review pending"}</small>
-    <div><a href={source.source_page_url} target="_blank" rel="noreferrer">Original page ↗</a><a href={source.source_url} target="_blank" rel="noreferrer">Question paper ↗</a>{!hideKey && <a href={source.answer_key_url} target="_blank" rel="noreferrer">Official key ↗</a>}</div>
+    <div><a href={source.source_page_url} target="_blank" rel="noreferrer">Original page ↗</a><a href={source.source_url} target="_blank" rel="noreferrer">Question paper ↗</a>{!hideKey && source.answer_key_url && <a href={source.answer_key_url} target="_blank" rel="noreferrer">{source.answer_basis === "provisional" ? "Provisional key" : "Official key"} ↗</a>}</div>
   </>}</div>;
 }

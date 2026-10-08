@@ -31,13 +31,32 @@ from app.schemas.practice import (
     SaveAnswerRequest,
     SavedAnswerResponse,
     StartAttemptRequest,
+    StartSimilarAttemptRequest,
     SubjectResponse,
     TopicResponse,
 )
+from app.services.rag import RagService, get_rag_service
+from app.services.similar_practice import create_similar_attempt
+from app.services.study_plan import prepare_daily_quiz
 
 router = APIRouter(tags=["practice"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+RagDependency = Annotated[RagService, Depends(get_rag_service)]
+
+
+@router.post(
+    "/practice/attempts/similar",
+    response_model=AttemptResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def start_similar_attempt(
+    payload: StartSimilarAttemptRequest,
+    user: CurrentUser,
+    db: DatabaseSession,
+    rag: RagDependency,
+) -> AttemptResponse:
+    return await create_similar_attempt(db, user.id, payload, rag)
 
 
 @router.get("/catalog/subjects", response_model=list[SubjectResponse])
@@ -46,7 +65,7 @@ async def list_subjects(db: DatabaseSession) -> list[SubjectResponse]:
         (
             await db.execute(
                 select(Question.topic_id, func.count(Question.id))
-                .where(Question.is_active.is_(True))
+                .where(Question.is_active.is_(True), Question.owner_user_id.is_(None))
                 .group_by(Question.topic_id)
             )
         ).all()
@@ -89,7 +108,11 @@ async def catalog_questions(
     ).scalar_one_or_none()
     if subject is None:
         raise HTTPException(404, "Subject not found")
-    filters = [Topic.subject_id == subject.id, Question.is_active.is_(True)]
+    filters = [
+        Topic.subject_id == subject.id,
+        Question.is_active.is_(True),
+        Question.owner_user_id.is_(None),
+    ]
     if topic_slug:
         topic = (
             await db.execute(
@@ -140,6 +163,10 @@ async def start_attempt(
 ) -> AttemptResponse:
     # Serialize set allocation for a student, including requests from two tabs.
     await db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    daily_task = await prepare_daily_quiz(db, user, payload) if payload.study_task_id else None
+    if daily_task and daily_task.quiz_attempt_id:
+        # A retry or a second tab resumes the same set, never duplicates it.
+        return await get_attempt(daily_task.quiz_attempt_id, user, db)
     subject = (
         await db.execute(select(Subject).where(Subject.slug == payload.subject_slug))
     ).scalar_one_or_none()
@@ -150,7 +177,11 @@ async def start_attempt(
     query = (
         select(Question)
         .join(Topic)
-        .where(Topic.subject_id == subject.id, Question.is_active.is_(True))
+        .where(
+            Topic.subject_id == subject.id,
+            Question.is_active.is_(True),
+            Question.owner_user_id.is_(None),
+        )
     )
     if payload.topic_slug:
         topic = (
@@ -164,8 +195,8 @@ async def start_attempt(
             raise HTTPException(status_code=404, detail="Topic not found for this subject")
         query = query.where(Question.topic_id == topic.id)
 
-    # A question assigned to any of this student's sets is considered seen, even if skipped.
-    # This prevents repeatedly handing out the same tiny pool under different set-size labels.
+    # An allocated or skipped question is not an answered question. Unanswered
+    # items in saved sets must remain available, rather than silently exhausting the bank.
     seen = seen_question_counts(user.id)
     query = query.outerjoin(seen, seen.c.question_id == Question.id)
     if not payload.allow_repeats:
@@ -183,8 +214,8 @@ async def start_attempt(
         raise HTTPException(
             status_code=409,
             detail=(
-                "No new questions remain for this selection. "
-                "Resume a saved set or choose revision mode."
+                "No unanswered bank questions remain for this selection. "
+                "Choose mixed revision or create a similar practice set."
             ),
         )
     seen_ids = set((await db.execute(select(seen.c.question_id))).scalars())
@@ -203,6 +234,8 @@ async def start_attempt(
     await db.flush()
     for position, question in enumerate(questions, start=1):
         db.add(AttemptQuestion(attempt_id=attempt.id, question_id=question.id, position=position))
+    if daily_task:
+        daily_task.quiz_attempt_id = attempt.id
     await db.commit()
 
     topic_by_id = {
@@ -242,13 +275,13 @@ async def start_attempt(
 def seen_question_counts(user_id: str):
     return (
         select(
-            AttemptQuestion.question_id,
+            PracticeAnswer.question_id,
             func.count().label("times_seen"),
-            func.max(PracticeAttempt.started_at).label("last_seen"),
+            func.max(PracticeAnswer.answered_at).label("last_seen"),
         )
-        .join(PracticeAttempt, PracticeAttempt.id == AttemptQuestion.attempt_id)
+        .join(PracticeAttempt, PracticeAttempt.id == PracticeAnswer.attempt_id)
         .where(PracticeAttempt.user_id == user_id)
-        .group_by(AttemptQuestion.question_id)
+        .group_by(PracticeAnswer.question_id)
         .subquery()
     )
 
@@ -267,7 +300,11 @@ async def practice_availability(
         .join(Topic, Topic.id == Question.topic_id)
         .join(Subject, Subject.id == Topic.subject_id)
         .outerjoin(seen, seen.c.question_id == Question.id)
-        .where(Subject.slug == subject_slug, Question.is_active.is_(True))
+        .where(
+            Subject.slug == subject_slug,
+            Question.is_active.is_(True),
+            Question.owner_user_id.is_(None),
+        )
     )
     if topic_slug:
         query = query.where(Topic.slug == topic_slug)
@@ -341,6 +378,7 @@ async def attempt_history(
                 correct_answers=a.correct_answers,
                 duration_seconds=a.duration_seconds or 0,
                 time_limit_seconds=a.time_limit_seconds,
+                question_mode=a.question_mode,
             )
             for a in attempts
         ],
@@ -374,6 +412,7 @@ async def get_attempt(attempt_id: str, user: CurrentUser, db: DatabaseSession) -
         duration_seconds=attempt.time_limit_seconds,
         current_position=attempt.current_position,
         negative_mark_fraction=attempt.negative_mark_fraction,
+        question_mode=attempt.question_mode,
         answers=[
             SavedAnswerResponse(
                 question_id=a.question_id,
@@ -593,4 +632,5 @@ async def build_summary(db: AsyncSession, attempt: PracticeAttempt) -> AttemptSu
         score=round(correct - (len(answers) - correct) * attempt.negative_mark_fraction, 2),
         negative_mark_fraction=attempt.negative_mark_fraction,
         review=review,
+        question_mode=attempt.question_mode,
     )

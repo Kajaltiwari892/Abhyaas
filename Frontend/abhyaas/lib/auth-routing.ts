@@ -2,11 +2,11 @@ import type { AuthStatus } from "./session-controller";
 
 const publicPaths = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
 
-// Home is always the public landing page. Never gate it on a session request or
-// read window.location during rendering (it can lag behind a client transition).
+// Use the restored session to send returning students to their dashboard.
+// Public pages remain usable while the initial session request is pending.
 export function authRedirect(pathname: string, status: AuthStatus): string | null {
   if (status === "loading") return null;
-  if (status === "authenticated" && pathname === "/login") {
+  if (status === "authenticated" && (pathname === "/" || pathname === "/login")) {
     return "/progress";
   }
   if (status === "anonymous" && !publicPaths.has(pathname)) {

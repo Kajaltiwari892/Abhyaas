@@ -15,8 +15,13 @@ from app.models.rag import (
     KnowledgeChunk,
     KnowledgeDocument,
 )
+from app.models.revision import RevisionAnswer, RevisionSession
+from app.models.study_plan import DailyStudyPlan, DailyStudyTask, StudyPreference
 
 __all__ = [
+    "DailyStudyPlan",
+    "DailyStudyTask",
+    "StudyPreference",
     "AttemptQuestion",
     "DoubtConversation",
     "DoubtMessage",
@@ -33,6 +38,8 @@ __all__ = [
     "PreviousPaper",
     "Question",
     "RefreshSession",
+    "RevisionAnswer",
+    "RevisionSession",
     "Subject",
     "Topic",
     "User",

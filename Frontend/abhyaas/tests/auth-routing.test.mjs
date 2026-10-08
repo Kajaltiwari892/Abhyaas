@@ -2,10 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { authRedirect, googleCallbackRedirect, shouldShowSessionRecovery, shouldWaitForSession } from "../lib/auth-routing.ts";
 
-test("Home renders without waiting for auth and never redirects signed-in students", () => {
-  for (const status of ["loading", "authenticated", "anonymous"]) {
+test("Home opens Progress for signed-in students and the landing page for visitors", () => {
+  assert.equal(authRedirect("/", "authenticated"), "/progress");
+  for (const status of ["loading", "anonymous", "unavailable"]) {
     assert.equal(authRedirect("/", status), null);
   }
+});
+
+test("restoring a valid session on Home redirects once without passing through Login", () => {
+  const destinations = ["loading", "loading", "authenticated"]
+    .map((status) => authRedirect("/", status)).filter(Boolean);
+  assert.deepEqual(destinations, ["/progress"]);
+  assert.equal(authRedirect("/progress", "authenticated"), null);
+  assert.equal(authRedirect("/about", "authenticated"), null);
 });
 
 test("public pages remain visible while the session server is slow", () => {
@@ -52,7 +61,7 @@ test("Login hides the form only until session restoration resolves", () => {
 });
 
 test("protected pages never flash before the initial session check finishes", () => {
-  for (const path of ["/progress", "/practice", "/papers", "/subjects", "/subjects/english", "/doubt-solver", "/profile"]) {
+  for (const path of ["/progress", "/practice", "/papers", "/subjects", "/subjects/english", "/mistake-notebook", "/doubt-solver", "/profile"]) {
     assert.equal(shouldWaitForSession(path, "loading"), true);
     assert.equal(authRedirect(path, "loading"), null);
     assert.equal(authRedirect(path, "anonymous"), `/login?next=${encodeURIComponent(path)}`);

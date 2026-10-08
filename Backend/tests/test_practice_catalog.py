@@ -61,10 +61,14 @@ def test_incomplete_questions_never_enter_scored_practice(change, reason):
     assert prepare_question(q, p, "general-knowledge") == (None, reason)
 
 
-def test_provisional_or_unverified_key_is_excluded():
+def test_provisional_key_is_usable_but_never_labelled_final():
     q, p = source_record()
     p.answer_key_url = "https://upsc.gov.in/provisional-key.pdf"
-    assert prepare_question(q, p, "general-knowledge")[0] is None
+    prepared, reason = prepare_question(q, p, "general-knowledge")
+    assert reason == "accepted"
+    assert prepared["provenance"]["answer_basis"] == "provisional"
+    assert "provisional answer" in prepared["source_label"]
+    assert "official answer key" not in prepared["source_label"]
     p.answer_key_url = "https://upsc.gov.in.attacker.test/key.pdf"
     assert prepare_question(q, p, "general-knowledge")[0] is None
 

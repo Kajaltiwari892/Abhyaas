@@ -217,6 +217,7 @@ def test_verified_key_is_not_overwritten_by_ai_and_official_only_never_guesses()
             paper = await seed(db, total=3, imported=3)
             paper.questions[0].is_verified = True
             paper.questions[0].correct_index = 2
+            paper.answer_key_url = "https://upsc.gov.in/test-english-key.pdf"
             await db.commit()
             result = await solve_paper(db, request(), generate)
             first = result["questions"][0]
@@ -230,6 +231,53 @@ def test_verified_key_is_not_overwritten_by_ai_and_official_only_never_guesses()
             assert official["questions"][0]["solution"]["status"] == "verified"
             assert official["questions"][1]["solution"]["status"] == "key_pending"
             assert paper.questions[1].correct_index == 0 and not paper.questions[1].is_verified
+
+    asyncio.run(scenario())
+
+
+def test_checked_answers_are_reused_but_never_called_official():
+    async def scenario():
+        from app.services.paper_answers import save_review
+
+        async with SessionLocal() as db:
+            paper = await seed(db, total=1, imported=1)
+            save_review(
+                paper.questions[0],
+                1,
+                "The singular subject she takes the present-tense verb goes.",
+                method="editorial",
+                evidence={"source_checked": True},
+            )
+            await db.commit()
+            ai = AsyncMock()
+            result = await solve_paper(db, request(), ai)
+            ai.assert_not_called()
+            card = result["questions"][0]
+            assert card["correct_index"] == 1 and card["answer_verified"] is False
+            assert card["solution"]["status"] == "reviewed"
+            official = await solve_paper(
+                db, request("Give official answers for CDS I 2026 English"), ai
+            )
+            assert official["questions"][0]["solution"]["status"] == "key_pending"
+            ai.assert_not_called()
+
+    asyncio.run(scenario())
+
+
+def test_provisional_official_key_keeps_its_label_in_tutor():
+    async def scenario():
+        async with SessionLocal() as db:
+            paper = await seed(db, total=1, imported=1)
+            paper.answer_key_url = "https://upsc.gov.in/ProvAnsKey-English.pdf"
+            paper.questions[0].is_verified = True
+            paper.questions[0].correct_index = 1
+            await db.commit()
+            ai = AsyncMock()
+            result = await solve_paper(
+                db, request("Give official answers for CDS I 2026 English"), ai
+            )
+            ai.assert_not_called()
+            assert result["questions"][0]["solution"]["status"] == "provisional"
 
     asyncio.run(scenario())
 

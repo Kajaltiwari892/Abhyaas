@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     rag_embedding_dimensions: int = 768
     rag_top_k: int = 5
     rag_daily_limit: int = 30
+    practice_ai_model: str = "gemini-2.5-flash"
+    practice_ai_daily_questions: int = Field(default=250, ge=1, le=2000)
 
     @field_validator("*", mode="before")
     @classmethod

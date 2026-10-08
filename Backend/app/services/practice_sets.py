@@ -33,6 +33,7 @@ class PracticeQuestion(BaseModel):
     options: list[str] = Field(min_length=4, max_length=4)
     correct_index: int = Field(ge=0, le=3)
     explanation: str = Field(min_length=8, max_length=1200)
+    topic_slug: str | None = Field(default=None, max_length=80)
 
     @field_validator("options")
     @classmethod
@@ -120,6 +121,7 @@ async def generate_practice_set(
     archive: dict | None = None,
     previous: dict | None = None,
     subject: str | None = None,
+    repair_attempts: int = 2,
 ) -> dict:
     started_at = asyncio.get_running_loop().time()
     requested = (
@@ -188,7 +190,7 @@ AVOID REPEATING THESE PROMPTS: {json.dumps(avoid[-50:], ensure_ascii=False)}
         valid = []
         for item in items[:count]:
             try:
-                valid.append(PracticeQuestion.model_validate(item).model_dump())
+                valid.append(PracticeQuestion.model_validate(item).model_dump(exclude_none=True))
             except ValidationError:
                 continue
         logger.info(
@@ -228,8 +230,10 @@ AVOID REPEATING THESE PROMPTS: {json.dumps(avoid[-50:], ensure_ascii=False)}
             rate_limited |= "rate-limited" in str(output)
             logger.warning("Practice batch incomplete: %s", str(output))
     logger.info("Practice set: target=%d distinct=%d before repair", target, len(questions))
-    # At most two repair calls, each excluding every accepted question. No quota-heavy fanout.
-    for repair_index in range(2):
+    # Bounded repairs, each excluding accepted items. Similar sets allow one extra
+    # repair because their independent quality check can reject a final candidate.
+    # All repairs still share the same wall-clock budget; there is no request fanout.
+    for repair_index in range(min(3, max(0, repair_attempts))):
         if len(questions) >= target:
             break
         remaining = (140 if target > 10 else 68) - (asyncio.get_running_loop().time() - started_at)

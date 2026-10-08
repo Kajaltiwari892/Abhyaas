@@ -1,7 +1,7 @@
-"""Build scored practice from complete, source-linked, official-key paper records.
+"""Build scored practice from complete, source-linked, checked paper records.
 
 This is a content gate, not a claim that OCR has been manually reviewed. Provisional
-keys, missing contexts, missing emphasis and image-dependent questions are excluded.
+keys without a stored answer, missing contexts and image-dependent questions are excluded.
 """
 
 import hashlib
@@ -11,6 +11,7 @@ import uuid
 from urllib.parse import urlparse
 
 from app.models.papers import PaperQuestion, PreviousPaper
+from app.services.paper_answers import stored_answer
 
 IMPORT_BATCH = "cds-official-v1"
 NAMESPACE = uuid.UUID("1ad65892-4ff8-4c91-a986-9f641f739c1b")
@@ -115,23 +116,29 @@ def prepare_question(
     subject: str,
     record_override: dict | None = None,
 ) -> tuple[dict | None, str]:
+    record = record_override if record_override is not None else question.transcription or {}
     if (
-        not paper.is_published
-        or not question.is_verified
-        or not official_url(paper.source_url)
-        or not official_url(paper.answer_key_url)
-        or "prov" in (paper.answer_key_url or "").lower()
-        or not question.source_label.startswith("Official UPSC")
+        question.is_verified
+        and isinstance(record.get("options"), list)
+        and len(record["options"]) != 4
+    ):
+        return None, "incomplete_options"
+    key = stored_answer(question, paper)
+    if not paper.is_published or key is None or not official_url(paper.source_url):
+        return None, "no_final_official_key"
+    # Legacy verified demo answers without an official key are not bulk-imported.
+    if question.is_verified and (
+        not official_url(paper.answer_key_url)
+        or (key.basis != "provisional" and not question.source_label.startswith("Official UPSC"))
     ):
         return None, "no_final_official_key"
-    record = record_override if record_override is not None else question.transcription or {}
     prompt = record.get("prompt", "")
     options = record.get("options", [])
     if not isinstance(prompt, str) or not prompt.strip() or not isinstance(options, list):
         return None, "incomplete_text"
     if len(options) != 4 or not all(isinstance(o, str) and o.strip() for o in options):
         return None, "incomplete_options"
-    if len({o.strip().casefold() for o in options}) != 4 or not 0 <= question.correct_index < 4:
+    if len({o.strip().casefold() for o in options}) != 4 or not 0 <= key.index < 4:
         return None, "invalid_options_or_key"
     if record.get("hasVisual"):
         return None, "visual_question"
@@ -211,7 +218,7 @@ def prepare_question(
             topic_slug, topic_name = "current-affairs", "Current affairs (paper year)"
     fingerprint = hashlib.sha256(
         json.dumps(
-            [subject, prompt.strip(), context, options, question.correct_index], ensure_ascii=True
+            [subject, prompt.strip(), context, options, key.index], ensure_ascii=True
         ).encode()
     ).hexdigest()
     return {
@@ -221,10 +228,15 @@ def prepare_question(
         "prompt": prompt.strip(),
         "context": context or None,
         "options": options,
-        "correct_index": question.correct_index,
-        "explanation": question.explanation,
+        "correct_index": key.index,
+        "explanation": key.explanation,
         "source_label": (
-            f"UPSC CDS {paper.cycle} {paper.year} · Q{question.number} · official answer key"
+            f"UPSC CDS {paper.cycle} {paper.year} · Q{question.number} · "
+            + {
+                "official": "official answer key",
+                "provisional": "provisional answer",
+                "reviewed": "checked practice answer",
+            }[key.basis]
         ),
         "difficulty": "cds-pyq",
         "is_active": True,
@@ -235,6 +247,7 @@ def prepare_question(
             "source_url": paper.source_url,
             "source_page_url": page,
             "answer_key_url": paper.answer_key_url,
+            "answer_basis": key.basis,
             "year": paper.year,
             "cycle": paper.cycle,
             "number": question.number,

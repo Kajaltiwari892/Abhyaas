@@ -113,6 +113,113 @@ def test_full_practice_set_gets_a_sufficient_output_budget():
     asyncio.run(scenario())
 
 
+def test_similar_practice_requires_topics_and_does_not_depend_on_vector_retrieval():
+    async def scenario():
+        def respond(request):
+            schema = json.loads(request.content)["generationConfig"]["responseJsonSchema"]
+            questions = schema["properties"]["questions"]
+            assert "minItems" not in questions and "maxItems" not in questions
+            item = questions["items"]
+            assert "topic_slug" in item["required"]
+            assert item["properties"]["topic_slug"] == {"type": "string"}
+            assert item["properties"]["correct_index"] == {"type": "integer"}
+            assert item["properties"]["options"] == {"type": "array", "items": {"type": "string"}}
+            return httpx.Response(
+                200, json={"candidates": [{"content": {"parts": [{"text": '{"questions":[]}'}]}}]}
+            )
+
+        service = RagService()
+        service.settings = service.settings.model_copy(update={"gemini_api_key": "test-key"})
+        service.retrieve = AsyncMock(side_effect=AssertionError("Not a bank lookup"))
+        transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+        with patch("app.services.rag.httpx.AsyncClient", return_value=transport):
+            assert await service.generate_similar_questions(
+                "Create exactly 25 questions", ["grammar", "idioms"]
+            ) == {"questions": []}
+        service.settings = service.settings.model_copy(update={"gemini_api_key": ""})
+        with pytest.raises(RagUnavailableError):
+            await service.generate_similar_questions("Create exactly 10 questions", ["grammar"])
+
+    asyncio.run(scenario())
+
+
+def test_independent_practice_review_uses_its_own_schema_without_proposed_keys():
+    async def scenario():
+        def respond(request):
+            body = json.loads(request.content)
+            assert "correct_index" not in body["contents"][0]["parts"][0]["text"]
+            schema = body["generationConfig"]["responseJsonSchema"]["properties"]["reviews"]
+            assert "minItems" not in schema and "maxItems" not in schema
+            assert schema["items"]["properties"]["number"] == {"type": "integer"}
+            assert schema["items"]["properties"]["answer_index"]["type"] == ["integer", "null"]
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {
+                                        "text": '{"reviews":[{"number":1,"usable":true,'
+                                        '"answer_index":1}]}'
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+            )
+
+        service = RagService()
+        service.settings = service.settings.model_copy(update={"gemini_api_key": "test-key"})
+        transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+        with patch("app.services.rag.httpx.AsyncClient", return_value=transport):
+            result = await service.review_similar_questions(
+                [
+                    {
+                        "prompt": "Choose the correct sentence.",
+                        "options": ["A", "B", "C", "D"],
+                        "correct_index": 1,
+                        "explanation": "Hidden proposed explanation",
+                    }
+                ]
+            )
+            assert result["reviews"][0]["answer_index"] == 1
+
+    asyncio.run(scenario())
+
+
+def test_scored_similar_sets_do_not_fall_back_to_lite_generation():
+    async def scenario():
+        models = []
+
+        def respond(request):
+            model = request.url.path.split("/")[-1].split(":")[0]
+            models.append(model)
+            if model == "gemini-3.8-flash":
+                return httpx.Response(503)
+            assert model == "gemini-2.5-flash"
+            return httpx.Response(
+                200, json={"candidates": [{"content": {"parts": [{"text": '{"questions":[]}'}]}}]}
+            )
+
+        service = RagService()
+        service.settings = service.settings.model_copy(
+            update={
+                "gemini_api_key": "test-key",
+                "practice_ai_model": "gemini-3.8-flash",
+                "gemini_model": "gemini-3.8-flash",
+                "gemini_fallback_model": "gemini-3.5-flash-lite",
+            }
+        )
+        transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+        with patch("app.services.rag.httpx.AsyncClient", return_value=transport):
+            await service.generate_similar_questions("Create exactly 10 questions", ["grammar"])
+        assert models == ["gemini-3.8-flash", "gemini-2.5-flash"]
+
+    asyncio.run(scenario())
+
+
 def test_not_a_paper_question_does_not_retrieve_paper_catalog():
     async def scenario():
         service = RagService()

@@ -10,6 +10,8 @@ import PaperQuestionSkeleton from "../components/PaperQuestionSkeleton";
 import PaperText from "../components/PaperText";
 import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
+import { formatPaperText } from "@/lib/paper-format";
+import { hasStoredAnswer, paperScoreDescription } from "@/lib/paper-answer";
 import { filterPaperArchive, paperArchiveYears, paperAvailability } from "@/lib/paper-archive";
 import { completePaperAttempt, generatePaperExplanation, getPaper, getPaperAttemptResult, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
@@ -36,61 +38,6 @@ const ENGLISH_2026_SECTIONS: PaperSection[] = [
     passage: "As the new century begins, it is becoming evident to urban dwellers, whether in industrial or developing countries, that there is an immanent conflict between the automobile and the city. Urban air pollution, often from automobiles, claims millions of lives. Congestion also takes a direct economic toll in rising costs in time and the use of petrol.\n\nAnother cost of cities that are devoted to cars is a psychological one, a deprivation of contact with the natural world—an ‘asphalt complex’. There is a growing body of evidence that there is an innate human need for contact with nature. Both ecologists and psychologists have been aware of this for some time. Ecologists, led by Harvard University biologist E. O. Wilson, have formulated the ‘biophilia hypothesis’, which argues that those who are deprived of contact with nature suffer psychologically and that this deprivation leads to a measurable decline in well-being.\n\nMeanwhile psychologists have coined their own term—ecopsychology—in which they make the same argument. Theodore Roszak, a leader in this field, cites a study that documents humans’ dependence on nature by looking at the rate of recovery of patients in a hospital in Pennsylvania. Those whose rooms overlooked gardens with grass, trees, flowers, and birds recovered from illnesses more quickly than those who were in rooms overlooking the parking lot.",
   },
 ];
-const LATEX_WORDS: Record<string, string> = {
-  alpha: "α", beta: "β", gamma: "γ", delta: "δ", lambda: "λ", pi: "π", theta: "θ",
-  times: "×", cdot: "·", dots: "…", circ: "°", neq: "≠", ne: "≠", le: "≤", ge: "≥",
-  pm: "±", angle: "∠", tan: "tan", cot: "cot", sin: "sin", cos: "cos", sec: "sec",
-  csc: "cosec", quad: " ", displaystyle: "", left: "", right: "",
-};
-const SUPERSCRIPT_DIGITS: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "-": "⁻" };
-
-function bracedGroup(text: string, opening: number) {
-  if (text[opening] !== "{") return null;
-  let depth = 0;
-  for (let index = opening; index < text.length; index += 1) {
-    if (text[index] === "{") depth += 1;
-    if (text[index] === "}") depth -= 1;
-    if (depth === 0) return { value: text.slice(opening + 1, index), end: index + 1 };
-  }
-  return null;
-}
-
-function replaceLatexGroups(text: string, command: "frac" | "sqrt") {
-  const marker = `\\${command}{`;
-  let result = text;
-  let start = result.indexOf(marker);
-  while (start >= 0) {
-    const first = bracedGroup(result, start + marker.length - 1);
-    if (!first) break;
-    if (command === "sqrt") {
-      result = `${result.slice(0, start)}√(${first.value})${result.slice(first.end)}`;
-    } else {
-      const second = bracedGroup(result, first.end);
-      if (!second) break;
-      result = `${result.slice(0, start)}(${first.value})/(${second.value})${result.slice(second.end)}`;
-    }
-    start = result.indexOf(marker, start + 1);
-  }
-  return result;
-}
-
-function formatPaperText(value: string) {
-  let text = value.replace(/\$/g, "");
-  for (let pass = 0; pass < 4; pass += 1) {
-    text = replaceLatexGroups(replaceLatexGroups(text, "frac"), "sqrt");
-  }
-  text = text
-    .replace(/\\text\{([^{}]*)\}/g, "$1")
-    .replace(/\^\{(-?\d+)\}/g, (_, digits: string) => [...digits].map(digit => SUPERSCRIPT_DIGITS[digit] ?? digit).join(""))
-    .replace(/\^\{([^{}]+)\}/g, "^($1)")
-    .replace(/_\{([^{}]+)\}/g, "_($1)")
-    .replace(/\\([A-Za-z]+)/g, (_, word: string) => LATEX_WORDS[word] ?? word)
-    .replace(/\\([()[\]])/g, "$1")
-    .replace(/\\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .trim();
-  return text;
-}
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
 
@@ -378,14 +325,14 @@ export default function PapersPage() {
         <header className="paper-card-top"><span className="paper-year-badge">{paper.year}</span><span className="paper-cycle-badge">CDS {paper.cycle}</span><FileText size={21} /></header>
         <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>{paperAvailability(paper) === "pdf" ? "Complete original UPSC PDF. Interactive questions have not been prepared for this paper yet." : paperAvailability(paper) === "interactive" ? "Interactive paper · every question available to practise." : `${paper.available_question_count} interactive questions available. Use the PDF for the complete paper.`}</p></div>
         <div className="paper-card-meta"><span><strong>{paper.official_question_count}</strong><small>Paper questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
-        <p className="paper-key-status"><ShieldCheck size={14} /> {paperAvailability(paper) === "pdf" ? "Official PDF · online scoring not available" : paper.verified_question_count ? `${paper.verified_question_count} verified answers available` : "Answer verification pending"}</p>
+        <p className="paper-key-status"><ShieldCheck size={14} /> {paperAvailability(paper) === "pdf" ? "Original paper" : paper.scorable_question_count ? `${paper.scorable_question_count} answers ready for scoring` : "Answers being checked"}</p>
         <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openPaper(paper, "mock")} disabled={busy}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openPaper(paper, "review")}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
         {paper.available_question_count > 0 && <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>}
       </article>)}</div>
     </section>)}</div>
     {!papers.length && listingLoading && <PaperArchiveSkeleton />}
     {!filteredPapers.length && !listingLoading && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>This combination is not in the available official archive. Try another year, cycle, or subject.</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
-    <section className="paper-method"><div><span className="workspace-kicker">Archive coverage</span><h2>Original papers. Clear availability.</h2></div><div><article><strong>01 · Official PDFs</strong><p>Coverage follows UPSC’s currently available online listings, not every historical CDS sitting. The older archive begins with CDS II 2016. <a href="https://www.upsc.gov.in/examinations/previous-question-papers/archives" target="_blank" rel="noreferrer">Check the UPSC archive.</a></p></article><article><strong>02 · Interactive practice</strong><p>PDF-only papers are not presented as ready-to-score mocks. Interactive papers retain your saved attempts; marks use verified answers only.</p></article></div></section>
+    <section className="paper-method"><div><span className="workspace-kicker">Previous papers</span><h2>Practise. Review. Improve.</h2></div><div><article><strong>Original papers</strong><p>Read the full paper whenever you need it. <a href="https://www.upsc.gov.in/examinations/previous-question-papers/archives" target="_blank" rel="noreferrer">Browse the UPSC archive.</a></p></article><article><strong>Saved results</strong><p>Submit to see your score and review mistakes. Checked practice answers let you study before the final answer key is available.</p></article></div></section>
     {workspaceOpen && <div className="paper-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeWorkspace(); }}>
       <section className="paper-dialog" role="dialog" aria-label={(openingPaper?.mode ?? mode) === "review" ? "Official paper review" : "Timed paper"}>
         <header className="paper-dialog-header"><div><small>{openingPaper ? "Opening paper" : mode === "review" ? "Review mode" : mode === "summary" ? "Attempt complete" : "Timed mock"}</small><h2>{openingPaper?.paper.title ?? detail?.title ?? attempt?.title}</h2></div>{mode === "mock" && !openingPaper && <strong><Clock3 size={15} /> {formatTime(remaining)}</strong>}<button ref={closePaperRef} aria-label="Close paper" onClick={closeWorkspace} disabled={busy && !openingPaper}><X size={19} /></button></header>
@@ -400,10 +347,10 @@ export default function PapersPage() {
                 {activeSection && <details className="paper-directions" key={`${activeQuestion.id}-directions`} open><summary><span>Directions</span><strong>{formatPaperText(activeSection.title)}</strong><small>Read instructions</small></summary>{activeSection.directions && <p><PaperText value={formatPaperText(activeSection.directions)} /></p>}</details>}
                 {activeSection?.passage && <section className="paper-passage"><strong>Passage</strong>{activeSection.passage.split("\n\n").map((paragraph, index) => <p key={index}><PaperText value={formatPaperText(paragraph)} /></p>)}</section>}
                 <section className="paper-sheet-question"><small>Question {activeQuestion.number}</small>{readableQuestion ? <><h2><PaperText value={formatPaperText(readableQuestion.prompt)} /></h2>{readableQuestion.hasVisual && activeQuestion.asset_url && <figure className="paper-original-figure"><a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={activeQuestion.asset_url} alt={`Original page containing the figure for question ${activeQuestion.number}`} loading="lazy" /></a><figcaption>Original figure on the complete page. Open to zoom.</figcaption></figure>}</> : <div className="paper-crop-pending"><FileText size={18} /><div><strong>Written question is being verified</strong><p>Open the complete official page to read question {activeQuestion.number} without a clipped crop.</p>{activeQuestion.asset_url && <a href={activeQuestion.asset_url} target="_blank" rel="noreferrer">Open full official page <ExternalLink size={11} /></a>}</div></div>}</section>
-                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>{answerStatus}</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = mode !== "mock" && Boolean(answerIsRevealed && solutionQuestion?.is_verified && solutionQuestion.correct_index === index); const incorrect = mode !== "mock" && Boolean(answerIsRevealed && solutionQuestion?.is_verified && selected === index && selected !== solutionQuestion.correct_index); return <button disabled={answerBusy === activeQuestion.id} aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => void selectPaperAnswer(index)}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{formatPaperText(option)}</span>{correct && <Check size={15} />}{incorrect && <X size={15} />}</button>; })}</div>
-                {mode === "review" && solutionQuestion?.is_verified && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
-                {solutionQuestion?.is_verified && revealed[activeQuestion.id] && solutionQuestion.explanation && <div className="paper-explanation"><small>{selected === solutionQuestion.correct_index ? "Correct answer" : "Official answer"}</small><p>{solutionQuestion.explanation}</p><div className="paper-explanation-footer"><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span><button type="button" onClick={() => speakExplanation(solutionQuestion.explanation ?? "", activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
-                {mode === "review" && !solutionQuestion?.is_verified && <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={15} /> {aiBusy === activeQuestion.id ? "Working…" : aiExplanation ? "Explain again" : "Explain with AI"}</button>}
+                <section className="paper-answer-panel" aria-label={`Answer question ${activeQuestion.number}`}><header><strong>Choose an answer</strong><span>{answerStatus}</span></header><div className="paper-mcq-options">{displayOptions.map((option, index) => { const answerIsRevealed = Boolean(revealed[activeQuestion.id]); const correct = mode !== "mock" && Boolean(answerIsRevealed && hasStoredAnswer(solutionQuestion) && solutionQuestion?.correct_index === index); const incorrect = mode !== "mock" && Boolean(answerIsRevealed && hasStoredAnswer(solutionQuestion) && selected === index && selected !== solutionQuestion?.correct_index); return <button disabled={answerBusy === activeQuestion.id} aria-pressed={selected === index} className={`${selected === index ? "selected" : ""} ${correct ? "correct" : ""} ${incorrect ? "incorrect" : ""}`} key={`${activeQuestion.id}-${index}`} onClick={() => void selectPaperAnswer(index)}><span>{String.fromCharCode(65 + index)}</span><span className="paper-option-copy">{formatPaperText(option)}</span>{correct && <Check size={15} />}{incorrect && <X size={15} />}</button>; })}</div>
+                {mode === "review" && hasStoredAnswer(solutionQuestion) && !revealed[activeQuestion.id] && <button className="paper-reveal-answer" onClick={() => setRevealed(values => ({ ...values, [activeQuestion.id]: true }))}>{selected === undefined ? "Reveal answer and explanation" : "Check answer and explanation"}</button>}
+                {hasStoredAnswer(solutionQuestion) && revealed[activeQuestion.id] && solutionQuestion?.explanation && <div className="paper-explanation"><small>{solutionQuestion.answer_basis === "official" ? "Official answer" : "Practice answer"}</small><p>{solutionQuestion.explanation}</p><div className="paper-explanation-footer"><span><FileCheck2 size={13} /> {solutionQuestion.source_label}</span><button type="button" onClick={() => speakExplanation(solutionQuestion.explanation ?? "", activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
+                {mode === "review" && !hasStoredAnswer(solutionQuestion) && <button className="paper-ai-answer" onClick={() => void askAI()} disabled={aiBusy === activeQuestion.id}><Sparkles size={15} /> {aiBusy === activeQuestion.id ? "Working…" : aiExplanation ? "Explain again" : "Explain with AI"}</button>}
                 {aiExplanation && <div className="paper-explanation is-ai"><small>AI suggests option {String.fromCharCode(65 + aiExplanation.correct_index)} · {aiExplanation.confidence} confidence</small><p>{aiExplanation.explanation}</p><div className="paper-explanation-footer"><span><Sparkles size={13} /> AI-generated guidance may be imperfect; verify important facts.</span><button type="button" onClick={() => speakExplanation(aiExplanation.explanation, activeQuestion.id)}>{speakingQuestion === activeQuestion.id ? <Square size={13} /> : <Volume2 size={14} />} {speakingQuestion === activeQuestion.id ? "Stop voice" : "Listen"}</button></div></div>}
               </section>
                 {readableQuestion && sourcePageUrl && <a className="paper-source-details" href={sourcePageUrl} target="_blank" rel="noreferrer">{readableQuestion.text_reviewed === false ? "Transcribed · text review pending. Compare with original" : "Compare with the complete official page"} <ExternalLink size={12} /></a>}
@@ -427,9 +374,9 @@ function PaperSummary({ summary, questions, onClose, marksPerQuestion, negativeM
     .filter(item => item.selected_index !== null && item.is_correct === false)
     .map(item => item.number);
   return <div className="paper-summary">
-    <header className="paper-summary-hero"><span><Check size={24} /></span><div><small>Attempt complete</small><h2>Paper submitted</h2><p>{hasScore ? `Your result uses ${summary.scored_questions} verified answer keys. Questions awaiting an official key are not included in marks.` : "Your attempt is saved. Marks will appear after answer keys are verified."}</p></div></header>
+    <header className="paper-summary-hero"><span><Check size={24} /></span><div><small>Attempt complete</small><h2>Paper submitted</h2><p>{paperScoreDescription(summary)}</p></div></header>
     <section className="paper-summary-metrics" aria-label="Attempt result">
-      <article><small>Score</small><strong>{hasScore ? `${summary.score}/${summary.max_score}` : "Pending"}</strong></article>
+      <article><small>{summary.score_basis === "practice" ? "Practice score" : "Score"}</small><strong>{hasScore ? `${summary.score}/${summary.max_score}` : "Under review"}</strong></article>
       <article><small>Correct</small><strong>{hasScore ? summary.correct_answers : "—"}</strong></article>
       <article><small>Incorrect</small><strong>{hasScore ? summary.incorrect_answers : "—"}</strong></article>
       <article><small>Unanswered</small><strong>{summary.unanswered_questions}</strong></article>
@@ -440,14 +387,14 @@ function PaperSummary({ summary, questions, onClose, marksPerQuestion, negativeM
     </section>
     <section className="paper-cutoff-note"><ShieldCheck size={18} /><div><strong>Cut-off comparison</strong><p>UPSC CDS cut-offs apply to the combined academy examination, not to one subject paper. An official combined cut-off is therefore not shown against this individual-paper score.</p></div></section>
     <section className="paper-result-review">
-      <header><div><small>Question review</small><h3>{incorrectNumbers.length ? `Incorrect: ${incorrectNumbers.map(number => `Q${number}`).join(", ")}` : hasScore ? "No incorrect verified answers" : "Answer verification pending"}</h3></div><div className="paper-result-legend"><span className="is-correct">Correct</span><span className="is-incorrect">Incorrect</span><span className="is-unanswered">Unanswered</span><span className="is-pending">Key pending</span></div></header>
+      <header><div><small>Question review</small><h3>{incorrectNumbers.length ? `Incorrect: ${incorrectNumbers.map(number => `Q${number}`).join(", ")}` : hasScore ? "No incorrect answers" : "Answers being checked"}</h3></div><div className="paper-result-legend"><span className="is-correct">Correct</span><span className="is-incorrect">Incorrect</span><span className="is-unanswered">Unanswered</span><span className="is-pending">Under review</span></div></header>
       <div className="paper-result-grid">{review.map(item => {
         const status = item.selected_index === null ? "unanswered" : item.is_correct === null ? "pending" : item.is_correct ? "correct" : "incorrect";
         const selectedLabel = item.selected_index === null ? "not answered" : `selected ${String.fromCharCode(65 + item.selected_index)}`;
-        const correctLabel = item.correct_index === null ? "answer key pending" : `correct answer ${String.fromCharCode(65 + item.correct_index)}`;
+        const correctLabel = item.correct_index === null ? "answer under review" : `correct answer ${String.fromCharCode(65 + item.correct_index)}`;
         return <span className={`is-${status}`} title={`Question ${item.number}: ${selectedLabel}; ${correctLabel}`} key={item.question_id}>Q{item.number}</span>;
       })}</div>
     </section>
-    <footer><PrimaryButton href="/progress">Open progress</PrimaryButton><button onClick={onClose}>Return to papers</button></footer>
+    <footer><PrimaryButton href="/progress">Open progress</PrimaryButton>{hasScore && <PrimaryButton href="/mistake-notebook" size="sm">Revise mistakes <ArrowRight size={14} /></PrimaryButton>}<button onClick={onClose}>Return to papers</button></footer>
   </div>;
 }

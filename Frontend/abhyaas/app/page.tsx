@@ -19,12 +19,12 @@ import PrimaryButton from "@/components/ui/primary-button";
 import { footerWordmarkPath } from "@/lib/footer-wordmark";
 
 const navItems = [
-  ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Practice", "/practice"],
+  ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Mistake notebook", "/mistake-notebook"],
   ["Doubt solver", "/doubt-solver"], ["Papers", "/papers"],
 ] as const;
 
 const features = [
-  { number: "01", icon: CalendarCheck, title: "Daily practice", copy: "Topic-wise question sets designed to turn preparation into a steady daily habit.", label: "Begin today’s set", href: "/practice" },
+  { number: "01", icon: CalendarCheck, title: "Daily practice", copy: "Topic-wise question sets designed to turn preparation into a steady daily habit.", label: "Begin today’s set", href: "/subjects" },
   { number: "02", icon: BrainCircuit, title: "AI doubt solver", copy: "Ask by text or voice and get a clear explanation with its source material attached.", label: "Ask a doubt", href: "/doubt-solver" },
   { number: "03", icon: FileCheck2, title: "Previous papers", copy: "Study solved CDS papers or attempt them in a focused, exam-like timed mode.", label: "Browse papers", href: "/papers" },
 ];
@@ -59,7 +59,7 @@ export default function Home() {
         <nav className="desktop-nav" aria-label="Main navigation">
           {navItems.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <PrimaryButton className="nav-cta" href="/practice" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton>
+        <PrimaryButton className="nav-cta" href="/subjects" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton>
         <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
           {menuOpen ? <X /> : <Menu />}
         </button>
@@ -90,7 +90,7 @@ export default function Home() {
             <h1><span>Everything you need for CDS.</span><em>One place. Zero cost.</em></h1>
             <p>Daily practice, previous papers and clear doubt-solving—built for serious CDS preparation.</p>
             <div className="scroll-hero-actions">
-              <PrimaryButton href="/practice" size="lg">Start practising <ArrowRight size={17} /></PrimaryButton>
+              <PrimaryButton href="/subjects" size="lg">Start practising <ArrowRight size={17} /></PrimaryButton>
               <Link className="button button-quiet" href="/exam-info">Explore the platform <ChevronRight size={17} /></Link>
             </div>
           </div>
@@ -199,14 +199,14 @@ export default function Home() {
         <div className="closing-content">
           <h2>Preparation should depend on your discipline—<em>not your ability to pay.</em></h2>
           <p>Start small. Return tomorrow. Let the work compound.</p>
-          <PrimaryButton href="/practice" size="lg">Begin your preparation <ArrowRight size={17} /></PrimaryButton>
+          <PrimaryButton href="/subjects" size="lg">Begin your preparation <ArrowRight size={17} /></PrimaryButton>
         </div>
       </section>
 
       <footer className="site-footer">
         <div className="footer-main">
           <div className="footer-brand"><span className="brand-mark"><Swords size={19} /></span><div><strong>ABHYAAS</strong><small>Focused preparation for those who choose to serve.</small></div></div>
-          <div className="footer-links"><span className="footer-label">Explore</span><Link href="/exam-info">Exam info</Link><Link href="/subjects">Subjects</Link><Link href="/practice">Practice</Link><Link href="/doubt-solver">Doubt solver</Link></div>
+          <div className="footer-links"><span className="footer-label">Explore</span><Link href="/exam-info">Exam info</Link><Link href="/subjects">Subjects</Link><Link href="/mistake-notebook">Mistake notebook</Link><Link href="/doubt-solver">Doubt solver</Link></div>
           <div className="footer-links"><span className="footer-label">Platform</span><Link href="/papers">Previous papers</Link><Link href="/progress">Progress</Link><Link href="/about">About</Link><Link href="/privacy">Privacy policy</Link></div>
           <div className="footer-contact"><span className="footer-label">Questions or doubts?</span><p>Write to us anytime. We will get back to you as soon as possible.</p><a href="mailto:kanjal55567@gmail.com"><Mail size={16} />kanjal55567@gmail.com</a></div>
         </div>
@@ -238,7 +238,7 @@ export default function Home() {
       </footer>
 
       <nav className="bottom-nav" aria-label="Quick navigation">
-        <a href="#top"><HomeIcon size={20} /><span>Home</span></a><Link href="/practice"><Target size={20} /><span>Practice</span></Link>
+        <a href="#top"><HomeIcon size={20} /><span>Home</span></a><Link href="/subjects"><GraduationCap size={20} /><span>Subjects</span></Link>
         <Link href="/doubt-solver" className="bottom-nav-main"><Bot size={23} /><span>Ask AI</span></Link>
         <Link href="/papers"><FileCheck2 size={20} /><span>Papers</span></Link><Link href="/progress"><BarChart3 size={20} /><span>Progress</span></Link>
       </nav>

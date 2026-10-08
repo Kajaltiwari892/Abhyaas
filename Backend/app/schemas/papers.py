@@ -16,6 +16,8 @@ class PaperListItemResponse(BaseModel):
     official_question_count: int
     available_question_count: int
     verified_question_count: int
+    scorable_question_count: int = 0
+    reviewed_question_count: int = 0
     academy_tracks: list[str]
     source_url: str
     solutions_available: bool
@@ -30,6 +32,8 @@ class PaperQuestionResponse(BaseModel):
     options: list[str]
     asset_url: str | None
     is_verified: bool
+    is_scorable: bool = False
+    answer_basis: str = "pending"
     transcription: dict | None = None
 
 
@@ -88,6 +92,7 @@ class PaperAnswerReviewResponse(BaseModel):
     is_correct: bool | None
     explanation: str | None
     source_label: str
+    answer_basis: str = "pending"
 
 
 class PaperAttemptSummaryResponse(BaseModel):
@@ -95,6 +100,10 @@ class PaperAttemptSummaryResponse(BaseModel):
     total_questions: int
     answered_questions: int
     scored_questions: int
+    official_answers: int = 0
+    reviewed_answers: int = 0
+    provisional_answers: int = 0
+    score_basis: str = "practice"
     unscored_questions: int
     correct_answers: int
     incorrect_answers: int

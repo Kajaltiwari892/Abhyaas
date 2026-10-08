@@ -1,4 +1,4 @@
-"""Dry-run by default. --apply adds official-key practice and retires only demo seeds.
+"""Dry-run by default. --apply adds checked-answer practice and retires only demo seeds.
 
 All original paper records and previously attempted questions are preserved.
 Run after `alembic upgrade head`; safe to run repeatedly.

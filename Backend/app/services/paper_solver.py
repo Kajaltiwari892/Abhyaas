@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.papers import PaperQuestion, PreviousPaper
 from app.models.practice import Subject
+from app.services.paper_answers import stored_answer
 from app.services.question_bank import question_card
 from app.services.question_requests import normalized_request, wants_practice
 
@@ -223,7 +224,7 @@ def _source_problem(row: PaperQuestion | None, record: dict | None = None) -> st
     ):
         return "This question's text or options are incomplete. Please check the original paper."
     if record.get("hasVisual"):
-        return "This question needs its original diagram. Attach a clear image to get a solution."
+        return "This question needs its original diagram. Please review it in the original paper."
     if re.search(
         r"(?:following|above|given) passage", prompt + " " + str(record.get("directions", "")), re.I
     ) and not record.get("passage"):
@@ -333,7 +334,7 @@ async def solve_paper(
             request,
             "The original PDF is available, but question text for this range has not been "
             "imported yet. I cannot solve it from the paper description. "
-            "Open the original paper and paste a question or attach its image.",
+            "Open the original paper and paste the question text with its options.",
             status="unavailable",
             paper=metadata,
         )
@@ -374,8 +375,9 @@ async def solve_paper(
             and type(row.correct_index) is int
             and 0 <= row.correct_index <= 3
         )
+        saved = stored_answer(row, paper) if row else None
         card["answer_verified"] = verified
-        card["correct_index"] = row.correct_index if verified else None
+        card["correct_index"] = saved.index if saved else None
         card["solution"] = {
             "status": "needs_source",
             "answer_index": None,
@@ -405,29 +407,37 @@ async def solve_paper(
         if not issue and budget + size > MAX_CONTEXT:
             break  # Leave the cursor at this question for the next batch; never truncate it.
         if not issue:
-            if request.get("official_only") and not verified:
+            if request.get("official_only") and not (
+                saved and saved.basis in {"official", "provisional"}
+            ):
                 card["solution"] = {
                     "status": "key_pending",
                     "answer_index": None,
                     "explanation": (
-                        "No verified answer-key entry is stored for this question. "
-                        "Ask for an AI solution if you want a reasoned, unverified answer."
+                        "An official answer is not available for this question. "
+                        "Ask for a practice solution instead."
                     ),
                 }
             elif request.get("official_only"):
                 card["solution"] = {
-                    "status": "verified",
-                    "answer_index": row.correct_index,
-                    "explanation": row.explanation or "Answer from the stored verified key.",
+                    "status": "provisional" if saved.basis == "provisional" else "verified",
+                    "answer_index": saved.index,
+                    "explanation": saved.explanation or "Answer from the stored official key.",
+                }
+            elif saved and saved.basis in {"reviewed", "provisional"}:
+                card["solution"] = {
+                    "status": "reviewed" if saved.basis == "reviewed" else "provisional",
+                    "answer_index": saved.index,
+                    "explanation": saved.explanation,
                 }
             else:
                 ready.append(payload)
                 budget += size
-        elif verified:
+        elif saved and (not request.get("official_only") or saved.basis != "reviewed"):
             card["solution"] = {
-                "status": "verified",
-                "answer_index": row.correct_index,
-                "explanation": "The stored verified key gives this answer. " + issue,
+                "status": "verified" if saved.basis == "official" else saved.basis,
+                "answer_index": saved.index,
+                "explanation": saved.explanation + " " + issue,
             }
         cards.append(card)
     if ready:
@@ -488,10 +498,7 @@ Return JSON only: {"solutions":[{"number":1,"status":"solved","answer_index":0,
         for c in cards
     )
     message = f"{paper.title} · Questions {start}–{end} of {total}. "
-    message += (
-        "Each answer is labelled separately: a stored verified key "
-        "or AI reasoning with verification pending."
-    )
+    message += "Answers are labelled as official, checked practice, or AI suggestions."
     if unresolved:
         message += (
             f" {unresolved} question(s) in this batch need source material or further review."
