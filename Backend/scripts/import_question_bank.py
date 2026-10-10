@@ -23,7 +23,9 @@ from app.models.papers import PaperQuestion, PreviousPaper  # noqa: E402
 from app.services.question_bank import classify_topics, text_checksum  # noqa: E402
 
 
-def prepare_record(key: str, record: dict, subject: str, reviewed: dict) -> dict:
+def prepare_record(
+    key: str, record: dict, subject: str, reviewed: dict, existing: dict | None = None
+) -> dict:
     if not isinstance(record.get("prompt"), str) or not record["prompt"].strip():
         raise ValueError(f"Empty prompt: {key}")
     options = record.get("options")
@@ -39,7 +41,7 @@ def prepare_record(key: str, record: dict, subject: str, reviewed: dict) -> dict
     checksum = text_checksum(record)
     review = reviewed.get(key, {})
     verified = review.get("checksum") == checksum
-    return {
+    prepared = {
         **record,
         "sourcePageUrl": page_url,
         "source_page": int(re.search(r"page-(\d+)", page_url)[1]),
@@ -48,6 +50,17 @@ def prepare_record(key: str, record: dict, subject: str, reviewed: dict) -> dict
         "text_reviewed": verified,
         "review_note": review.get("note") if verified else None,
     }
+    # A legacy-file reimport must not erase a newer, checksum-bound source review.
+    if existing and text_checksum(existing) == checksum and existing.get("checksum") == checksum:
+        if existing.get("text_reviewed") and not verified:
+            prepared["text_reviewed"] = True
+            prepared["review_note"] = existing.get("review_note")
+        chapter_review = existing.get("chapter_review") or {}
+        if chapter_review.get("checksum") == checksum:
+            prepared["chapter_review"] = chapter_review
+            prepared["subtopics"] = existing.get("subtopics", [])
+            prepared["topics"] = sorted(set(prepared["topics"]) | set(existing.get("topics", [])))
+    return prepared
 
 
 async def run(apply: bool) -> None:
@@ -78,7 +91,9 @@ async def run(apply: bool) -> None:
             )
             if not key.startswith(expected_prefix):
                 raise ValueError(f"Paper/source mismatch: {key}")
-            prepared = prepare_record(key, record, paper.subject.slug, reviews)
+            prepared = prepare_record(
+                key, record, paper.subject.slug, reviews, question.transcription
+            )
             if not (
                 ROOT / "Frontend" / "abhyaas" / "public" / prepared["sourcePageUrl"].lstrip("/")
             ).is_file():

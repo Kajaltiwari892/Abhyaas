@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { paperArchiveYears, filterPaperArchive, paperAvailability } from "../lib/paper-archive.ts";
+import { paperArchiveYears, filterPaperArchive, paperAvailability, paperOpeningMode } from "../lib/paper-archive.ts";
 
 const papers = [
   { year: 2016, cycle: "II", subject_slug: "english" },
@@ -25,4 +25,13 @@ test("PDF-only and partial papers are not labelled complete interactive mocks", 
   assert.equal(paperAvailability({ available_question_count: 0, official_question_count: 120 }), "pdf");
   assert.equal(paperAvailability({ available_question_count: 5, official_question_count: 120 }), "partial");
   assert.equal(paperAvailability({ available_question_count: 120, official_question_count: 120 }), "interactive");
+});
+
+test("partial chapter collections open for study without a full-paper timer", () => {
+  const partial = { available_question_count: 2, official_question_count: 120 };
+  const complete = { available_question_count: 120, official_question_count: 120 };
+  assert.equal(paperOpeningMode(partial, "mock"), "review");
+  assert.equal(paperOpeningMode(partial, "review"), "review");
+  assert.equal(paperOpeningMode(complete, "mock"), "mock");
+  assert.equal(paperOpeningMode(complete, "review"), "review");
 });

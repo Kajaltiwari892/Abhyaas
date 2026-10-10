@@ -94,17 +94,22 @@ def publish(connection, bundle):
             ).mappings()
         )
         if existing:
-            # Idempotent only for this exact content; never replace a student's question.
+            # A reviewed chapter collection may precede the rest of the paper.
+            # Fill missing numbers only; preserve its IDs, keys, text and attempts.
             incoming = {r["number"]: r for r in entry["questions"]}
-            if len(existing) != entry["question_count"] or any(
+            if any(
                 q["number"] not in incoming
                 or q["prompt"] != incoming[q["number"]]["prompt"]
                 or q["options"] != incoming[q["number"]]["options"]
                 for q in existing
             ):
                 raise ValueError("Refusing to overwrite existing paper questions")
-            continue
+            if len(existing) == entry["question_count"]:
+                continue
+        existing_numbers = {q["number"] for q in existing}
         for row in entry["questions"]:
+            if row["number"] in existing_numbers:
+                continue
             text = {
                 key: row[key]
                 for key in (

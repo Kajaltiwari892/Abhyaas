@@ -1,5 +1,40 @@
 # Feeding previous-paper data
 
+## Chapter-wise PYQs
+
+The first Sound and Waves release is `data/chapter_questions/sound-waves-20261009.json`.
+It contains six source-compared questions from CDS I/II 2023, CDS II 2025 and CDS I 2026,
+not an exhaustive historical archive. Migration `20261009_26` adds four questions and
+improves two existing questions' tags. It keeps question IDs, checked answers and student
+history. Chapter collections do not mean the rest of an older paper is transcribed.
+
+Questions live in the existing `paper_questions` table, linked to `previous_papers`.
+Their transcription stores chapter/subtopic tags, source page and review checksum.
+PYQ search counts all matches, shows up to 50 per reply and continues with "Show next
+PYQs". PDF-only papers are included in the coverage denominator. Seismic waves and
+optics are not included just because their wording mentions waves or frequency.
+
+To expand the collection, use a new dated release filename:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/collect_chapter_candidates.py --years 2022 2023 --ocr --max-papers 4 --output ../tmp/pdfs/chapter-review/candidates.json
+.\.venv\Scripts\python.exe scripts/export_chapter_questions.py ../tmp/pdfs/chapter-review/reviewed-draft.json --output data/chapter_questions/sound-waves-YYYYMMDD.json
+.\.venv\Scripts\python.exe scripts/import_chapter_questions.py data/chapter_questions/sound-waves-YYYYMMDD.json
+```
+
+The collector uses no AI API and does not write to the database. OCR snippets are drafts;
+compare every included question, choice, number and unit visually with the original PDF.
+Unscanned/unreadable pages remain pending. `--pages` plus `--render-only` can prepare a
+bounded visual-review batch when OCR is slow. A draft uses the versioned release schema;
+the exporter computes question checksums and renders source images, but cannot perform
+the source comparison for you. It refuses to replace an existing release bundle.
+
+The importer is a dry run unless `--apply` is supplied. It rejects changed PDFs/text and
+never writes answers or student data. Publish a new release via an additive migration
+so the live database receives the same public data on deployment. Do not copy local
+accounts or histories to production. Full-paper publication can later fill remaining
+questions while preserving this collection's existing IDs and reviewed text.
+
 ## Official PDF archive
 
 Migration `20261001_18` publishes the reviewed public manifest

@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "chapter": "sound-waves",
+  "description": "First source-compared Sound and Waves collection. This is not a complete historical chapter archive or an answer-key release.",
+  "reviewed_at": "2026-10-09",
+  "papers": [
+    {
+      "year": 2023,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-I-23-GENERAL-KNOWLEDGE-170423.pdf",
+      "source_checksum": "f2a9e802cae19f3463857013420f3bb5af8721e8903ef0d92dba3dcd174efc91",
+      "questions": [
+        {
+          "number": 6,
+          "page": 3,
+          "prompt": "A person burned a firecracker in front of a cliff and heard its echo 5 s after it burst. The distance of the cliff from the person, if the speed of the sound is 340 m/s, is close to",
+          "options": [
+            "1700 m",
+            "170 m",
+            "85 m",
+            "850 m"
+          ],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "Prompt, question number, all four choices and units compared visually with the original PDF page on 2026-10-09. Line wrapping normalized. Not answer-key verification.",
+          "checksum": "7253578d3ff2c1ae22adfef33d1f4af0b78662d5a5af23b3bca7446d6e3b51ee"
+        },
+        {
+          "number": 7,
+          "page": 5,
+          "prompt": "Consider the following statements about the microphone and the speaker of a mobile phone :\n1. The microphone converts sound to a mechanical signal.\n2. The microphone converts sound to an electrical signal.\n3. The speaker converts a mechanical signal to sound.\n4. The speaker converts an electrical signal to sound.\nWhich of the statements given above are correct?",
+          "options": [
+            "1 and 3",
+            "1 and 4",
+            "2 and 3",
+            "2 and 4"
+          ],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "All four statements, question number and choices compared visually with the original PDF page on 2026-10-09. Line wrapping normalized. Not answer-key verification.",
+          "checksum": "e4d32f565827d0c4c21e20c539a04d32d192930165d29f63e908a7b16a369d76"
+        }
+      ]
+    },
+    {
+      "year": 2023,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-2023-GK-04092023.pdf",
+      "source_checksum": "b4e5f3d4e7e70153d8e06c78b37e42674593094863f35165ad361baef1d97676",
+      "questions": [
+        {
+          "number": 5,
+          "page": 3,
+          "prompt": "Sonic boom is produced when a source of sound travels at a speed :",
+          "options": [
+            "greater than the speed of sound.",
+            "greater than the speed of light.",
+            "lesser than the speed of sound.",
+            "equal to the speed of sound."
+          ],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "Prompt, question number and all four choices compared visually with the original PDF page on 2026-10-09. Line wrapping normalized. Not answer-key verification.",
+          "checksum": "d0537b0eacb5796b7f35fc165f218aae0b126bcedbad638c5c31d4f9877e794f"
+        },
+        {
+          "number": 35,
+          "page": 13,
+          "prompt": "In which of the following media is the speed of sound the maximum ?",
+          "options": [
+            "Glass",
+            "Stainless steel",
+            "Water",
+            "Oxygen"
+          ],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "Prompt, question number and all four choices compared visually with the original PDF page on 2026-10-09. Line wrapping normalized. Not answer-key verification.",
+          "checksum": "93e4f1dc5930f27497769447e318e8c3da2d2e19bc84229c35e71e2598b1d974"
+        }
+      ]
+    },
+    {
+      "year": 2025,
+      "cycle": "II",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDSE-II-25-GENERAL-KNOWLEDGE-150925.pdf",
+      "source_checksum": "829d0be0dfb31d59113e2a51e08a6dc134bb92b877a34d398c9926f297f7c88b",
+      "questions": [
+        {
+          "number": 26,
+          "page": 11,
+          "prompt": "A sound wave travelling at a speed of 330 m/s produces 20 crests and 20 troughs in 0.1 second. The wavelength of the sound wave is :",
+          "options": [
+            "1.1 m",
+            "3.3 m",
+            "1.65 m",
+            "2.2 m"
+          ],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "Existing prompt, question number, all four choices and units compared visually with the original PDF page on 2026-10-09. Line wrapping and decimal middle dots normalized. Existing answer-key data preserved.",
+          "checksum": "5be3029034d4ac6bbfa97b660bc19ec5b436586c37f4230ee00dd125414e1ccf"
+        }
+      ]
+    },
+    {
+      "year": 2026,
+      "cycle": "I",
+      "subject_slug": "general-knowledge",
+      "source_url": "https://www.upsc.gov.in/sites/default/files/QP-CDS-I-26-GENERAL-KNOWLEDGE-130426.pdf",
+      "source_checksum": "6671f97485021a43c6d1e194cd02663e873b4aacf989a7478d9d43faa6723628",
+      "questions": [
+        {
+          "number": 20,
+          "page": 7,
+          "prompt": "Consider the following statements regarding waves :\n1. If the particles of a medium move along the direction of motion of the wave, the wave is called a longitudinal wave.\n2. If the particles of a medium move perpendicular to the direction of motion of the wave, the wave is called a transverse wave.\n3. Transverse waves may involve change in the shape of the medium, whereas longitudinal waves involve change in the density of the medium.\nWhich of the statements given above is/are correct ?",
+          "options": ["1 and 2 only", "1 only", "2 and 3 only", "1, 2 and 3"],
+          "hasVisual": false,
+          "source_compared": true,
+          "review_note": "All three statements, question number and choices compared visually with the original PDF page on 2026-10-09. Line wrapping normalized. Not answer-key verification.",
+          "checksum": "f4c942d27a09f42b39e5cf4f5a8718cda6bd3d91810db72fa766fa702c0053ef"
+        }
+      ]
+    }
+  ]
+}

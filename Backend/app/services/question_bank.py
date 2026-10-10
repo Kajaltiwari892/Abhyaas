@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 from difflib import get_close_matches
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -88,6 +88,15 @@ CHAPTERS = {
         "general-knowledge",
         r"electric|magnetic|velocity|acceleration|refraction|lens|newton|momentum",
     ),
+    "sound-waves": (
+        "Sound and Waves",
+        "general-knowledge",
+        r"\bsound\b(?!\s+(?:financial|economic|policy|advice))|\bacoustic\w*|"
+        r"\bultrason\w*|\bultrasound\b|\binfrason\w*|\binfrasound\b|"
+        r"\becho(?:es)?\b|\bsonar\b|\bdecibels?\b|"
+        r"\baudib\w*|\bdoppler\b|\btuning fork\b|\b(?:longitudinal|transverse|"
+        r"standing|mechanical) waves?\b",
+    ),
     "chemistry": (
         "Chemistry",
         "general-knowledge",
@@ -167,6 +176,30 @@ ALIASES = {
     "medieval-history": ["medieval history", "medieval indian history"],
     "biology": ["biology"],
     "physics": ["physics"],
+    "sound-waves": [
+        "sound and waves",
+        "sounds and waves",
+        "sound waves",
+        "sounds waves",
+        "sound",
+        "acoustics",
+        "echo",
+        "echoes",
+        "ultrasound",
+        "ultrasonic",
+        "infrasound",
+        "infrasonic",
+        "sonar",
+        "doppler effect",
+        "pitch",
+        "loudness",
+        "tuning fork",
+        "audible range",
+        "hearing range",
+        "mechanical waves",
+        "longitudinal waves",
+        "transverse waves",
+    ],
     "chemistry": ["chemistry"],
     "economy": ["economy", "economics"],
     "algebra": ["algebra", "quadratic equations"],
@@ -189,8 +222,9 @@ GROUPS = {
         {"earth-interior", "rocks-minerals", "weather-climate", "rivers-oceans"},
     ),
     "polity": ("Polity", {"constitution", "parliament"}),
-    "science": ("Science", {"biology", "physics", "chemistry"}),
+    "science": ("Science", {"biology", "physics", "sound-waves", "chemistry"}),
 }
+CHAPTER_CHILDREN = {"physics": {"physics", "sound-waves"}}
 ALIASES.update({slug: [slug] for slug in GROUPS})
 # Narrow filters are applied to the question wording as well as its parent chapter.
 # This avoids turning 'volcanoes' into every earthquake/crust question in the chapter.
@@ -205,6 +239,30 @@ FOCUSES = {
         "Earth's crust",
         "earth-interior",
         r"earth.s crust|continental crust|oceanic crust",
+    ),
+    "echoes": ("Echoes", "sound-waves", r"\becho(?:es)?\b|reflection of sound|reflected sound"),
+    "ultrasound": (
+        "Ultrasound and SONAR",
+        "sound-waves",
+        r"\bultrason\w*|\bultrasound\b|\bsonar\b",
+    ),
+    "infrasound": ("Infrasound", "sound-waves", r"\binfrason\w*|\binfrasound\b"),
+    "doppler-effect": ("Doppler effect", "sound-waves", r"\bdoppler\b"),
+    "pitch-frequency": (
+        "Pitch, frequency and wavelength",
+        "sound-waves",
+        r"\bpitch\b|\bfrequency\b|\bwavelength\b",
+    ),
+    "loudness": (
+        "Loudness and intensity",
+        "sound-waves",
+        r"\bloudness\b|\bdecibels?\b|\bintensity\b",
+    ),
+    "sound-propagation": (
+        "Sound production and propagation",
+        "sound-waves",
+        r"speed of (?:the )?sound|sound (?:travels|travelling)|"
+        r"sonic boom|microphones?|loudspeakers?",
     ),
 }
 
@@ -452,7 +510,9 @@ def question_context(question: str, previous: dict | None) -> str:
 
 def detect_chapter(text: str) -> str | None:
     clean = normalized(text)
-    for slug, aliases in ALIASES.items():
+    # A named child wins over its parent, e.g. 'Physics: Sound and Waves'.
+    ordered = sorted(ALIASES.items(), key=lambda entry: entry[0] in CHAPTER_CHILDREN)
+    for slug, aliases in ordered:
         if any(re.search(r"\b" + re.escape(alias) + r"\b", clean) for alias in aliases):
             return slug
     if "earth" in clean and "interior" in clean:
@@ -463,11 +523,32 @@ def detect_chapter(text: str) -> str | None:
 def classify_topics(record: dict, subject: str) -> list[str]:
     # Subject guard prevents an English grammar sentence about earthquakes becoming Geography.
     text = " ".join(str(record.get(key, "")) for key in ("prompt", "sectionTitle", "passage"))
-    return [
+    tags = [
         slug
         for slug, (_, target, pattern) in CHAPTERS.items()
         if subject == target and re.search(pattern, text, re.I)
     ]
+    # Seismic and electromagnetic waves belong to other chapters unless the
+    # actual question also addresses sound. Do not match the word 'waves' alone.
+    if "sound-waves" in tags:
+        if re.search(
+            r"seismic|earthquake|\b[sp][- ]waves?\b|electromagnetic|"
+            r"redshift|spectroscopy|light waves",
+            text,
+            re.I,
+        ) and not re.search(r"\bsound\b|acoustic|ultraso|infraso|sonar", text, re.I):
+            tags.remove("sound-waves")
+        elif "physics" not in tags:
+            tags.append("physics")
+    return tags
+
+
+def record_topics(record: dict, subject: str) -> set[str]:
+    """Keep editorial tags; extend legacy records with the new acoustics mapping."""
+    tags = set(record.get("topics", []))
+    if "sound-waves" in classify_topics(record, subject):
+        tags.update({"sound-waves", "physics"})
+    return tags
 
 
 def text_checksum(record: dict) -> str:
@@ -683,7 +764,9 @@ def question_card(question: PaperQuestion, paper: PreviousPaper) -> dict:
         "source_page": page,
         "source_page_url": record.get("sourcePageUrl"),
         "source_url": paper.source_url + (f"#page={page}" if page else ""),
-        "topics": [CHAPTERS[tag][0] for tag in record.get("topics", []) if tag in CHAPTERS],
+        "topics": [
+            CHAPTERS[tag][0] for tag in CHAPTERS if tag in record_topics(record, paper.subject.slug)
+        ],
         "text_reviewed": record.get("text_reviewed", False),
         "answer_verified": question.is_verified,
         "answer_scorable": key is not None,
@@ -727,18 +810,34 @@ async def search_bank(db: AsyncSession, query: BankQuery) -> dict:
         statement = statement.where(PreviousPaper.cycle == query.cycle)
     if query.subject:
         statement = statement.where(Subject.slug == query.subject)
+    # Coverage must include PDF-only papers, not merely rows already transcribed.
+    coverage = (
+        select(func.coalesce(func.sum(PreviousPaper.official_question_count), 0))
+        .join(Subject, Subject.id == PreviousPaper.subject_id)
+        .where(PreviousPaper.is_published.is_(True))
+    )
+    if query.years:
+        coverage = coverage.where(PreviousPaper.year.in_(query.years))
+    if query.cycle:
+        coverage = coverage.where(PreviousPaper.cycle == query.cycle)
+    if query.subject:
+        coverage = coverage.where(Subject.slug == query.subject)
+    result["catalog_questions"] = int(await db.scalar(coverage))
     matches = []
     terms = query.terms.split()
     # Stream in batches: no unbounded ORM list or embedding/provider call for exact PYQs.
     rows = await db.stream(statement.execution_options(yield_per=200))
     async for question, paper in rows:
-        result["catalog_questions"] += 1
         record = question.transcription
         if not record:
             continue
         result["indexed_questions"] += 1
-        tags = GROUPS[query.chapter][1] if query.chapter in GROUPS else {query.chapter}
-        if query.chapter and not tags.intersection(record.get("topics", [])):
+        tags = (
+            GROUPS[query.chapter][1]
+            if query.chapter in GROUPS
+            else CHAPTER_CHILDREN.get(query.chapter, {query.chapter})
+        )
+        if query.chapter and not tags.intersection(record_topics(record, paper.subject.slug)):
             continue
         if query.focus in FOCUSES and not re.search(
             FOCUSES[query.focus][2],

@@ -12,7 +12,7 @@ import PrimaryButton from "@/components/ui/primary-button";
 import { ApiError } from "@/lib/auth-api";
 import { formatPaperText } from "@/lib/paper-format";
 import { hasStoredAnswer, paperScoreDescription } from "@/lib/paper-answer";
-import { filterPaperArchive, paperArchiveYears, paperAvailability } from "@/lib/paper-archive";
+import { filterPaperArchive, paperArchiveYears, paperAvailability, paperOpeningMode } from "@/lib/paper-archive";
 import { completePaperAttempt, generatePaperExplanation, getPaper, getPaperAttemptResult, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
@@ -132,14 +132,15 @@ export default function PapersPage() {
   const openPaper = async (paper: PaperListItem, requestedMode: "mock" | "review") => {
     // The ref guards rapid double-clicks before React has rendered disabled buttons.
     if (!accessToken || busy || openingRequest.current) return;
+    const nextMode = paperOpeningMode(paper, requestedMode);
     const request = new AbortController();
     openingRequest.current = request;
-    setOpeningPaper({ paper, mode: requestedMode });
+    setOpeningPaper({ paper, mode: nextMode });
     setBusy(true); setError("");
     const timeout = window.setTimeout(() => request.abort(), 30_000);
     try {
       const [next, paperDetail] = await Promise.all([
-        requestedMode === "mock" ? startPaperAttempt(accessToken, paper.id, request.signal) : Promise.resolve(null),
+        nextMode === "mock" ? startPaperAttempt(accessToken, paper.id, request.signal) : Promise.resolve(null),
         getPaper(accessToken, paper.id, request.signal),
       ]);
       // Closing, navigating away or opening another paper invalidates this response.
@@ -157,7 +158,7 @@ export default function PapersPage() {
       } else {
         setAttempt(null); setCurrent(0); setAnswers({});
       }
-      setMode(requestedMode);
+      setMode(nextMode);
     } catch (reason) {
       if (openingRequest.current === request) {
         setError(request.signal.aborted ? "Opening this paper took too long. Please try again." : messageFor(reason, "The paper could not be opened. Please try again."));
@@ -326,7 +327,7 @@ export default function PapersPage() {
         <div className="paper-card-copy"><small>{paper.academy_tracks.join(" / ")}</small><h2>{paper.subject_name}</h2><p>{paperAvailability(paper) === "pdf" ? "Complete original UPSC PDF. Interactive questions have not been prepared for this paper yet." : paperAvailability(paper) === "interactive" ? "Interactive paper · every question available to practise." : `${paper.available_question_count} interactive questions available. Use the PDF for the complete paper.`}</p></div>
         <div className="paper-card-meta"><span><strong>{paper.official_question_count}</strong><small>Paper questions</small></span><span><strong>{paper.duration_seconds / 3600} hr</strong><small>Duration</small></span><span><strong>{paper.total_marks}</strong><small>Marks</small></span></div>
         <p className="paper-key-status"><ShieldCheck size={14} /> {paperAvailability(paper) === "pdf" ? "Original paper" : paper.scorable_question_count ? `${paper.scorable_question_count} answers ready for scoring` : "Answers being checked"}</p>
-        <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openPaper(paper, "mock")} disabled={busy}><Clock3 size={15} /> Solve paper</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openPaper(paper, "review")}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
+        <div className="paper-actions">{paper.available_question_count > 0 ? <><PrimaryButton size="sm" onClick={() => void openPaper(paper, "mock")} disabled={busy}><Clock3 size={15} /> {paperAvailability(paper) === "interactive" ? "Solve paper" : "Study questions"}</PrimaryButton><button disabled={busy || !paper.solutions_available} onClick={() => void openPaper(paper, "review")}>Review <ArrowRight size={15} /></button></> : <a className="primary-button primary-button--sm" href={paper.source_url} target="_blank" rel="noreferrer"><FileText size={15} /> Open official PDF <ExternalLink size={13} /></a>}</div>
         {paper.available_question_count > 0 && <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>}
       </article>)}</div>
     </section>)}</div>

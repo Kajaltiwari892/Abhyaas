@@ -22,3 +22,11 @@ export function paperAvailability(paper: {
   if (!paper.available_question_count) return "pdf";
   return paper.available_question_count >= paper.official_question_count ? "interactive" : "partial";
 }
+
+export function paperOpeningMode(
+  paper: { available_question_count: number; official_question_count: number },
+  requestedMode: "mock" | "review",
+) {
+  // A chapter collection is useful to study, but is not a complete timed paper.
+  return paperAvailability(paper) === "partial" ? "review" : requestedMode;
+}

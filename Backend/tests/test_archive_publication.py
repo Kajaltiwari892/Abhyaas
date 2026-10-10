@@ -152,6 +152,42 @@ def test_existing_content_is_never_replaced(archive_db):
     )
 
 
+def test_full_paper_can_fill_a_chapter_collection_without_overwriting_it(archive_db):
+    paper = paper_fixture()
+    row = paper["questions"][0]
+    archive_db.execute(
+        PaperQuestion.__table__.insert().values(
+            id="preserve-chapter-id",
+            paper_id="old-paper",
+            number=row["number"],
+            prompt=row["prompt"],
+            options=row["options"],
+            correct_index=2,
+            is_verified=True,
+            explanation="Preserve the checked key",
+            source_label="Official key",
+            transcription={
+                "prompt": row["prompt"],
+                "options": row["options"],
+                "text_reviewed": True,
+                "topics": ["geometry"],
+            },
+        )
+    )
+    assert publish(archive_db, {"version": 1, "papers": [paper]}) == (1, 99)
+    saved = (
+        archive_db.execute(
+            sa.select(PaperQuestion.__table__).where(PaperQuestion.id == "preserve-chapter-id")
+        )
+        .mappings()
+        .one()
+    )
+    assert saved["is_verified"] and saved["correct_index"] == 2
+    assert saved["transcription"]["text_reviewed"] is True
+    assert saved["transcription"]["topics"] == ["geometry"]
+    assert archive_db.scalar(sa.select(sa.func.count()).select_from(PaperQuestion)) == 100
+
+
 def test_batch_cannot_silently_drop_or_invent_missing_questions():
     rows = paper_fixture()["questions"][:20]
     assert len(validate_batch({"questions": rows}, 1, 20, 24)) == 20
