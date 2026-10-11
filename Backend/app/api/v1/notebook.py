@@ -116,6 +116,8 @@ async def get_notebook(
 ) -> dict:
     entries = await notebook_entries(db, user.id)
     base = await subject_filter(db, select(entries), entries, subject)
+    if reason != "all":
+        base = base.where(entries.c.reason == reason)
     counts_source = base.subquery()
     counts = (
         (
@@ -135,11 +137,7 @@ async def get_notebook(
         .one()
     )
     query = base.where(entries.c.state == state)
-    if reason != "all":
-        query = query.where(entries.c.reason == reason)
     revision_query = base.where(entries.c.state == "pending")
-    if reason != "all":
-        revision_query = revision_query.where(entries.c.reason == reason)
     available = await revision_questions(db, revision_query, entries, 20)
     total = await db.scalar(select(func.count()).select_from(query.subquery()))
     rows = (

@@ -32,7 +32,8 @@ test("the question skeleton names the selected subject and has four decorative o
 test("paper opening renders pending UI before awaiting data and keeps stale responses out", () => {
   const page = readFileSync(new URL("../app/papers/page.tsx", import.meta.url), "utf8");
   const opening = page.slice(page.indexOf("const openPaper ="), page.indexOf("const submitMock ="));
-  assert.ok(opening.indexOf("setOpeningPaper({ paper, mode: requestedMode })") < opening.indexOf("await Promise.all"));
+  const pending = opening.indexOf("setOpeningPaper({ paper, mode: nextMode })");
+  assert.ok(pending >= 0 && pending < opening.indexOf("await Promise.all"));
   assert.match(page, /const workspaceOpen = Boolean\(mode \|\| openingPaper\)/);
   assert.match(page, /openingPaper \? <PaperQuestionSkeleton subject=\{openingPaper.paper.subject_name\}/);
   assert.match(opening, /if \(openingRequest.current !== request\) return/);

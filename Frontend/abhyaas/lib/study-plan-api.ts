@@ -35,10 +35,10 @@ export const createTodayPlan = (token: string, signal?: AbortSignal) =>
   apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal }));
 export const saveStudyPreferences = (token: string, input: StudyPreferencesInput) =>
   apiRequest<StudyPlanDashboard>("/study-plan/preferences", auth(token, {method:"PUT",body:JSON.stringify(input)}));
-export const changeStudyTask = (token: string, id: string, action: "start" | "pause" | "complete" | "defer" | "restore") =>
-  apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action})}));
-export const getStudyTask = (token: string, id: string) =>
-  apiRequest<StudyTask>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token));
+export const changeStudyTask = (token: string, id: string, action: "start" | "pause" | "complete" | "defer" | "restore", signal?: AbortSignal) =>
+  apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal}));
+export const getStudyTask = (token: string, id: string, signal?: AbortSignal) =>
+  apiRequest<StudyTask>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {signal}));
 export const startDailyQuiz = (token: string, id: string, signal?: AbortSignal) =>
   apiRequest<PracticeAttempt>(`/study-plan/tasks/${encodeURIComponent(id)}/quiz`, auth(token, {method:"POST", signal}));
 export type StudyPreferencesInput = Pick<StudyPreferences, "daily_minutes" | "start_time" | "subject_slugs" | "exam_date">;

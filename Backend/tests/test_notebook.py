@@ -153,6 +153,8 @@ def test_notebook_backfills_only_completed_wrong_and_skipped_questions(client):
         "paper:paper-one",
     }
     assert len(client.get("/api/v1/notebook?reason=skipped", headers=headers).json()["items"]) == 1
+    assert client.get("/api/v1/notebook?reason=skipped", headers=headers).json()["counts"] == dict(total=1, pending=1, resolved=0)
+    assert client.get("/api/v1/notebook?reason=wrong", headers=headers).json()["counts"] == dict(total=2, pending=2, resolved=0)
     assert (
         client.get(
             f"/api/v1/practice/attempts/{result['attempt_id']}/result", headers=headers
@@ -200,7 +202,7 @@ def test_revision_is_saved_ungraded_until_finish_and_does_not_change_exam_scores
     assert len(session["questions"]) == 3
     for question in session["questions"]:
         assert (
-            not {"correct_index", "explanation", "selected_index", "is_correct"} & question.keys()
+            not {"correct_index", "explanation", "selected_index", "mistake_selected_index", "is_correct"} & question.keys()
         )
     assert (
         client.get(f"/api/v1/notebook/sessions/{session['id']}/result", headers=headers).status_code
@@ -245,6 +247,8 @@ def test_revision_is_saved_ungraded_until_finish_and_does_not_change_exam_scores
     assert notebook["counts"] == dict(total=3, pending=0, resolved=3)
     assert len(notebook["items"]) == 3
     assert all(q["selected_index"] == 0 for q in notebook["items"])
+    earlier_choices = {q["question_key"]: q["mistake_selected_index"] for q in notebook["items"]}
+    assert earlier_choices == {"practice:one": 1, "practice:two": None, "paper:paper-one": 1}
     assert notebook["recent_sessions"][0]["id"] == session["id"]
     assert notebook["recent_sessions"][0]["correct_answers"] == 3
     assert notebook["revision_available"] == 0
@@ -400,3 +404,19 @@ def test_clearing_a_saved_choice_is_preserved_on_resume(client):
         == 200
     )
     assert client.get(path, headers=headers).json()["answers"][key] is None
+
+
+def test_notes_keep_latest_saved_mistake_when_later_practice_is_correct(client):
+    headers = login(client)
+    completed_practice(client, headers)
+    completed_practice(client, headers, {"one": 2, "two": 0, "shared": 0, "correct": 0})
+    completed_practice(client, headers, {"one": 0, "two": 0, "shared": 0, "correct": 0})
+    entries = {
+        q["question_key"]: q
+        for q in client.get("/api/v1/notebook?state=resolved", headers=headers).json()["items"]
+    }
+    assert entries["practice:one"]["selected_index"] == 0
+    assert entries["practice:one"]["mistake_selected_index"] == 2
+    assert entries["practice:one"]["explanation"] == "A singular subject takes 'goes'."
+    assert entries["practice:two"]["mistake_selected_index"] is None
+    assert entries["practice:two"]["reason"] == "skipped"

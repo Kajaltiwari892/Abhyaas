@@ -130,6 +130,8 @@
 }
 @media(max-height:640px) and (min-width:761px) { .live .eyebrow { display:none; } .live { padding-top:8px; } .live .header { margin-bottom:8px; } .live .filters label { gap:3px; } }
 .dailyQuizContext { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 17px; margin-bottom:16px; border:1px solid #b9cc8033; border-radius:12px; background:#13200f; }
+.openingActions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-top:12px; flex-shrink:0; }
+.openingActions span { color:#9bab87; font-size:11px; line-height:1.6; }
 .dailyQuizContext > span { display:flex; gap:6px; align-items:center; color:#bbc98b; font-size:11px; }
 .dailyQuizContext strong { color:#dde7c8; font-size:13px; font-weight:500; }
 .dailyQuizContext small { color:#9bab87; font-size:11px; }

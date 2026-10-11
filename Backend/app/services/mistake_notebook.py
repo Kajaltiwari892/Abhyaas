@@ -153,6 +153,9 @@ async def notebook_entries(db: AsyncSession, user_id: str):
             ranked.c.subject_id,
             ranked.c.completed_at,
             effective_choice.label("selected_index"),
+            # Keep the saved mistake visible even after a successful retry.
+            # This is read from existing attempts; no history is overwritten.
+            faults.c.selected_index.label("mistake_selected_index"),
             case((faults.c.selected_index.is_(None), "skipped"), else_="wrong").label("reason"),
             case((effective_correct.is_(True), "resolved"), else_="pending").label("state"),
         )
@@ -282,6 +285,7 @@ async def question_snapshots(db: AsyncSession, rows) -> list[dict]:
                 state=row.state,
                 last_attempt_at=row.completed_at.isoformat(),
                 selected_index=row.selected_index,
+                mistake_selected_index=row.mistake_selected_index,
                 revision_ready=bool(ready),
                 review_available=bool(review_available),
                 **data,

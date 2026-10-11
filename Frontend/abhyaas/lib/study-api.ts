@@ -279,7 +279,8 @@ export const getSubjects = () => apiRequest<Subject[]>("/catalog/subjects");
 export const startPracticeAttempt = (
   token: string,
   input: { subject_slug: string; topic_slug?: string; question_count?: number; allow_repeats?: boolean },
-) => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input) }));
+  signal?: AbortSignal,
+) => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input), signal }));
 
 export const startSimilarAttempt = (
   token: string,

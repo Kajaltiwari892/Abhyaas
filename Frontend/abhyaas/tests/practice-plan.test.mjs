@@ -23,8 +23,8 @@ test("workspace offers a way forward, with honest AI labels and saved history", 
   assert.ok(!source.includes("You’ve tried all"));
   assert.ok(!source.includes("Choose another topic"));
   assert.ok(source.includes("startSimilarAttempt"));
-  assert.ok(source.includes("Preparing {setSize} new questions"));
+  assert.ok(source.includes("<PracticeQuestionSkeleton {...openingSet}"));
   assert.ok(source.includes("not exam questions"));
   assert.ok(source.includes("question_mode"));
-  assert.ok(source.includes("generation.current?.abort()"));
+  assert.ok(source.includes("pending?.abort()"));
 });

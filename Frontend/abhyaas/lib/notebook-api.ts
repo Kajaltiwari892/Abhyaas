@@ -24,6 +24,8 @@ export type NotebookEntry = Omit<RevisionReview, "is_correct"> & {
   reason: "wrong" | "skipped";
   state: "pending" | "resolved";
   last_attempt_at: string;
+  // Optional while older deployments still return only the latest choice.
+  mistake_selected_index?: number | null;
   revision_ready: boolean;
   review_available: boolean;
 };
