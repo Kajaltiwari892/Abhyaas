@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../components/AuthProvider";
-import { changeStudyTask, createTodayPlan, getTodayPlan, saveStudyPreferences, type StudyPlanDashboard, type StudyPreferences, type StudyPreferencesInput, type StudyTask } from "@/lib/study-plan-api";
+import { changeStudyTask, getReadyTodayPlan, planReceivedAt, saveStudyPreferences, type StudyPlanDashboard, type StudyPreferences, type StudyPreferencesInput, type StudyTask } from "@/lib/study-plan-api";
 import { dailyQuizHref, focusRemaining, nextStudyTask, quizAction, timetableTime, topicHelpHref } from "@/lib/daily-plan";
 import { roadmapDate } from "@/lib/roadmap-calendar";
 import RoadmapCalendar from "./RoadmapCalendar";
@@ -32,15 +32,11 @@ export default function TodayPlan() {
   const taskRequest=useRef<AbortController|null>(null);
   const loadVersion=useRef(0);
   const name=user?.name.trim().split(/\s+/)[0]??"";
-  const accept=useCallback((result:StudyPlanDashboard)=>{setData(result);setReceivedAt(Date.now());setNow(Date.now());setError("");},[]);
+  const accept=useCallback((result:StudyPlanDashboard)=>{setData(result);setReceivedAt(planReceivedAt(result));setNow(Date.now());setError("");},[]);
   const load=useCallback(async(signal?:AbortSignal)=>{
     if(!accessToken)return;
     const version=++loadVersion.current;
-    let result=await getTodayPlan(accessToken,signal);
-    if(result.preferences.configured&&(!result.plan||result.plan.version<2)){
-      try{result=await createTodayPlan(accessToken,signal);}
-      catch(e){if(!signal?.aborted&&version===loadVersion.current)accept(result);throw e;}
-    }
+    const result=await getReadyTodayPlan(accessToken,signal);
     if(!signal?.aborted&&version===loadVersion.current)accept(result);
   },[accessToken,accept]);
   useEffect(()=>{const controller=new AbortController();void load(controller.signal).catch(e=>{if(!controller.signal.aborted)setError(errorMessage(e));});return()=>controller.abort();},[load]);

@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import contains_eager, selectinload
 
 from app.auth.dependencies import get_current_user
 from app.core.config import get_settings
@@ -69,6 +69,7 @@ def list_item(
 @router.get("/papers", response_model=list[PaperListItemResponse])
 async def list_papers(
     db: DatabaseSession,
+    response: Response,
     year: int | None = Query(default=None, ge=2000, le=2100),
     cycle: str | None = Query(default=None, pattern="^(I|II)$"),
     subject: str | None = None,
@@ -83,9 +84,9 @@ async def list_papers(
         )
         .join(Subject, Subject.id == PreviousPaper.subject_id)
         .outerjoin(PaperQuestion, PaperQuestion.paper_id == PreviousPaper.id)
-        .options(selectinload(PreviousPaper.subject))
+        .options(contains_eager(PreviousPaper.subject))
         .where(PreviousPaper.is_published.is_(True))
-        .group_by(PreviousPaper.id, Subject.position)
+        .group_by(PreviousPaper.id, Subject.id)
         .order_by(PreviousPaper.year.desc(), PreviousPaper.cycle, Subject.position)
     )
     if year is not None:
@@ -109,6 +110,7 @@ async def list_papers(
     for question in reviewed:
         if stored_answer(question):
             reviewed_counts[question.paper_id] = reviewed_counts.get(question.paper_id, 0) + 1
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
     return [
         list_item(paper, available, verified, reviewed_counts.get(paper.id, 0))
         for paper, available, verified in papers

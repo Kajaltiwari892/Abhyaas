@@ -95,19 +95,20 @@ async def create_refresh_session(
 async def locked_refresh_session(
     db: AsyncSession, raw_token: str
 ) -> tuple[RefreshSession, User] | None:
-    user_id = await db.scalar(
-        select(RefreshSession.user_id).where(RefreshSession.token_digest == digest_token(raw_token))
-    )
-    if user_id is None:
-        return None
+    token_digest = digest_token(raw_token)
+    user_id = select(RefreshSession.user_id).where(
+        RefreshSession.token_digest == token_digest
+    ).scalar_subquery()
     # One database lock covers all generations/tabs/workers of this user's session.
     # Password reset and logout acquire the same lock before revoking sessions.
     user = await db.scalar(
         select(User).where(User.id == user_id).with_for_update()
         .execution_options(populate_existing=True)
     )
+    if user is None:
+        return None
     session = await db.scalar(
-        select(RefreshSession).where(RefreshSession.token_digest == digest_token(raw_token))
+        select(RefreshSession).where(RefreshSession.token_digest == token_digest)
         .execution_options(populate_existing=True)
     )
     return (session, user) if session is not None and user is not None else None

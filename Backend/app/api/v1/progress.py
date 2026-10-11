@@ -6,20 +6,20 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only
 
 from app.auth.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.auth import User
-from app.models.papers import PaperAttempt, PreviousPaper
-from app.models.practice import PracticeAttempt, Subject
+from app.models.papers import PaperAnswer, PaperAttempt, PaperQuestion, PreviousPaper
+from app.models.practice import PracticeAttempt, Subject, Topic
 from app.schemas.practice import (
     HistoryItemResponse,
     ProgressDashboardResponse,
     SubjectStrengthResponse,
     TrendPointResponse,
 )
-from app.services.paper_answers import grade_paper
+from app.services.paper_answers import stored_answer
 
 router = APIRouter(tags=["progress"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
@@ -41,47 +41,67 @@ class CompletedResult:
 
 @router.get("/progress/dashboard", response_model=ProgressDashboardResponse)
 async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> ProgressDashboardResponse:
-    subjects = list((await db.execute(select(Subject).order_by(Subject.position))).scalars())
-    attempts = list(
-        (
-            await db.execute(
-                select(PracticeAttempt)
-                .options(selectinload(PracticeAttempt.subject), selectinload(PracticeAttempt.topic))
-                .where(
-                    PracticeAttempt.user_id == user.id,
-                    PracticeAttempt.status == "completed",
-                )
-                .order_by(PracticeAttempt.completed_at.desc())
+    # Read small result records, not the entire attempt/paper relationship tree.
+    subjects = (await db.execute(select(Subject.id, Subject.name).order_by(Subject.position))).all()
+    attempts = (await db.execute(
+        select(
+            PracticeAttempt.id, PracticeAttempt.subject_id, Subject.name.label("subject_name"),
+            Topic.name.label("topic_name"), PracticeAttempt.completed_at,
+            PracticeAttempt.correct_answers, PracticeAttempt.total_questions,
+            PracticeAttempt.duration_seconds,
+        )
+        .join(Subject, Subject.id == PracticeAttempt.subject_id)
+        .outerjoin(Topic, Topic.id == PracticeAttempt.topic_id)
+        .where(PracticeAttempt.user_id == user.id, PracticeAttempt.status == "completed")
+    )).all()
+    paper_attempts = (await db.execute(
+        select(
+            PaperAttempt.id, PaperAttempt.paper_id, PreviousPaper.subject_id,
+            Subject.name.label("subject_name"), PaperAttempt.completed_at,
+            PaperAttempt.total_questions, PaperAttempt.duration_seconds,
+        )
+        .join(PreviousPaper, PreviousPaper.id == PaperAttempt.paper_id)
+        .join(Subject, Subject.id == PreviousPaper.subject_id)
+        .where(PaperAttempt.user_id == user.id, PaperAttempt.status == "completed")
+    )).all()
+    keys: dict[str, dict[str, int]] = defaultdict(dict)
+    correct: dict[str, int] = defaultdict(int)
+    if paper_attempts:
+        paper_ids = {attempt.paper_id for attempt in paper_attempts}
+        # Resolve current keys once per distinct paper, even when it was retaken.
+        # Keep the central resolver: newly added keys and invalidated reviews must
+        # still change older results correctly, without a stale score cache.
+        questions = (await db.scalars(
+            select(PaperQuestion).options(load_only(
+                PaperQuestion.paper_id, PaperQuestion.number, PaperQuestion.prompt,
+                PaperQuestion.context, PaperQuestion.options, PaperQuestion.correct_index,
+                PaperQuestion.explanation, PaperQuestion.source_label,
+                PaperQuestion.is_verified, PaperQuestion.transcription, PaperQuestion.answer_review,
+            )).where(PaperQuestion.paper_id.in_(paper_ids))
+        )).all()
+        for question in questions:
+            if key := stored_answer(question):
+                keys[question.paper_id][question.id] = key.index
+        owned_attempts = (
+            select(PaperAttempt.id).where(
+                PaperAttempt.user_id == user.id, PaperAttempt.status == "completed",
             )
-        ).scalars()
-    )
-    paper_attempts = list(
-        (
-            await db.execute(
-                select(PaperAttempt)
-                .options(
-                    selectinload(PaperAttempt.paper).selectinload(PreviousPaper.subject),
-                    selectinload(PaperAttempt.paper).selectinload(PreviousPaper.questions),
-                    selectinload(PaperAttempt.answers),
-                )
-                .where(
-                    PaperAttempt.user_id == user.id,
-                    PaperAttempt.status == "completed",
-                )
-                .order_by(PaperAttempt.completed_at.desc())
-            )
-        ).scalars()
-    )
-    paper_grades = {
-        attempt.id: grade_paper(attempt.paper, list(attempt.paper.questions), list(attempt.answers))
-        for attempt in paper_attempts
-    }
+        )
+        answers = (await db.execute(
+            select(PaperAnswer.attempt_id, PaperAnswer.question_id, PaperAnswer.selected_index,
+                   PaperAttempt.paper_id)
+            .join(PaperAttempt, PaperAttempt.id == PaperAnswer.attempt_id)
+            .where(PaperAnswer.attempt_id.in_(owned_attempts))
+        )).all()
+        for answer in answers:
+            if keys[answer.paper_id].get(answer.question_id) == answer.selected_index:
+                correct[answer.attempt_id] += 1
     results = [
         CompletedResult(
             id=attempt.id,
             subject_id=attempt.subject_id,
-            subject_name=attempt.subject.name,
-            topic_name=attempt.topic.name if attempt.topic else None,
+            subject_name=attempt.subject_name,
+            topic_name=attempt.topic_name,
             completed_at=attempt.completed_at,
             correct_answers=attempt.correct_answers or 0,
             total_questions=attempt.total_questions,
@@ -93,13 +113,13 @@ async def progress_dashboard(user: CurrentUser, db: DatabaseSession) -> Progress
     ] + [
         CompletedResult(
             id=attempt.id,
-            subject_id=attempt.paper.subject_id,
-            subject_name=attempt.paper.subject.name,
+            subject_id=attempt.subject_id,
+            subject_name=attempt.subject_name,
             topic_name="Previous paper",
             completed_at=attempt.completed_at,
-            correct_answers=paper_grades[attempt.id]["correct"],
+            correct_answers=correct[attempt.id],
             total_questions=attempt.total_questions,
-            scored_questions=len(paper_grades[attempt.id]["keys"]),
+            scored_questions=len(keys[attempt.paper_id]),
             duration_seconds=attempt.duration_seconds or 0,
         )
         for attempt in paper_attempts

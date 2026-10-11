@@ -15,6 +15,7 @@ import {
   type AuthUser,
 } from "@/lib/auth-api";
 import styles from "./SessionRecovery.module.css";
+import WorkspaceSkeleton from "./WorkspaceSkeleton";
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -137,6 +138,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }
 
   if (redirectTo || shouldWaitForSession(pathname, status)) {
+    if (pathname !== "/login") return <WorkspaceSkeleton pathname={pathname === "/" ? "/progress" : pathname} />;
     return <main className="auth-route-loading" role="status" aria-live="polite"><span aria-hidden="true" /><p>{redirectTo ? "Opening Abhyaas…" : "Checking your session…"}</p></main>;
   }
 

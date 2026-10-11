@@ -1,4 +1,6 @@
 import { apiRequest } from "./auth-api";
+import { createRequestCache } from "./request-cache";
+import { invalidateTodayPlan } from "./study-plan-api";
 
 export type Topic = { id: string; slug: string; name: string; question_count: number };
 export type Subject = {
@@ -274,7 +276,10 @@ const authorized = (token: string, init: RequestInit = {}): RequestInit => ({
   headers: { Authorization: `Bearer ${token}`, ...init.headers },
 });
 
-export const getSubjects = () => apiRequest<Subject[]>("/catalog/subjects");
+const subjectCache = createRequestCache<Subject[]>(300_000, 1);
+const paperListCache = createRequestCache<PaperListItem[]>(60_000);
+export const getSubjects = () => subjectCache.get("subjects", () =>
+  apiRequest<Subject[]>("/catalog/subjects", { signal: AbortSignal.timeout(20_000) }));
 
 export const startPracticeAttempt = (
   token: string,
@@ -297,8 +302,11 @@ export const savePracticeAnswer = (
   input: { selected_index: number; marked_for_review: boolean },
 ) => apiRequest(`/practice/attempts/${attemptId}/answers/${questionId}`, authorized(token, { method: "PUT", body: JSON.stringify(input) }));
 
-export const completePracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[] = []) =>
-  apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }));
+export const completePracticeAttempt = async (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[] = []) => {
+  const result = await apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }));
+  invalidateTodayPlan();
+  return result;
+};
 
 export const checkpointPracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[], currentPosition?: number, keepalive = false) =>
   apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) }));
@@ -335,7 +343,8 @@ export const getPapers = (filters: { year?: number; cycle?: string; subject?: st
   if (filters.cycle) params.set("cycle", filters.cycle);
   if (filters.subject) params.set("subject", filters.subject);
   const query = params.size ? `?${params.toString()}` : "";
-  return apiRequest<PaperListItem[]>(`/papers${query}`);
+  return paperListCache.get(query, () =>
+    apiRequest<PaperListItem[]>(`/papers${query}`, { signal: AbortSignal.timeout(20_000) }));
 };
 
 export const getPaper = (token: string, paperId: string, signal?: AbortSignal) =>

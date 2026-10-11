@@ -1,4 +1,5 @@
-import { apiRequest } from "./auth-api";
+import { ApiError, apiRequest, sessionController } from "./auth-api";
+import { createRequestCache } from "./request-cache";
 import type { PracticeAttempt } from "./study-api";
 
 export type StudyPreferences = {
@@ -29,18 +30,60 @@ export type StudyPlanDashboard = {
 const auth = (token: string, init: RequestInit = {}) => ({
   ...init, headers: { Authorization: `Bearer ${token}` },
 });
+const planCache = createRequestCache<StudyPlanDashboard>(10_000, 1);
+const receivedTimes = new WeakMap<StudyPlanDashboard, number>();
+export const planReceivedAt = (plan: StudyPlanDashboard) => receivedTimes.get(plan) ?? Date.now();
+export const invalidateTodayPlan = () => planCache.clear();
+let planGeneration = sessionController.getGeneration();
+sessionController.subscribe(() => {
+  const generation = sessionController.getGeneration();
+  if (generation !== planGeneration) { planCache.clear(); planGeneration = generation; }
+});
+const planKey = (token: string) => {
+  const session = sessionController.getSnapshot().session;
+  return session && sessionController.ownsToken(token) ? session.user.id : token;
+};
+// Coalesce both the GET and any required plan creation, not just the first read.
+export const getReadyTodayPlan = (token: string, signal?: AbortSignal) => {
+  const generation = sessionController.getGeneration();
+  return planCache.get(planKey(token), async () => {
+    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
+    const requestSignal = AbortSignal.timeout(30_000);
+    const result = await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { signal: requestSignal }));
+    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
+    const ready = result.preferences.configured && (!result.plan || result.plan.version < 2)
+      ? await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal: requestSignal }))
+      : result;
+    receivedTimes.set(ready, Date.now());
+    return ready;
+  }, signal);
+};
+const savePlan = async (token: string, request: Promise<StudyPlanDashboard>) => {
+  // Invalidate reads before a write; an older GET must not overwrite this result.
+  const generation = sessionController.getGeneration();
+  const key = planKey(token);
+  planCache.clear();
+  const result = await request;
+  receivedTimes.set(result, Date.now());
+  if (generation === sessionController.getGeneration()) planCache.set(key, result);
+  return result;
+};
 export const getTodayPlan = (token: string, signal?: AbortSignal) =>
   apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { signal }));
 export const createTodayPlan = (token: string, signal?: AbortSignal) =>
-  apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal }));
+  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal })));
 export const saveStudyPreferences = (token: string, input: StudyPreferencesInput) =>
-  apiRequest<StudyPlanDashboard>("/study-plan/preferences", auth(token, {method:"PUT",body:JSON.stringify(input)}));
+  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/preferences", auth(token, {method:"PUT",body:JSON.stringify(input)})));
 export const changeStudyTask = (token: string, id: string, action: "start" | "pause" | "complete" | "defer" | "restore", signal?: AbortSignal) =>
-  apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal}));
+  savePlan(token, apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal})));
 export const getStudyTask = (token: string, id: string, signal?: AbortSignal) =>
   apiRequest<StudyTask>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {signal}));
-export const startDailyQuiz = (token: string, id: string, signal?: AbortSignal) =>
-  apiRequest<PracticeAttempt>(`/study-plan/tasks/${encodeURIComponent(id)}/quiz`, auth(token, {method:"POST", signal}));
+export const startDailyQuiz = async (token: string, id: string, signal?: AbortSignal) => {
+  planCache.clear();
+  const result = await apiRequest<PracticeAttempt>(`/study-plan/tasks/${encodeURIComponent(id)}/quiz`, auth(token, {method:"POST", signal}));
+  planCache.clear();
+  return result;
+};
 export type StudyPreferencesInput = Pick<StudyPreferences, "daily_minutes" | "start_time" | "subject_slugs" | "exam_date">;
 export type RoadmapDay = {
   date: string; phase: "learn" | "revision" | "catch-up" | "completed" | "unfinished";
@@ -58,4 +101,4 @@ export type StudyRoadmap = RoadmapSummary & {days: RoadmapDay[]};
 export const getStudyRoadmap = (token: string, signal?: AbortSignal) =>
   apiRequest<StudyRoadmap>("/study-plan/roadmap", auth(token, {signal}));
 export const sendStudyCheckin = (token: string, task_id: string, answer: "yes" | "not-yet" | "dismiss") =>
-  apiRequest<StudyPlanDashboard>("/study-plan/checkin", auth(token, {method:"POST", body:JSON.stringify({task_id, answer})}));
+  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/checkin", auth(token, {method:"POST", body:JSON.stringify({task_id, answer})})));

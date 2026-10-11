@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -60,39 +60,34 @@ async def start_similar_attempt(
 
 
 @router.get("/catalog/subjects", response_model=list[SubjectResponse])
-async def list_subjects(db: DatabaseSession) -> list[SubjectResponse]:
-    counts = dict(
-        (
-            await db.execute(
-                select(Question.topic_id, func.count(Question.id))
-                .where(Question.is_active.is_(True), Question.owner_user_id.is_(None))
-                .group_by(Question.topic_id)
+async def list_subjects(db: DatabaseSession, response: Response) -> list[SubjectResponse]:
+    # Public metadata only. One round trip, including empty subjects/topics.
+    counts = (
+        select(Question.topic_id, func.count(Question.id).label("question_count"))
+        .where(Question.is_active.is_(True), Question.owner_user_id.is_(None))
+        .group_by(Question.topic_id)
+        .subquery()
+    )
+    rows = (await db.execute(
+        select(Subject, Topic, func.coalesce(counts.c.question_count, 0))
+        .outerjoin(Topic, Topic.subject_id == Subject.id)
+        .outerjoin(counts, counts.c.topic_id == Topic.id)
+        .order_by(Subject.position, Subject.id, Topic.position, Topic.id)
+    )).all()
+    subjects: dict[str, SubjectResponse] = {}
+    for subject, topic, count in rows:
+        if subject.id not in subjects:
+            subjects[subject.id] = SubjectResponse(
+                id=subject.id, slug=subject.slug, code=subject.code, name=subject.name,
+                description=subject.description, question_count=0, topics=[],
             )
-        ).all()
-    )
-    result = await db.execute(
-        select(Subject).options(selectinload(Subject.topics)).order_by(Subject.position)
-    )
-    return [
-        SubjectResponse(
-            id=subject.id,
-            slug=subject.slug,
-            code=subject.code,
-            name=subject.name,
-            description=subject.description,
-            question_count=sum(counts.get(topic.id, 0) for topic in subject.topics),
-            topics=[
-                TopicResponse(
-                    id=topic.id,
-                    slug=topic.slug,
-                    name=topic.name,
-                    question_count=counts.get(topic.id, 0),
-                )
-                for topic in subject.topics
-            ],
-        )
-        for subject in result.scalars().all()
-    ]
+        if topic:
+            subjects[subject.id].question_count += count
+            subjects[subject.id].topics.append(TopicResponse(
+                id=topic.id, slug=topic.slug, name=topic.name, question_count=count,
+            ))
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return list(subjects.values())
 
 
 @router.get("/catalog/questions", response_model=CatalogQuestionPage)

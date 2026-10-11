@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, LoaderCircle, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createTodayPlan, getTodayPlan, sendStudyCheckin, type StudyTask } from "@/lib/study-plan-api";
+import { getReadyTodayPlan, sendStudyCheckin, type StudyTask } from "@/lib/study-plan-api";
 import { dailyQuizHref, nextStudyTask } from "@/lib/daily-plan";
 import { useAuth } from "./AuthProvider";
 import StudyCompanion from "./StudyCompanion";
@@ -12,6 +12,7 @@ import s from "./daily-checkin.module.css";
 
 export default function DailyCheckin() {
   const {user,accessToken}=useAuth();
+  const userId=user?.id;
   const router=useRouter();
   const [task,setTask]=useState<StudyTask>();
   const [reply,setReply]=useState(false);
@@ -22,13 +23,12 @@ export default function DailyCheckin() {
   const manualOpen=useRef(false);
   const closedDay=useRef("");
   useEffect(()=>{
-    if(!user || !accessToken)return;
+    if(!userId || !accessToken)return;
     const controller=new AbortController();
     const load=async()=>{
       if(inFlight.current || document.hidden)return;
       try {
-        let result=await getTodayPlan(accessToken,controller.signal);
-        if(result.preferences.configured && (!result.plan || result.plan.version<2))result=await createTodayPlan(accessToken,controller.signal);
+        const result=await getReadyTodayPlan(accessToken,controller.signal);
         if(controller.signal.aborted)return;
         if(closedDay.current && closedDay.current!==result.today){closedDay.current="";setReply(false);setDismissed(false);}
         const next=nextStudyTask(result.plan?.tasks??[]);
@@ -40,7 +40,7 @@ export default function DailyCheckin() {
     window.addEventListener("focus",load);
     window.addEventListener("abhyaas:open-checkin",open);
     return()=>{controller.abort();window.clearInterval(interval);window.removeEventListener("focus",load);window.removeEventListener("abhyaas:open-checkin",open);};
-  },[user,accessToken]);
+  },[userId,accessToken]);
   const answer=async(choice:"yes"|"not-yet"|"dismiss")=>{
     if(!accessToken || !task || inFlight.current)return;
     inFlight.current=true;setBusy(true);setError("");

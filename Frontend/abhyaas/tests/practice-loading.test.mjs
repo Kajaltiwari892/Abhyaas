@@ -5,6 +5,8 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import { createRequestCache } from "../lib/request-cache.ts";
+import { createSessionController } from "../lib/session-controller.ts";
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -185,7 +187,9 @@ test("route navigation, topic lookup and starting focus time all provide pending
 
 test("all quiz and focus APIs forward abort signals without changing saved-answer payloads", async () => {
   const calls = [];
-  const resolve = () => ({ apiRequest: async (path, init) => { calls.push({ path, init }); return {}; } });
+  const resolve = id => id === "./request-cache" ? { createRequestCache }
+    : id === "./study-plan-api" ? { invalidateTodayPlan() {} }
+    : { sessionController: createSessionController(async () => null), apiRequest: async (path, init) => { calls.push({ path, init }); return {}; } };
   const plan = load("../lib/study-plan-api.ts", resolve), study = load("../lib/study-api.ts", resolve);
   const signal = new AbortController().signal;
   await plan.getStudyTask("token", "one&two", signal);

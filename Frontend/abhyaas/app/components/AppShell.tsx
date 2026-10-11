@@ -94,7 +94,7 @@ export default function AppShell({ active, children }: { active: string; childre
         </div>
       </aside>
       <div className="app-content">{children}</div>
-      {user && <DailyCheckin />}
+      {user && <DailyCheckin key={user.id} />}
       <nav className="app-bottom-nav" aria-label="Application navigation">
         {mobileItems.map(({ label, href, icon: Icon }) => <Link className={active === label ? "active" : ""} aria-current={active === label ? "page" : undefined} href={href} key={label}><Icon size={19} /><span>{label === "Previous papers" ? "Papers" : label === "Doubt solver" ? "Ask AI" : label === "Mistake notebook" ? "Mistakes" : label === "Progress" ? "Today" : label}</span><NavigationHint /></Link>)}
       </nav>

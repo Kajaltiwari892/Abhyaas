@@ -1,0 +1,16 @@
+.workspace { padding: 32px clamp(20px, 4vw, 56px); max-width: 1450px; margin: auto; }
+.workspace h1 { margin: 0 0 12px; color: #e3e9dd; font-size: 24px; }
+.status { margin-left: auto; color: #99a28d; font-size: 10px; letter-spacing: .02em; }
+.line, .action, .value { border-radius: 7px; background: linear-gradient(100deg, #a8b96c0b 25%, #a8b96c24 50%, #a8b96c0b 75%); background-size: 240% 100%; animation: shimmer 1.6s ease-in-out infinite; }
+.line { height: 12px; width: min(310px, 70%); }
+.feature { margin-top: 30px; min-height: 260px; padding: 28px; display: flex; flex-direction: column; gap: 22px; border: 1px solid #a8b96c24; border-radius: 18px; background: #11170f; }
+.feature .line:nth-child(2) { width: 65%; height: 28px; }
+.feature .line:nth-child(3) { width: 48%; }
+.action { width: 150px; height: 40px; margin-top: auto; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+.card { min-height: 150px; padding: 22px; display: flex; flex-direction: column; gap: 20px; border: 1px solid #a8b96c24; border-radius: 14px; background: #11170f; }
+.value { height: 28px; width: 60px; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (max-width: 600px) { .workspace { padding: 26px 18px 90px; } .grid { grid-template-columns: 1fr; } .feature { min-height: 230px; padding: 22px; } }
+@media (max-width: 850px) { .sidebar { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .line, .action, .value { animation: none; } }
