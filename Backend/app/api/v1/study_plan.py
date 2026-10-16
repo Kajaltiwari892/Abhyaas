@@ -6,6 +6,7 @@ from app.auth.dependencies import DatabaseSession, get_current_user
 from app.models.auth import User
 from app.schemas.practice import AttemptResponse, StartAttemptRequest
 from app.schemas.study_plan import (
+    DailyQuizPreparationResponse,
     StudyCheckinInput,
     StudyPlanDashboard,
     StudyPreferencesInput,
@@ -18,6 +19,15 @@ from app.services.rag import RagService, get_rag_service
 router = APIRouter(prefix="/study-plan", tags=["daily study plan"])
 CurrentUser = Annotated[User, Depends(get_current_user)]
 RagDependency = Annotated[RagService, Depends(get_rag_service)]
+
+
+@router.post("/tasks/{task_id}/quiz/prepare", response_model=DailyQuizPreparationResponse)
+async def prepare_quiz(
+    task_id: str, user: CurrentUser, db: DatabaseSession, rag: RagDependency
+) -> DailyQuizPreparationResponse:
+    from app.services.quiz_preparation import prepare_step
+
+    return await prepare_step(db, user, task_id, rag)
 
 
 @router.get("/roadmap")

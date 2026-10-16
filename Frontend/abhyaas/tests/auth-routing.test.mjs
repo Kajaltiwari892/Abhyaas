@@ -2,17 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { authRedirect, googleCallbackRedirect, shouldShowSessionRecovery, shouldWaitForSession } from "../lib/auth-routing.ts";
 
-test("Home opens Progress for signed-in students and the landing page for visitors", () => {
-  assert.equal(authRedirect("/", "authenticated"), "/progress");
+test("Home stays accessible to signed-in students as well as visitors", () => {
+  assert.equal(authRedirect("/", "authenticated"), null);
   for (const status of ["loading", "anonymous", "unavailable"]) {
     assert.equal(authRedirect("/", status), null);
   }
 });
 
-test("restoring a valid session on Home redirects once without passing through Login", () => {
+test("restoring a valid session never interrupts an intentional visit to Home", () => {
   const destinations = ["loading", "loading", "authenticated"]
     .map((status) => authRedirect("/", status)).filter(Boolean);
-  assert.deepEqual(destinations, ["/progress"]);
+  assert.deepEqual(destinations, []);
   assert.equal(authRedirect("/progress", "authenticated"), null);
   assert.equal(authRedirect("/about", "authenticated"), null);
 });

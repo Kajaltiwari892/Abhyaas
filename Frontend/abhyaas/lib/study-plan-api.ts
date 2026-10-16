@@ -78,11 +78,52 @@ export const changeStudyTask = (token: string, id: string, action: "start" | "pa
   savePlan(token, apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal})));
 export const getStudyTask = (token: string, id: string, signal?: AbortSignal) =>
   apiRequest<StudyTask>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {signal}));
-export const startDailyQuiz = async (token: string, id: string, signal?: AbortSignal) => {
+export type QuizPreparation = {
+  status: "preparing" | "ready"; prepared_count: number; total: number;
+  retry_after_ms: number; attempt: PracticeAttempt | null;
+};
+const waitForQuiz = (delay: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
+  signal?.throwIfAborted();
+  const abort = () => { clearTimeout(timer); reject(signal?.reason); };
+  const timer = setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(); }, delay);
+  signal?.addEventListener("abort", abort, { once: true });
+});
+export const startDailyQuiz = async (token: string, id: string, signal?: AbortSignal, onProgress?: (prepared: number) => void) => {
   planCache.clear();
-  const result = await apiRequest<PracticeAttempt>(`/study-plan/tasks/${encodeURIComponent(id)}/quiz`, auth(token, {method:"POST", signal}));
-  planCache.clear();
-  return result;
+  const generation = sessionController.getGeneration();
+  let failures = 0;
+  // Every POST advances a durable draft by at most one short batch. Replaying
+  // after an uncertain network outcome resumes it; it never makes another quiz.
+  for (let step = 0; step < 150; step++) {
+    signal?.throwIfAborted();
+    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
+    let result: QuizPreparation;
+    try {
+      result = await apiRequest<QuizPreparation>(`/study-plan/tasks/${encodeURIComponent(id)}/quiz/prepare`, auth(token, {
+        method: "POST", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+      }));
+      failures = 0;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      const transient = error instanceof ApiError && [0, 502, 504].includes(error.status)
+        || error instanceof Error && error.name === "TimeoutError";
+      if (!transient || ++failures > 2) throw error;
+      await waitForQuiz(1500, signal);
+      continue;
+    }
+    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
+    if (result.status === "ready" && result.attempt?.questions.length) {
+      planCache.clear();
+      return result.attempt;
+    }
+    if (result.status !== "preparing" || !Number.isInteger(result.prepared_count)
+      || result.prepared_count < 0 || result.prepared_count > 50 || result.total !== 50) {
+      throw new ApiError("Your quiz couldn't be opened. Please retry.", 502);
+    }
+    onProgress?.(result.prepared_count);
+    await waitForQuiz(Math.min(5000, Math.max(200, result.retry_after_ms || 0)), signal);
+  }
+  throw new ApiError("Your prepared questions are saved. Please retry to finish opening the quiz.", 503);
 };
 export type StudyPreferencesInput = Pick<StudyPreferences, "daily_minutes" | "start_time" | "subject_slugs" | "exam_date">;
 export type RoadmapDay = {

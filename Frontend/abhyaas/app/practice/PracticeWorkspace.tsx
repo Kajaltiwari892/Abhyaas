@@ -12,6 +12,7 @@ import { getPreparationTarget, partitionPreparationSubjects } from "@/lib/academ
 import s from "./practice.module.css";
 import { startDailyQuiz, type StudyTask } from "@/lib/study-plan-api";
 import PracticeQuestionSkeleton from "./PracticeQuestionSkeleton";
+import { createLatestSaveQueue } from "@/lib/latest-save-queue";
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 const message = (error: unknown) => error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -35,7 +36,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const [remaining, setRemaining] = useState(1800);
   const [paused, setPaused] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [openingSet, setOpeningSet] = useState<{ count: number; subject?: string; topic?: string } | null>(dailyTask ? { count: 50, subject: dailyTask.subject_name, topic: dailyTask.topic_name } : null);
+  const [openingSet, setOpeningSet] = useState<{ count: number; subject?: string; topic?: string; prepared?: number } | null>(dailyTask ? { count: 50, subject: dailyTask.subject_name, topic: dailyTask.topic_name } : null);
   const [openingDelayed, setOpeningDelayed] = useState(false);
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
@@ -46,7 +47,9 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const [historyError, setHistoryError] = useState("");
   const [historyVersion, setHistoryVersion] = useState(0);
   const mutation = useRef(false);
-  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const saveQueue = useRef(createLatestSaveQueue<Parameters<typeof checkpointPracticeAttempt>>(
+    (input) => checkpointPracticeAttempt(...input),
+  ));
   const timedOut = useRef(false);
   const questionBody = useRef<HTMLDivElement>(null);
   const latestSave = useRef<(() => Promise<void>) | null>(null);
@@ -91,20 +94,19 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     const timer = window.setInterval(() => { const now = Date.now(); const elapsed = Math.floor((now - last) / 1000); if (elapsed) { last += elapsed * 1000; setRemaining((r) => Math.max(0, r - elapsed)); } }, 1000);
     return () => window.clearInterval(timer);
   }, [active, paused]);
-  const persist = useCallback(async (keepalive = false) => {
+  const persist = useCallback(async (keepalive = false, position = current) => {
     if (!accessToken || !attempt || summary || preview) return;
-    const save = saveQueue.current.catch(() => {}).then(() => checkpointPracticeAttempt(accessToken, attempt.id, attempt.duration_seconds - remaining, answerInput(), current, keepalive));
-    saveQueue.current = save;
-    await save;
+    await saveQueue.current.enqueue([accessToken, attempt.id, attempt.duration_seconds - remaining, answerInput(), position, keepalive]);
   }, [accessToken, attempt, summary, preview, remaining, answerInput, current]);
   useEffect(() => { latestSave.current = active ? () => persist(true) : null; }, [active, persist]);
   useEffect(() => () => { const pending = generation.current; generation.current = null; pending?.abort(); void latestSave.current?.().catch(() => {}); }, []);
   useEffect(() => {
     if (!active) return;
     const save = () => { if (!mutation.current) void latestSave.current?.().catch(() => setSaveStatus("Connection lost — progress will retry")); };
-    const timer = window.setInterval(save, 5000);
+    const timer = window.setInterval(save, 15_000);
     window.addEventListener("pagehide", save);
-    return () => { window.clearInterval(timer); window.removeEventListener("pagehide", save); };
+    window.addEventListener("online", save);
+    return () => { window.clearInterval(timer); window.removeEventListener("pagehide", save); window.removeEventListener("online", save); };
   }, [active]);
   useEffect(() => {
     if (!active) return;
@@ -129,7 +131,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     if (!accessToken || !attempt || mutation.current) return;
     mutation.current = true; setBusy(true); setError("");
     try {
-      await saveQueue.current.catch(() => {});
+      await saveQueue.current.drain();
       setSummary(await completePracticeAttempt(accessToken, attempt.id, attempt.duration_seconds - remaining, answerInput()));
       setHistoryVersion((v) => v + 1);
     } catch (e) { setError(message(e)); }
@@ -167,11 +169,13 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     generation.current = controller;
     mutation.current = true; setBusy(true); setError(""); setOpeningDelayed(false);
     setOpeningSet({ count: size, subject: dailyTask?.subject_name ?? subject?.name, topic: dailyTask?.topic_name ?? topic?.name });
-    const timeout = window.setTimeout(() => controller.abort(), 165_000);
+    const timeout = window.setTimeout(() => controller.abort(), dailyTask ? 360_000 : 165_000);
     try {
       setMode(choice);
       if (choice === "similar") setCount(size);
-      const data = dailyTask ? await startDailyQuiz(accessToken, dailyTask.id, controller.signal) : choice === "similar"
+      const data = dailyTask ? await startDailyQuiz(accessToken, dailyTask.id, controller.signal, (prepared) => {
+        if (generation.current === controller && !controller.signal.aborted) setOpeningSet((state) => state ? { ...state, prepared } : state);
+      }) : choice === "similar"
         ? await startSimilarAttempt(accessToken, { subject_slug: subject!.slug, topic_slug: topic?.slug, question_count: size }, controller.signal)
         : await startPracticeAttempt(accessToken, { subject_slug: subject!.slug, topic_slug: topic?.slug, question_count: size, allow_repeats: choice === "mixed" }, controller.signal);
       // A cancelled request must not replace another set or restart its timer.
@@ -223,12 +227,13 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     } catch (e) { setError(message(e)); }
     finally { mutation.current = false; setBusy(false); }
   };
-  const next = async () => {
-    if (mutation.current) return;
-    mutation.current = true; setBusy(true); setError("");
-    try { await persist(); setSaveStatus("Answers saved"); setCurrent((i) => Math.min(i + 1, (attempt?.questions.length ?? 1) - 1)); }
-    catch (e) { setError(message(e)); }
-    finally { mutation.current = false; setBusy(false); }
+  const next = () => {
+    if (mutation.current || paused || !attempt) return;
+    const position = Math.min(current + 1, attempt.questions.length - 1);
+    setCurrent(position); setError(""); setSaveStatus("Saving…");
+    // Questions are already in memory. Save in order, without blocking navigation.
+    void persist(false, position).then(() => setSaveStatus("Answers saved"))
+      .catch(() => setSaveStatus("Not saved yet — reconnect to retry"));
   };
   const moreHistory = async () => {
     if (!accessToken || historyLoading) return;

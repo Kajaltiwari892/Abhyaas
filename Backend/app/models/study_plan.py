@@ -73,3 +73,21 @@ class DailyStudyTask(Base):
 
     plan: Mapped[DailyStudyPlan] = relationship(back_populates="tasks")
     quiz_attempt: Mapped[PracticeAttempt | None] = relationship()
+
+
+class DailyQuizPreparation(Base):
+    """A private, resumable draft; never a started/scored practice attempt."""
+
+    __tablename__ = "daily_quiz_preparations"
+
+    task_id: Mapped[str] = mapped_column(
+        ForeignKey("daily_study_tasks.id", ondelete="CASCADE"), primary_key=True
+    )
+    bank_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    questions: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    attempt_id: Mapped[str | None] = mapped_column(
+        ForeignKey("practice_attempts.id", ondelete="SET NULL"), nullable=True
+    )
+    lease_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

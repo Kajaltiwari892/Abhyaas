@@ -16,9 +16,15 @@ from app.models.rag import (
     KnowledgeDocument,
 )
 from app.models.revision import RevisionAnswer, RevisionSession
-from app.models.study_plan import DailyStudyPlan, DailyStudyTask, StudyPreference
+from app.models.study_plan import (
+    DailyQuizPreparation,
+    DailyStudyPlan,
+    DailyStudyTask,
+    StudyPreference,
+)
 
 __all__ = [
+    "DailyQuizPreparation",
     "DailyStudyPlan",
     "DailyStudyTask",
     "StudyPreference",

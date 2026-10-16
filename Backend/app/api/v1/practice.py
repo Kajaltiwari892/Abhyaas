@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only, selectinload
 
 from app.auth.dependencies import get_current_user
 from app.db.session import get_db
@@ -68,24 +68,36 @@ async def list_subjects(db: DatabaseSession, response: Response) -> list[Subject
         .group_by(Question.topic_id)
         .subquery()
     )
-    rows = (await db.execute(
-        select(Subject, Topic, func.coalesce(counts.c.question_count, 0))
-        .outerjoin(Topic, Topic.subject_id == Subject.id)
-        .outerjoin(counts, counts.c.topic_id == Topic.id)
-        .order_by(Subject.position, Subject.id, Topic.position, Topic.id)
-    )).all()
+    rows = (
+        await db.execute(
+            select(Subject, Topic, func.coalesce(counts.c.question_count, 0))
+            .outerjoin(Topic, Topic.subject_id == Subject.id)
+            .outerjoin(counts, counts.c.topic_id == Topic.id)
+            .order_by(Subject.position, Subject.id, Topic.position, Topic.id)
+        )
+    ).all()
     subjects: dict[str, SubjectResponse] = {}
     for subject, topic, count in rows:
         if subject.id not in subjects:
             subjects[subject.id] = SubjectResponse(
-                id=subject.id, slug=subject.slug, code=subject.code, name=subject.name,
-                description=subject.description, question_count=0, topics=[],
+                id=subject.id,
+                slug=subject.slug,
+                code=subject.code,
+                name=subject.name,
+                description=subject.description,
+                question_count=0,
+                topics=[],
             )
         if topic:
             subjects[subject.id].question_count += count
-            subjects[subject.id].topics.append(TopicResponse(
-                id=topic.id, slug=topic.slug, name=topic.name, question_count=count,
-            ))
+            subjects[subject.id].topics.append(
+                TopicResponse(
+                    id=topic.id,
+                    slug=topic.slug,
+                    name=topic.name,
+                    question_count=count,
+                )
+            )
     response.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
     return list(subjects.values())
 
@@ -308,22 +320,28 @@ async def practice_availability(
     return PracticeAvailability(total=len(rows), unseen=unseen, seen=len(rows) - unseen)
 
 
-async def owned_attempt(db: AsyncSession, attempt_id: str, user_id: str) -> PracticeAttempt:
-    attempt = (
-        await db.execute(
-            select(PracticeAttempt)
-            .options(selectinload(PracticeAttempt.subject), selectinload(PracticeAttempt.topic))
-            .where(PracticeAttempt.id == attempt_id, PracticeAttempt.user_id == user_id)
-            .with_for_update()
+async def owned_attempt(
+    db: AsyncSession, attempt_id: str, user_id: str, *, related: bool = True
+) -> PracticeAttempt:
+    query = (
+        select(PracticeAttempt)
+        .where(PracticeAttempt.id == attempt_id, PracticeAttempt.user_id == user_id)
+        .with_for_update()
+    )
+    if related:
+        query = query.options(
+            selectinload(PracticeAttempt.subject), selectinload(PracticeAttempt.topic)
         )
-    ).scalar_one_or_none()
+    attempt = (await db.execute(query)).scalar_one_or_none()
     if attempt is None:
         raise HTTPException(status_code=404, detail="Practice attempt not found")
     return attempt
 
 
-async def owned_active_attempt(db: AsyncSession, attempt_id: str, user_id: str) -> PracticeAttempt:
-    attempt = await owned_attempt(db, attempt_id, user_id)
+async def owned_active_attempt(
+    db: AsyncSession, attempt_id: str, user_id: str, *, related: bool = True
+) -> PracticeAttempt:
+    attempt = await owned_attempt(db, attempt_id, user_id, related=related)
     if attempt.status != "in_progress":
         raise HTTPException(status_code=409, detail="This practice attempt is already complete")
     return attempt
@@ -436,13 +454,17 @@ async def get_attempt(attempt_id: str, user: CurrentUser, db: DatabaseSession) -
 async def save_answer_batch(
     db: AsyncSession, attempt: PracticeAttempt, inputs: list[AttemptAnswerInput]
 ) -> None:
+    if not inputs:
+        return
+    question_ids = [item.question_id for item in inputs]
     questions = {
         q.id: q
         for q in (
             await db.execute(
                 select(Question)
                 .join(AttemptQuestion)
-                .where(AttemptQuestion.attempt_id == attempt.id)
+                .options(load_only(Question.id, Question.options, Question.correct_index))
+                .where(AttemptQuestion.attempt_id == attempt.id, Question.id.in_(question_ids))
             )
         ).scalars()
     }
@@ -456,17 +478,29 @@ async def save_answer_batch(
     saved = {
         a.question_id: a
         for a in (
-            await db.execute(select(PracticeAnswer).where(PracticeAnswer.attempt_id == attempt.id))
+            await db.execute(
+                select(PracticeAnswer).where(
+                    PracticeAnswer.attempt_id == attempt.id,
+                    PracticeAnswer.question_id.in_(question_ids),
+                )
+            )
         ).scalars()
     }
     for item in inputs:
         answer = saved.get(item.question_id)
+        correct = item.selected_index == questions[item.question_id].correct_index
+        if answer is not None and (
+            answer.selected_index == item.selected_index
+            and answer.marked_for_review == item.marked_for_review
+            and answer.is_correct == correct
+        ):
+            continue
         if answer is None:
             answer = PracticeAnswer(attempt_id=attempt.id, question_id=item.question_id)
             db.add(answer)
         answer.selected_index = item.selected_index
         answer.marked_for_review = item.marked_for_review
-        answer.is_correct = item.selected_index == questions[item.question_id].correct_index
+        answer.is_correct = correct
         answer.answered_at = datetime.now(UTC)
     await db.flush()
 
@@ -478,7 +512,7 @@ async def checkpoint_attempt(
     user: CurrentUser,
     db: DatabaseSession,
 ) -> None:
-    attempt = await owned_active_attempt(db, attempt_id, user.id)
+    attempt = await owned_active_attempt(db, attempt_id, user.id, related=False)
     await save_answer_batch(db, attempt, payload.answers)
     apply_checkpoint(attempt, payload)
     await db.commit()

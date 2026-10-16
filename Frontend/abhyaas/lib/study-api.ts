@@ -309,7 +309,7 @@ export const completePracticeAttempt = async (token: string, attemptId: string, 
 };
 
 export const checkpointPracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[], currentPosition?: number, keepalive = false) =>
-  apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) }));
+  apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, signal: AbortSignal.timeout(20_000), body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) }));
 export type PracticeAvailability = { total: number; unseen: number; seen: number };
 export const getPracticeAvailability = (token: string, subject: string, topic = "") => {
   const params = new URLSearchParams({ subject_slug: subject });

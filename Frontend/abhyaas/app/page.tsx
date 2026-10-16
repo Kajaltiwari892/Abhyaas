@@ -17,6 +17,7 @@ import ScrollExpand from "@/components/ui/scroll-expand";
 import ProgressAreaChart from "@/components/ui/progress-area-chart";
 import PrimaryButton from "@/components/ui/primary-button";
 import { footerWordmarkPath } from "@/lib/footer-wordmark";
+import { useAuth } from "./components/AuthProvider";
 
 const navItems = [
   ["Exam info", "/exam-info"], ["Subjects", "/subjects"], ["Mistake notebook", "/mistake-notebook"],
@@ -36,6 +37,7 @@ const subjects = [
 ];
 
 export default function Home() {
+  const { status } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [demoDraft, setDemoDraft] = useState("");
   const [demoQuestion, setDemoQuestion] = useState("Why does the monsoon first reach Kerala?");
@@ -59,7 +61,7 @@ export default function Home() {
         <nav className="desktop-nav" aria-label="Main navigation">
           {navItems.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <PrimaryButton className="nav-cta" href="/subjects" size="sm">Start practising <ArrowRight size={15} /></PrimaryButton>
+        <PrimaryButton className="nav-cta" href={status === "authenticated" ? "/progress" : "/subjects"} size="sm">{status === "authenticated" ? "My progress" : "Start practising"} <ArrowRight size={15} /></PrimaryButton>
         <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
           {menuOpen ? <X /> : <Menu />}
         </button>

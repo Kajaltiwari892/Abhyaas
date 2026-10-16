@@ -2,11 +2,10 @@ import type { AuthStatus } from "./session-controller";
 
 const publicPaths = new Set(["/", "/login", "/about", "/privacy", "/auth/callback"]);
 
-// Use the restored session to send returning students to their dashboard.
-// Public pages remain usable while the initial session request is pending.
+// Signing in opens Progress, but Home is always a visitable public page.
 export function authRedirect(pathname: string, status: AuthStatus): string | null {
   if (status === "loading") return null;
-  if (status === "authenticated" && (pathname === "/" || pathname === "/login")) {
+  if (status === "authenticated" && pathname === "/login") {
     return "/progress";
   }
   if (status === "anonymous" && !publicPaths.has(pathname)) {

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.practice import AttemptQuestion, PracticeAttempt, Question, Subject, Topic
+from app.models.study_plan import DailyQuizPreparation, DailyStudyPlan, DailyStudyTask
 from app.schemas.practice import (
     AttemptResponse,
     PracticeQuestionResponse,
@@ -103,6 +104,21 @@ async def create_similar_attempt(
             PracticeAttempt.started_at >= now.replace(hour=0, minute=0, second=0, microsecond=0),
         )
     )
+    # A resumable daily draft has already reserved its full set, even before its
+    # final attempt exists. Other generation routes must respect that reservation.
+    reserved = await db.scalar(
+        select(func.count())
+        .select_from(DailyQuizPreparation)
+        .join(DailyStudyTask)
+        .join(DailyStudyPlan)
+        .where(
+            DailyStudyPlan.user_id == user_id,
+            DailyQuizPreparation.attempt_id.is_(None),
+            DailyQuizPreparation.created_at
+            >= now.replace(hour=0, minute=0, second=0, microsecond=0),
+        )
+    )
+    used_today += reserved * 50
     requested_total = payload.question_count + len(bank_questions)
     if used_today + requested_total > get_settings().practice_ai_daily_questions:
         raise HTTPException(

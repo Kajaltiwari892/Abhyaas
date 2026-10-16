@@ -3,6 +3,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.practice import AttemptResponse
+
+
+class DailyQuizPreparationResponse(BaseModel):
+    status: Literal["preparing", "ready"]
+    prepared_count: int
+    total: int = 50
+    retry_after_ms: int = 0
+    attempt: AttemptResponse | None = None
+
 
 class StudyPreferencesInput(BaseModel):
     daily_minutes: int = Field(default=120, ge=30, le=180, strict=True)

@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { createRequestCache } from "../lib/request-cache.ts";
 import { createSessionController } from "../lib/session-controller.ts";
+import { createLatestSaveQueue } from "../lib/latest-save-queue.ts";
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -39,7 +40,7 @@ test("question skeleton has four decorative options, honest status and no fake t
 // Run the real workspace handlers with deferred APIs and a small deterministic
 // hook host. No server requests, generated question quota or browser login needed.
 function workspaceHost() {
-  const slots = [], effects = [], requests = [], timers = new Map();
+  const slots = [], effects = [], requests = [], saves = [], completions = [], timers = new Map();
   let cursor = 0, timerId = 0;
   const hooks = {
     useState(initial) {
@@ -72,6 +73,8 @@ function workspaceHost() {
   const studyApi = {
     getSubjects: () => new Promise(() => {}), // Daily quizzes must not wait for this catalogue.
     getPracticeAvailability: async () => ({ total: 80, unseen: 80 }),
+    checkpointPracticeAttempt(...input) { const result = deferred(); saves.push({ ...result, input }); return result.promise; },
+    completePracticeAttempt(...input) { const result = deferred(); completions.push({ ...result, input }); return result.promise; },
   };
   const practicePlan = load("../lib/practice-plan.ts");
   const academy = load("../lib/academy-preference.ts");
@@ -80,6 +83,7 @@ function workspaceHost() {
     if (id.endsWith(".css")) return css;
     if (id === "./PracticeQuestionSkeleton") return { default: Skeleton };
     if (id === "@/lib/study-api") return studyApi;
+    if (id === "@/lib/latest-save-queue") return { createLatestSaveQueue };
     if (id === "@/lib/study-plan-api") return planApi;
     if (id === "@/lib/practice-plan") return practicePlan;
     if (id === "@/lib/academy-preference") return academy;
@@ -92,7 +96,7 @@ function workspaceHost() {
   function render() { cursor = 0; return Workspace({ initialSubject: "english", dailyTask: task }); }
   function runEffects(force = false) { for (const effect of effects) { if (!effect || !force && !effect.pending) continue; effect.cleanup?.(); effect.cleanup = effect.fn(); effect.pending = false; } }
   function cleanup() { for (const effect of effects) effect?.cleanup?.(); }
-  return { render, runEffects, cleanup, requests, timers };
+  return { render, runEffects, cleanup, requests, saves, completions, timers };
 }
 function button(tree, text) {
   if (!tree || typeof tree !== "object") return;
@@ -163,7 +167,7 @@ test("slow preparation is bounded, abortable and has reduced-motion styling", as
   const delayed = [...host.timers.values()].find(timer => timer.ms === 25_000);
   delayed.fn();
   assert.match(renderToStaticMarkup(host.render()), /Still preparing your questions/);
-  [...host.timers.values()].find(timer => timer.ms === 165_000).fn();
+  [...host.timers.values()].find(timer => timer.ms === 360_000).fn();
   assert.equal(host.requests[0].signal.aborted, true);
   host.requests[0].reject(new DOMException("Aborted", "AbortError")); await flush();
   assert.match(renderToStaticMarkup(host.render()), /couldn&#x27;t be opened in time/);
@@ -189,7 +193,7 @@ test("all quiz and focus APIs forward abort signals without changing saved-answe
   const calls = [];
   const resolve = id => id === "./request-cache" ? { createRequestCache }
     : id === "./study-plan-api" ? { invalidateTodayPlan() {} }
-    : { sessionController: createSessionController(async () => null), apiRequest: async (path, init) => { calls.push({ path, init }); return {}; } };
+    : { sessionController: createSessionController(async () => null), apiRequest: async (path, init) => { calls.push({ path, init }); return {status:"ready",attempt:{questions:[{}]}}; } };
   const plan = load("../lib/study-plan-api.ts", resolve), study = load("../lib/study-api.ts", resolve);
   const signal = new AbortController().signal;
   await plan.getStudyTask("token", "one&two", signal);
@@ -198,7 +202,33 @@ test("all quiz and focus APIs forward abort signals without changing saved-answe
   await study.startPracticeAttempt("token", { subject_slug: "english", question_count: 50 }, signal);
   await study.startSimilarAttempt("token", { subject_slug: "english", question_count: 50 }, signal);
   assert.equal(calls.length, 5);
-  assert.ok(calls.every(call => call.init.signal === signal));
+  assert.ok(calls.every(call => call.init.signal && !call.init.signal.aborted));
+  assert.match(calls[2].path, /quiz\/prepare$/);
   assert.match(calls[0].path, /one%26two/);
   assert.deepEqual(JSON.parse(calls[1].init.body), { action: "start" });
+});
+
+test("Save & next advances immediately on a slow connection and submission waits for ordered writes", async () => {
+  const host = workspaceHost();
+  host.render(); host.runEffects(); await flush();
+  host.requests[0].resolve(attempt()); await flush();
+  host.render(); host.runEffects();
+  button(host.render(), "Save &amp; next")();
+  assert.match(renderToStaticMarkup(host.render()), /Saved question 4/);
+  assert.equal(host.saves.length, 1);
+  assert.equal(host.saves[0].input[4], 3);
+  button(host.render(), "Skip &amp; next")();
+  button(host.render(), "Skip &amp; next")();
+  assert.match(renderToStaticMarkup(host.render()), /Saved question 6/);
+  assert.equal(host.saves.length, 1); // Only one write in flight.
+  button(host.render(), "Submit set")(); await flush();
+  assert.equal(host.completions.length, 0);
+  host.saves[0].resolve(null); await flush();
+  assert.equal(host.saves.length, 2);
+  assert.equal(host.saves[1].input[4], 5); // Intermediate snapshots coalesced.
+  host.saves[1].resolve(null); await flush();
+  assert.equal(host.completions.length, 1);
+  assert.equal(host.completions[0].input[1], "saved-quiz");
+  host.completions[0].resolve({review:[]}); await flush();
+  host.cleanup();
 });
