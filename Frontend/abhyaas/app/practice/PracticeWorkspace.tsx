@@ -73,13 +73,13 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     return () => window.clearTimeout(timer);
   }, [openingSet]);
 
-  useEffect(() => { let alive = true; getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(message(e)); }); return () => { alive = false; }; }, [catalogVersion]);
+  useEffect(() => { if (dailyTask) return; let alive = true; getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(message(e)); }); return () => { alive = false; }; }, [catalogVersion, dailyTask]);
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || dailyTask) return;
     let alive = true;
     getPracticeAvailability(accessToken, subjectSlug, topicSlug).then((data) => { if (alive) setAvailability({ key: availabilityKey, data }); }).catch((e) => { if (alive) setError(message(e)); });
     return () => { alive = false; };
-  }, [accessToken, subjectSlug, topicSlug, availabilityKey]);
+  }, [accessToken, subjectSlug, topicSlug, availabilityKey, dailyTask]);
   useEffect(() => {
     if (!accessToken || tab !== "history") return;
     let alive = true;

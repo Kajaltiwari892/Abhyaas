@@ -40,7 +40,7 @@ test("question skeleton has four decorative options, honest status and no fake t
 // Run the real workspace handlers with deferred APIs and a small deterministic
 // hook host. No server requests, generated question quota or browser login needed.
 function workspaceHost() {
-  const slots = [], effects = [], requests = [], saves = [], completions = [], timers = new Map();
+  const slots = [], effects = [], requests = [], saves = [], completions = [], catalogueCalls = [], timers = new Map();
   let cursor = 0, timerId = 0;
   const hooks = {
     useState(initial) {
@@ -71,8 +71,8 @@ function workspaceHost() {
     startDailyQuiz(token, id, signal) { const request = deferred(); requests.push({ ...request, token, id, signal }); return request.promise; },
   };
   const studyApi = {
-    getSubjects: () => new Promise(() => {}), // Daily quizzes must not wait for this catalogue.
-    getPracticeAvailability: async () => ({ total: 80, unseen: 80 }),
+    getSubjects: () => { catalogueCalls.push("subjects"); return new Promise(() => {}); },
+    getPracticeAvailability: async () => { catalogueCalls.push("availability"); return { total: 80, unseen: 80 }; },
     checkpointPracticeAttempt(...input) { const result = deferred(); saves.push({ ...result, input }); return result.promise; },
     completePracticeAttempt(...input) { const result = deferred(); completions.push({ ...result, input }); return result.promise; },
   };
@@ -96,7 +96,7 @@ function workspaceHost() {
   function render() { cursor = 0; return Workspace({ initialSubject: "english", dailyTask: task }); }
   function runEffects(force = false) { for (const effect of effects) { if (!effect || !force && !effect.pending) continue; effect.cleanup?.(); effect.cleanup = effect.fn(); effect.pending = false; } }
   function cleanup() { for (const effect of effects) effect?.cleanup?.(); }
-  return { render, runEffects, cleanup, requests, saves, completions, timers };
+  return { render, runEffects, cleanup, requests, saves, completions, catalogueCalls, timers };
 }
 function button(tree, text) {
   if (!tree || typeof tree !== "object") return;
@@ -118,6 +118,7 @@ test("daily quiz opens immediately and starts once under development effect repl
   assert.equal(host.requests.length, 1);
   assert.equal(host.requests[0].id, task.id);
   assert.equal(host.requests[0].signal.aborted, false);
+  assert.deepEqual(host.catalogueCalls, []); // No unrelated request can block or error this quiz.
   host.render(); host.runEffects(); await flush();
   assert.equal(host.requests.length, 1);
   host.cleanup();
