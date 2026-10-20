@@ -85,6 +85,10 @@ class DailyQuizPreparation(Base):
     )
     bank_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     questions: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    # Candidates are durable but must never be exposed or scored before review.
+    pending_questions: Mapped[list[dict]] = mapped_column(JSON, default=list, server_default="[]")
+    failure_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempt_id: Mapped[str | None] = mapped_column(
         ForeignKey("practice_attempts.id", ondelete="SET NULL"), nullable=True
     )

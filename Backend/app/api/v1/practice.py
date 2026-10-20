@@ -401,9 +401,19 @@ async def attempt_history(
 @router.get("/practice/attempts/{attempt_id}", response_model=AttemptResponse)
 async def get_attempt(attempt_id: str, user: CurrentUser, db: DatabaseSession) -> AttemptResponse:
     attempt = await owned_attempt(db, attempt_id, user.id)
+    answered_before = (
+        select(PracticeAnswer.id)
+        .join(PracticeAttempt)
+        .where(
+            PracticeAnswer.question_id == Question.id,
+            PracticeAttempt.user_id == user.id,
+            PracticeAttempt.id != attempt.id,
+        )
+        .exists()
+    )
     rows = (
         await db.execute(
-            select(AttemptQuestion, Question, Topic)
+            select(AttemptQuestion, Question, Topic, answered_before.label("answered_before"))
             .join(Question, Question.id == AttemptQuestion.question_id)
             .join(Topic, Topic.id == Question.topic_id)
             .where(AttemptQuestion.attempt_id == attempt.id)
@@ -426,6 +436,8 @@ async def get_attempt(attempt_id: str, user: CurrentUser, db: DatabaseSession) -
         current_position=attempt.current_position,
         negative_mark_fraction=attempt.negative_mark_fraction,
         question_mode=attempt.question_mode,
+        new_questions=sum(not seen for _, _, _, seen in rows),
+        repeated_questions=sum(bool(seen) for _, _, _, seen in rows),
         answers=[
             SavedAnswerResponse(
                 question_id=a.question_id,
@@ -446,7 +458,7 @@ async def get_attempt(attempt_id: str, user: CurrentUser, db: DatabaseSession) -
                 source_label=q.source_label,
                 provenance=q.provenance,
             )
-            for aq, q, t in rows
+            for aq, q, t, _ in rows
         ],
     )
 

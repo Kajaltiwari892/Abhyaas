@@ -1,0 +1,608 @@
+{
+  "version": "agreement-v1",
+  "curriculum_key": "agreement",
+  "subject_slug": "english",
+  "topic_slug": "grammar",
+  "questions": [
+    {
+      "id": "agreement-v1-01",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Neither the main report nor its appendices ___ been checked, although the index ___ ready.",
+      "options": [
+        "Neither the main report nor its appendices have been checked, although the index are ready.",
+        "Neither the main report nor its appendices has been checked, although the index is ready.",
+        "Neither the main report nor its appendices have been checked, although the index is ready.",
+        "Neither the main report nor its appendices has been checked, although the index are ready."
+      ],
+      "correct_index": 2,
+      "explanation": "With neither…nor, the verb agrees with the nearer subject: plural 'appendices' takes 'have'. Singular 'index' takes 'is'."
+    },
+    {
+      "id": "agreement-v1-02",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Either the lecturers or the principal ___ required to sign, and the attendance sheets ___ ready.",
+      "options": [
+        "Either the lecturers or the principal are required to sign, and the attendance sheets are ready.",
+        "Either the lecturers or the principal are required to sign, and the attendance sheets is ready.",
+        "Either the lecturers or the principal is required to sign, and the attendance sheets is ready.",
+        "Either the lecturers or the principal is required to sign, and the attendance sheets are ready."
+      ],
+      "correct_index": 3,
+      "explanation": "The nearer subject after either…or is singular 'principal', so use 'is'. Plural 'sheets' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-03",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The principal, as well as her assistants, ___ signed the register; the assistants ___ also submitted their reports.",
+      "options": [
+        "The principal, as well as her assistants, has signed the register; the assistants have also submitted their reports.",
+        "The principal, as well as her assistants, has signed the register; the assistants has also submitted their reports.",
+        "The principal, as well as her assistants, have signed the register; the assistants have also submitted their reports.",
+        "The principal, as well as her assistants, have signed the register; the assistants has also submitted their reports."
+      ],
+      "correct_index": 0,
+      "explanation": "'As well as her assistants' does not change the singular subject 'principal': use 'has'. In the second clause, plural 'assistants' takes 'have'."
+    },
+    {
+      "id": "agreement-v1-04",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The documents, along with the covering letter, ___ sent yesterday, and the receipt ___ now arrived.",
+      "options": [
+        "The documents, along with the covering letter, was sent yesterday, and the receipt has now arrived.",
+        "The documents, along with the covering letter, were sent yesterday, and the receipt has now arrived.",
+        "The documents, along with the covering letter, was sent yesterday, and the receipt have now arrived.",
+        "The documents, along with the covering letter, were sent yesterday, and the receipt have now arrived."
+      ],
+      "correct_index": 1,
+      "explanation": "The subject is plural 'documents', not 'letter', so use 'were'. Singular 'receipt' takes 'has'."
+    },
+    {
+      "id": "agreement-v1-05",
+      "prompt": "The following sentence is divided into four parts. Select the part containing the subject–verb agreement error: (A) According to the researchers whose analysis of the samples was published yesterday, / (B) the results of the trials provides enough evidence / (C) to justify repeating the experiment / (D) under more carefully controlled conditions.",
+      "options": [
+        "(A) According to the researchers whose analysis of the samples was published yesterday,",
+        "(B) the results of the trials provides enough evidence",
+        "(C) to justify repeating the experiment",
+        "(D) under more carefully controlled conditions."
+      ],
+      "correct_index": 1,
+      "explanation": "In part B, the subject of 'provides' is plural 'results', so it must be 'provide'. In part A, singular 'analysis' correctly takes 'was'."
+    },
+    {
+      "id": "agreement-v1-06",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The certificate that accompanies the forms ___ missing, but the forms themselves ___ complete.",
+      "options": [
+        "The certificate that accompanies the forms is missing, but the forms themselves are complete.",
+        "The certificate that accompanies the forms are missing, but the forms themselves are complete.",
+        "The certificate that accompanies the forms is missing, but the forms themselves is complete.",
+        "The certificate that accompanies the forms are missing, but the forms themselves is complete."
+      ],
+      "correct_index": 0,
+      "explanation": "The first main subject is singular 'certificate'; the intervening plural 'forms' does not control its verb. The second subject is plural 'forms'."
+    },
+    {
+      "id": "agreement-v1-07",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Each officer and each recruit ___ been assigned a locker, and the allocations ___ displayed outside.",
+      "options": [
+        "Each officer and each recruit have been assigned a locker, and the allocations are displayed outside.",
+        "Each officer and each recruit has been assigned a locker, and the allocations is displayed outside.",
+        "Each officer and each recruit have been assigned a locker, and the allocations is displayed outside.",
+        "Each officer and each recruit has been assigned a locker, and the allocations are displayed outside."
+      ],
+      "correct_index": 3,
+      "explanation": "When each singular subject is introduced by 'each', the coordinated expression takes a singular verb: 'has'. Plural 'allocations' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-08",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Every train and every bus on this route ___ being diverted because the usual roads ___ flooded.",
+      "options": [
+        "Every train and every bus on this route are being diverted because the usual roads are flooded.",
+        "Every train and every bus on this route is being diverted because the usual roads is flooded.",
+        "Every train and every bus on this route is being diverted because the usual roads are flooded.",
+        "Every train and every bus on this route are being diverted because the usual roads is flooded."
+      ],
+      "correct_index": 2,
+      "explanation": "'Every train and every bus' is treated distributively and takes 'is'. The plural subject 'roads' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-09",
+      "prompt": "Choose the sentence with correct subject–verb agreement: A number of candidates ___ requested an extension, but the final shortlist ___ already available.",
+      "options": [
+        "A number of candidates have requested an extension, but the final shortlist is already available.",
+        "A number of candidates has requested an extension, but the final shortlist is already available.",
+        "A number of candidates have requested an extension, but the final shortlist are already available.",
+        "A number of candidates has requested an extension, but the final shortlist are already available."
+      ],
+      "correct_index": 0,
+      "explanation": "'A number of' means 'several' and takes the plural verb 'have'. Singular 'shortlist' takes 'is'."
+    },
+    {
+      "id": "agreement-v1-10",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The number of applicants ___ risen sharply, although several vacancies ___ unfilled.",
+      "options": [
+        "The number of applicants have risen sharply, although several vacancies remain unfilled.",
+        "The number of applicants has risen sharply, although several vacancies remains unfilled.",
+        "The number of applicants has risen sharply, although several vacancies remain unfilled.",
+        "The number of applicants have risen sharply, although several vacancies remains unfilled."
+      ],
+      "correct_index": 2,
+      "explanation": "'The number of' refers to one total, so the head 'number' takes 'has'. Plural 'vacancies' takes 'remain'."
+    },
+    {
+      "id": "agreement-v1-11",
+      "prompt": "Choose the sentence with correct subject–verb agreement: More than one officer ___ questioned the order, and the written objections ___ under review.",
+      "options": [
+        "More than one officer have questioned the order, and the written objections are under review.",
+        "More than one officer has questioned the order, and the written objections are under review.",
+        "More than one officer has questioned the order, and the written objections is under review.",
+        "More than one officer have questioned the order, and the written objections is under review."
+      ],
+      "correct_index": 1,
+      "explanation": "The expression 'more than one' followed by a singular noun normally takes a singular verb: 'has'. Plural 'objections' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-12",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Many a student ___ overlooked this exception, and the same errors ___ in the answer scripts.",
+      "options": [
+        "Many a student have overlooked this exception, and the same errors remain in the answer scripts.",
+        "Many a student has overlooked this exception, and the same errors remains in the answer scripts.",
+        "Many a student have overlooked this exception, and the same errors remains in the answer scripts.",
+        "Many a student has overlooked this exception, and the same errors remain in the answer scripts."
+      ],
+      "correct_index": 3,
+      "explanation": "'Many a' is followed by a singular noun and singular verb: 'student has'. Plural 'errors' takes 'remain'."
+    },
+    {
+      "id": "agreement-v1-13",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Fifty kilometres ___ a demanding distance for beginners, although the milestones ___ clearly visible.",
+      "options": [
+        "Fifty kilometres are a demanding distance for beginners, although the milestones is clearly visible.",
+        "Fifty kilometres are a demanding distance for beginners, although the milestones are clearly visible.",
+        "Fifty kilometres is a demanding distance for beginners, although the milestones is clearly visible.",
+        "Fifty kilometres is a demanding distance for beginners, although the milestones are clearly visible."
+      ],
+      "correct_index": 3,
+      "explanation": "A measurement considered as one total distance takes a singular verb: 'is'. Individual plural 'milestones' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-14",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Ten years ___ a long repayment period, but the monthly instalments ___ quite small.",
+      "options": [
+        "Ten years are a long repayment period, but the monthly instalments are quite small.",
+        "Ten years is a long repayment period, but the monthly instalments are quite small.",
+        "Ten years is a long repayment period, but the monthly instalments is quite small.",
+        "Ten years are a long repayment period, but the monthly instalments is quite small."
+      ],
+      "correct_index": 1,
+      "explanation": "Here 'ten years' denotes a single period, so use 'is'. Plural 'instalments' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-15",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Three quarters of the water ___ evaporated, but the remaining bottles ___ still sealed.",
+      "options": [
+        "Three quarters of the water have evaporated, but the remaining bottles are still sealed.",
+        "Three quarters of the water has evaporated, but the remaining bottles is still sealed.",
+        "Three quarters of the water has evaporated, but the remaining bottles are still sealed.",
+        "Three quarters of the water have evaporated, but the remaining bottles is still sealed."
+      ],
+      "correct_index": 2,
+      "explanation": "With fractions, agreement follows the noun being measured. Uncountable 'water' takes 'has'; plural 'bottles' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-16",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Three quarters of the delegates ___ voted, and the chairperson ___ ready to announce the result.",
+      "options": [
+        "Three quarters of the delegates have voted, and the chairperson is ready to announce the result.",
+        "Three quarters of the delegates have voted, and the chairperson are ready to announce the result.",
+        "Three quarters of the delegates has voted, and the chairperson are ready to announce the result.",
+        "Three quarters of the delegates has voted, and the chairperson is ready to announce the result."
+      ],
+      "correct_index": 0,
+      "explanation": "The fraction refers to plural 'delegates', so use 'have'. Singular 'chairperson' takes 'is'."
+    },
+    {
+      "id": "agreement-v1-17",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Sixty per cent of the test results ___ inconclusive, although each individual reading ___ recorded accurately.",
+      "options": [
+        "Sixty per cent of the test results is inconclusive, although each individual reading is recorded accurately.",
+        "Sixty per cent of the test results are inconclusive, although each individual reading is recorded accurately.",
+        "Sixty per cent of the test results are inconclusive, although each individual reading are recorded accurately.",
+        "Sixty per cent of the test results is inconclusive, although each individual reading are recorded accurately."
+      ],
+      "correct_index": 1,
+      "explanation": "The percentage refers to plural 'results', requiring 'are'. 'Each individual reading' is singular and requires 'is'."
+    },
+    {
+      "id": "agreement-v1-18",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Sixty per cent of the work ___ unfinished, and the final tasks ___ considerable patience.",
+      "options": [
+        "Sixty per cent of the work remain unfinished, and the final tasks require considerable patience.",
+        "Sixty per cent of the work remain unfinished, and the final tasks requires considerable patience.",
+        "Sixty per cent of the work remains unfinished, and the final tasks requires considerable patience.",
+        "Sixty per cent of the work remains unfinished, and the final tasks require considerable patience."
+      ],
+      "correct_index": 3,
+      "explanation": "The percentage refers to uncountable 'work', so use singular 'remains'. Plural 'tasks' takes 'require'."
+    },
+    {
+      "id": "agreement-v1-19",
+      "prompt": "Select the only grammatically correct sentence. Check the main subject and the subject of each relative clause in these statements about an inquiry.",
+      "options": [
+        "The officers whose report is under review have asked whether any additional information is available.",
+        "The information that these files contain have not been checked by the officers who is handling the inquiry.",
+        "The officer to whom the files were sent have stated that each of the reports is incomplete.",
+        "Each of the officers who are handling the inquiry have asked for the original files."
+      ],
+      "correct_index": 0,
+      "explanation": "In the correct sentence, 'officers' takes 'have', singular 'report' takes 'is', and uncountable 'information' takes 'is'. The other sentences contain incorrect agreement with 'information', 'officer' or 'each'."
+    },
+    {
+      "id": "agreement-v1-20",
+      "prompt": "Choose the sentence with correct subject–verb agreement: None of the evidence ___ this allegation, although two exhibits ___ still being examined.",
+      "options": [
+        "None of the evidence support this allegation, although two exhibits are still being examined.",
+        "None of the evidence supports this allegation, although two exhibits is still being examined.",
+        "None of the evidence supports this allegation, although two exhibits are still being examined.",
+        "None of the evidence support this allegation, although two exhibits is still being examined."
+      ],
+      "correct_index": 2,
+      "explanation": "'None of' with uncountable 'evidence' takes the singular verb 'supports'. Plural 'exhibits' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-21",
+      "prompt": "Which of the following sentences are grammatically correct? I. The number of errors in the answers to these questions have increased. II. A number of answers that contain factual errors have been rejected. III. More than one answer in each of these scripts requires correction.",
+      "options": [
+        "II and III only",
+        "I only",
+        "I and II only",
+        "I, II and III"
+      ],
+      "correct_index": 0,
+      "explanation": "I needs 'has': the subject is 'the number'. II is correct because 'a number of answers' takes 'have'. III is correct because 'more than one answer' takes singular 'requires'."
+    },
+    {
+      "id": "agreement-v1-22",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Not only the assistants but also the chief engineer ___ approved the design, and the junior engineers ___ checked the drawings.",
+      "options": [
+        "Not only the assistants but also the chief engineer have approved the design, and the junior engineers have checked the drawings.",
+        "Not only the assistants but also the chief engineer has approved the design, and the junior engineers have checked the drawings.",
+        "Not only the assistants but also the chief engineer has approved the design, and the junior engineers has checked the drawings.",
+        "Not only the assistants but also the chief engineer have approved the design, and the junior engineers has checked the drawings."
+      ],
+      "correct_index": 1,
+      "explanation": "With 'not only…but also', the verb agrees with the nearer subject, singular 'chief engineer': 'has'. Plural 'junior engineers' takes 'have'."
+    },
+    {
+      "id": "agreement-v1-23",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Not only the chief engineer but also the assistants ___ attending the inspection, while the chairperson ___ away.",
+      "options": [
+        "Not only the chief engineer but also the assistants is attending the inspection, while the chairperson is away.",
+        "Not only the chief engineer but also the assistants are attending the inspection, while the chairperson are away.",
+        "Not only the chief engineer but also the assistants is attending the inspection, while the chairperson are away.",
+        "Not only the chief engineer but also the assistants are attending the inspection, while the chairperson is away."
+      ],
+      "correct_index": 3,
+      "explanation": "The nearer subject is plural 'assistants', so use 'are'. Singular 'chairperson' takes 'is'."
+    },
+    {
+      "id": "agreement-v1-24",
+      "prompt": "Choose the sentence with correct subject–verb agreement: This pair of gloves ___ unsuitable for climbing, although the gloves themselves ___ new.",
+      "options": [
+        "This pair of gloves are unsuitable for climbing, although the gloves themselves are new.",
+        "This pair of gloves is unsuitable for climbing, although the gloves themselves is new.",
+        "This pair of gloves is unsuitable for climbing, although the gloves themselves are new.",
+        "This pair of gloves are unsuitable for climbing, although the gloves themselves is new."
+      ],
+      "correct_index": 2,
+      "explanation": "The head noun in 'this pair of gloves' is singular 'pair', taking 'is'. When 'gloves' is the subject, it takes 'are'."
+    },
+    {
+      "id": "agreement-v1-25",
+      "prompt": "Choose the sentence with correct subject–verb agreement: These scissors ___ difficult to use because one of the blades ___ blunt.",
+      "options": [
+        "These scissors is difficult to use because one of the blades are blunt.",
+        "These scissors is difficult to use because one of the blades is blunt.",
+        "These scissors are difficult to use because one of the blades are blunt.",
+        "These scissors are difficult to use because one of the blades is blunt."
+      ],
+      "correct_index": 3,
+      "explanation": "'Scissors' takes a plural verb, 'are'. In 'one of the blades', the subject is singular 'one', taking 'is'."
+    },
+    {
+      "id": "agreement-v1-26",
+      "prompt": "The following sentence is divided into four parts. Select the part containing the subject–verb agreement error: (A) The families whose relatives had joined the search / (B) were greatly relieved by the news / (C) that the two missing climbers has been found, / (D) although the rescue operation is not yet over.",
+      "options": [
+        "(A) The families whose relatives had joined the search",
+        "(B) were greatly relieved by the news",
+        "(C) that the two missing climbers has been found,",
+        "(D) although the rescue operation is not yet over."
+      ],
+      "correct_index": 2,
+      "explanation": "The subject within part C is plural 'the two missing climbers', requiring 'have been found'. Singular 'news' is not the subject of that verb."
+    },
+    {
+      "id": "agreement-v1-27",
+      "prompt": "Which of the following sentences contains a subject–verb agreement error? I. Statistics is a compulsory subject in the first semester. II. The statistics supplied by the laboratory indicates a steady decline. III. Every one of the figures in these tables has been checked.",
+      "options": [
+        "II only",
+        "I only",
+        "I and II only",
+        "II and III only"
+      ],
+      "correct_index": 0,
+      "explanation": "II needs 'indicate' because 'statistics' means plural numerical findings. In I, 'Statistics' names one academic subject and takes 'is'. In III, the subject 'every one' correctly takes 'has'."
+    },
+    {
+      "id": "agreement-v1-28",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The proceeds of the auction ___ reserved for relief work, and the money ___ kept in a separate account.",
+      "options": [
+        "The proceeds of the auction is reserved for relief work, and the money is kept in a separate account.",
+        "The proceeds of the auction are reserved for relief work, and the money is kept in a separate account.",
+        "The proceeds of the auction is reserved for relief work, and the money are kept in a separate account.",
+        "The proceeds of the auction are reserved for relief work, and the money are kept in a separate account."
+      ],
+      "correct_index": 1,
+      "explanation": "'Proceeds', meaning money raised, takes a plural verb: 'are'. Uncountable 'money' takes singular 'is'."
+    },
+    {
+      "id": "agreement-v1-29",
+      "prompt": "Select the only sentence with correct subject–verb agreement. In these inverted and interrupted constructions, identify the actual subject of each verb.",
+      "options": [
+        "Not until the final list of selected candidates were published did the applicants realise that several names were missing.",
+        "Only after the documents has been checked does the officer sign the permit.",
+        "Among the matters that remain unresolved are the ownership of the land and the payment of compensation.",
+        "Beyond the two lines of trees stands the watchtowers that overlook the valley."
+      ],
+      "correct_index": 2,
+      "explanation": "In the correct sentence, the compound subject 'the ownership…and the payment' follows 'are'. The other sentences require 'list…was', 'documents have' and 'watchtowers…stand'."
+    },
+    {
+      "id": "agreement-v1-30",
+      "prompt": "Which of the following sentences are grammatically correct? I. Five hundred rupees is the total fee for the course. II. Five hundred one-rupee coins is scattered across the table. III. The remaining balance, including the service charges, is payable tomorrow.",
+      "options": [
+        "I and III only",
+        "II only",
+        "I and II only",
+        "I, II and III"
+      ],
+      "correct_index": 0,
+      "explanation": "I treats the fee as one sum and correctly uses 'is'. II refers to individual coins and needs 'are'. In III, singular 'balance', not 'charges', controls 'is'."
+    },
+    {
+      "id": "agreement-v1-31",
+      "prompt": "Choose the sentence with correct subject–verb agreement: A series of lectures ___ scheduled for next week, and all the sessions ___ open to trainees.",
+      "options": [
+        "A series of lectures are scheduled for next week, and all the sessions are open to trainees.",
+        "A series of lectures is scheduled for next week, and all the sessions are open to trainees.",
+        "A series of lectures is scheduled for next week, and all the sessions is open to trainees.",
+        "A series of lectures are scheduled for next week, and all the sessions is open to trainees."
+      ],
+      "correct_index": 1,
+      "explanation": "'A series' is singular; 'of lectures' does not change its agreement. Plural 'sessions' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-32",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Several series of tests ___ planned, and each series ___ a separate purpose.",
+      "options": [
+        "Several series of tests is planned, and each series has a separate purpose.",
+        "Several series of tests are planned, and each series have a separate purpose.",
+        "Several series of tests is planned, and each series have a separate purpose.",
+        "Several series of tests are planned, and each series has a separate purpose."
+      ],
+      "correct_index": 3,
+      "explanation": "'Series' has the same singular and plural form. 'Several series' is plural and takes 'are'; 'each series' is singular and takes 'has'."
+    },
+    {
+      "id": "agreement-v1-33",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The quality of the answers ___ improved, although a few spelling errors ___ remained.",
+      "options": [
+        "The quality of the answers have improved, although a few spelling errors have remained.",
+        "The quality of the answers has improved, although a few spelling errors have remained.",
+        "The quality of the answers has improved, although a few spelling errors has remained.",
+        "The quality of the answers have improved, although a few spelling errors has remained."
+      ],
+      "correct_index": 1,
+      "explanation": "The head subject 'quality' is singular and takes 'has'; 'answers' belongs to a modifying phrase. Plural 'errors' takes 'have'."
+    },
+    {
+      "id": "agreement-v1-34",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The answers to the final question ___ caused confusion, although the examiner's instruction ___ clear.",
+      "options": [
+        "The answers to the final question has caused confusion, although the examiner's instruction is clear.",
+        "The answers to the final question has caused confusion, although the examiner's instruction are clear.",
+        "The answers to the final question have caused confusion, although the examiner's instruction are clear.",
+        "The answers to the final question have caused confusion, although the examiner's instruction is clear."
+      ],
+      "correct_index": 3,
+      "explanation": "Plural 'answers', not nearby singular 'question', controls 'have'. Singular 'instruction' takes 'is'."
+    },
+    {
+      "id": "agreement-v1-35",
+      "prompt": "Choose the sentence with correct subject–verb agreement: What the witnesses described ___ a single loud explosion, although their accounts ___ different in other respects.",
+      "options": [
+        "What the witnesses described were a single loud explosion, although their accounts were different in other respects.",
+        "What the witnesses described was a single loud explosion, although their accounts was different in other respects.",
+        "What the witnesses described was a single loud explosion, although their accounts were different in other respects.",
+        "What the witnesses described were a single loud explosion, although their accounts was different in other respects."
+      ],
+      "correct_index": 2,
+      "explanation": "The subject clause 'What the witnesses described' denotes one event, a single explosion, and takes 'was'. Plural 'accounts' takes 'were'."
+    },
+    {
+      "id": "agreement-v1-36",
+      "prompt": "Choose the sentence with correct subject–verb agreement: To read these instructions carefully ___ patience, but the benefits ___ considerable.",
+      "options": [
+        "To read these instructions carefully requires patience, but the benefits are considerable.",
+        "To read these instructions carefully requires patience, but the benefits is considerable.",
+        "To read these instructions carefully require patience, but the benefits is considerable.",
+        "To read these instructions carefully require patience, but the benefits are considerable."
+      ],
+      "correct_index": 0,
+      "explanation": "An infinitive phrase used as a subject normally takes a singular verb: 'To read…requires'. Plural 'benefits' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-37",
+      "prompt": "Choose the sentence with correct subject–verb agreement: Reading difficult passages regularly ___ comprehension, and concise notes ___ later revision.",
+      "options": [
+        "Reading difficult passages regularly improves comprehension, and concise notes helps later revision.",
+        "Reading difficult passages regularly improve comprehension, and concise notes help later revision.",
+        "Reading difficult passages regularly improves comprehension, and concise notes help later revision.",
+        "Reading difficult passages regularly improve comprehension, and concise notes helps later revision."
+      ],
+      "correct_index": 2,
+      "explanation": "The gerund phrase 'Reading difficult passages regularly' names one activity and takes 'improves'. Plural 'notes' takes 'help'."
+    },
+    {
+      "id": "agreement-v1-38",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The supply of bread and butter ___ adequate, although several other breakfast items ___ unavailable.",
+      "options": [
+        "The supply of bread and butter are adequate, although several other breakfast items are unavailable.",
+        "The supply of bread and butter is adequate, although several other breakfast items are unavailable.",
+        "The supply of bread and butter is adequate, although several other breakfast items is unavailable.",
+        "The supply of bread and butter are adequate, although several other breakfast items is unavailable."
+      ],
+      "correct_index": 1,
+      "explanation": "The main subject is singular 'supply'; the nouns after 'of' do not make it plural. Plural 'items' takes 'are'."
+    },
+    {
+      "id": "agreement-v1-39",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The founder and sole owner of the firm, Meera, ___ approved the proposal, and her employees ___ welcomed it.",
+      "options": [
+        "The founder and sole owner of the firm, Meera, have approved the proposal, and her employees have welcomed it.",
+        "The founder and sole owner of the firm, Meera, has approved the proposal, and her employees has welcomed it.",
+        "The founder and sole owner of the firm, Meera, have approved the proposal, and her employees has welcomed it.",
+        "The founder and sole owner of the firm, Meera, has approved the proposal, and her employees have welcomed it."
+      ],
+      "correct_index": 3,
+      "explanation": "'The founder and sole owner' explicitly refers to one person, Meera, so use 'has'. Plural 'employees' takes 'have'."
+    },
+    {
+      "id": "agreement-v1-40",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The founder, Meera, and the co-owner, Arjun, ___ signed the agreement, and their lawyer ___ witnessed it.",
+      "options": [
+        "The founder, Meera, and the co-owner, Arjun, have signed the agreement, and their lawyer has witnessed it.",
+        "The founder, Meera, and the co-owner, Arjun, have signed the agreement, and their lawyer have witnessed it.",
+        "The founder, Meera, and the co-owner, Arjun, has signed the agreement, and their lawyer have witnessed it.",
+        "The founder, Meera, and the co-owner, Arjun, has signed the agreement, and their lawyer has witnessed it."
+      ],
+      "correct_index": 0,
+      "explanation": "Two named people joined by 'and' form a plural subject and take 'have'. Singular 'lawyer' takes 'has'."
+    },
+    {
+      "id": "agreement-v1-41",
+      "prompt": "The following sentence is divided into four parts. Select the part containing the subject–verb agreement error: (A) There appear to be several omissions / (B) in the list of documents that accompany the form, / (C) and attached to the covering letter / (D) is two certificates with different dates.",
+      "options": [
+        "(A) There appear to be several omissions",
+        "(B) in the list of documents that accompany the form,",
+        "(C) and attached to the covering letter",
+        "(D) is two certificates with different dates."
+      ],
+      "correct_index": 3,
+      "explanation": "Part D needs 'are' because the inverted subject is plural 'two certificates'. 'There appear' agrees with 'omissions', and 'accompany' refers to plural 'documents'."
+    },
+    {
+      "id": "agreement-v1-42",
+      "prompt": "Select the only grammatically correct sentence about applications. A plural noun inside a relative clause need not be the subject of the main verb.",
+      "options": [
+        "Every one of the applicants whose names appear on the final list has been asked to report on Monday.",
+        "Each of the applications that have arrived this week require a separate receipt.",
+        "The boxes that contain the revised manuals is on the top shelf.",
+        "One of the reasons why the trains are delayed are the shortage of drivers."
+      ],
+      "correct_index": 0,
+      "explanation": "In the correct sentence, 'names' takes 'appear', but the main subject is singular 'every one', requiring 'has'. The others require 'each…requires', 'boxes…are' and 'one…is'."
+    },
+    {
+      "id": "agreement-v1-43",
+      "prompt": "Which of the following sentences are correct in formal written English? I. Neither the original proposal nor the revised estimates are acceptable. II. Neither the revised estimates nor the original proposal are acceptable. III. The original proposal, together with the revised estimates, is before the officer.",
+      "options": [
+        "I and II only",
+        "I and III only",
+        "II and III only",
+        "I, II and III"
+      ],
+      "correct_index": 1,
+      "explanation": "With neither…nor, agreement follows the nearer subject: plural 'estimates' in I, singular 'proposal' in II. II therefore needs 'is'. In III, 'together with…' does not alter singular 'proposal'."
+    },
+    {
+      "id": "agreement-v1-44",
+      "prompt": "The following sentence is divided into four parts. Select the part containing the subject–verb agreement error: (A) The expenditure on the scholarships / (B) that were awarded during the previous year / (C) have not yet been entered in the ledger, / (D) although the supporting documents are complete.",
+      "options": [
+        "(A) The expenditure on the scholarships",
+        "(B) that were awarded during the previous year",
+        "(C) have not yet been entered in the ledger,",
+        "(D) although the supporting documents are complete."
+      ],
+      "correct_index": 2,
+      "explanation": "The main subject is singular 'expenditure', so part C must say 'has not yet been entered'. The relative clause correctly refers to plural 'scholarships'."
+    },
+    {
+      "id": "agreement-v1-45",
+      "prompt": "Select the only grammatically correct sentence about examination candidates. Check agreement across the intervening relative and prepositional phrases.",
+      "options": [
+        "The proportion of candidates who have cleared both tests have risen sharply.",
+        "Each of the candidates whose documents were checked has been issued a separate receipt.",
+        "The candidates who has cleared the written test are waiting outside.",
+        "A list of the candidates whose documents are missing have been sent to the clerk."
+      ],
+      "correct_index": 1,
+      "explanation": "In the correct sentence, 'documents' takes 'were' and the main subject 'each' takes 'has'. The other sentences need 'proportion…has', 'candidates who have' and 'list…has'."
+    },
+    {
+      "id": "agreement-v1-46",
+      "prompt": "Choose the sentence with correct subject–verb agreement: A lot of the furniture ___ been damaged, although several chairs ___ usable.",
+      "options": [
+        "A lot of the furniture have been damaged, although several chairs remain usable.",
+        "A lot of the furniture has been damaged, although several chairs remains usable.",
+        "A lot of the furniture has been damaged, although several chairs remain usable.",
+        "A lot of the furniture have been damaged, although several chairs remains usable."
+      ],
+      "correct_index": 2,
+      "explanation": "With 'a lot of', agreement follows the following noun. Uncountable 'furniture' takes 'has'; plural 'chairs' takes 'remain'."
+    },
+    {
+      "id": "agreement-v1-47",
+      "prompt": "Which of the following sentences are grammatically correct? I. The aircraft that has landed on the western runway is awaiting clearance. II. Both aircraft that have landed on the western runway are awaiting clearance. III. The two aircraft whose engines were inspected yesterday has been cleared to fly.",
+      "options": [
+        "I and II only",
+        "II and III only",
+        "I and III only",
+        "I, II and III"
+      ],
+      "correct_index": 0,
+      "explanation": "'Aircraft' has the same singular and plural form. I refers to one aircraft; II explicitly refers to both. III refers to two aircraft and therefore needs 'have been cleared'."
+    },
+    {
+      "id": "agreement-v1-48",
+      "prompt": "Choose the sentence with correct subject–verb agreement: The two accused ___ present when the verdict ___ announced.",
+      "options": [
+        "The two accused was present when the verdict was announced.",
+        "The two accused were present when the verdict were announced.",
+        "The two accused was present when the verdict were announced.",
+        "The two accused were present when the verdict was announced."
+      ],
+      "correct_index": 3,
+      "explanation": "'The two accused' explicitly refers to two people, requiring 'were'. Singular 'verdict' requires 'was'."
+    },
+    {
+      "id": "agreement-v1-49",
+      "prompt": "The following sentence is divided into four parts. Select the part containing the subject–verb agreement error: (A) The introduction of the safeguards are essential, / (B) according to the author of the articles / (C) that discuss the proposed reforms, / (D) if the rights of the workers are to be protected.",
+      "options": [
+        "(A) The introduction of the safeguards are essential,",
+        "(B) according to the author of the articles",
+        "(C) that discuss the proposed reforms,",
+        "(D) if the rights of the workers are to be protected."
+      ],
+      "correct_index": 0,
+      "explanation": "Part A needs 'is essential': the subject is singular 'introduction'. In part C, 'that' refers to plural 'articles', so 'discuss' is correct."
+    },
+    {
+      "id": "agreement-v1-50",
+      "prompt": "Select the only sentence with correct subject–verb agreement. Pay attention to subjects placed after the verb or separated from it by additional phrases.",
+      "options": [
+        "At issue is the two conditions that the applicant has refused to accept.",
+        "More important than the dates printed on the forms is the date on which the application was received.",
+        "Included among the papers submitted yesterday was two affidavits bearing the same signature.",
+        "The issue that the applicants, as well as their lawyer, has raised concerns the deadline."
+      ],
+      "correct_index": 1,
+      "explanation": "In the correct sentence, the inverted subject is singular 'the date', requiring 'is'. The other sentences need 'conditions…are', 'affidavits…were' and 'applicants…have raised'."
+    }
+  ]
+}

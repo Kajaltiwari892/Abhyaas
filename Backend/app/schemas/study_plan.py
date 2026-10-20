@@ -11,6 +11,8 @@ class DailyQuizPreparationResponse(BaseModel):
     prepared_count: int
     total: int = 50
     retry_after_ms: int = 0
+    phase: Literal["generating", "checking", "waiting"] | None = None
+    message: str | None = None
     attempt: AttemptResponse | None = None
 
 

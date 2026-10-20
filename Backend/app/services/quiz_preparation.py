@@ -7,6 +7,8 @@ No in-process background tasks are used: serverless instances can stop safely.
 
 import asyncio
 import json
+import logging
+import math
 import re
 from datetime import UTC, datetime, timedelta
 
@@ -19,7 +21,6 @@ from app.core.config import get_settings
 from app.models.auth import User
 from app.models.practice import (
     AttemptQuestion,
-    PracticeAnswer,
     PracticeAttempt,
     Question,
     Topic,
@@ -28,15 +29,17 @@ from app.models.practice import (
 from app.models.rag import DoubtStudyProfile
 from app.models.study_plan import DailyQuizPreparation, DailyStudyPlan, DailyStudyTask
 from app.schemas.study_plan import DailyQuizPreparationResponse
-from app.services.daily_quiz import matches_lesson, ready_task
+from app.services.daily_quiz import ready_task
 from app.services.practice_sets import PracticeQuestion
+from app.services.prepared_question_pool import choose_prepared_questions, top_up_prepared_bank
 from app.services.rag import RagService, RagUnavailableError
-from app.services.study_curriculum import find_unit
 from app.services.study_memory import locked_profile
 
 BATCH_SIZE = 10
 STEP_SECONDS = 35
 LEASE_SECONDS = 50
+MAX_PHASE_FAILURES = 3
+logger = logging.getLogger(__name__)
 
 
 def fingerprint(prompt: str) -> str:
@@ -44,53 +47,33 @@ def fingerprint(prompt: str) -> str:
 
 
 def progress(draft: DailyQuizPreparation, *, waiting: bool = False):
+    retry_ms = 2000 if waiting else 0
+    if draft.next_retry_at:
+        retry_ms = max(
+            retry_ms,
+            math.ceil(
+                (draft.next_retry_at.replace(tzinfo=UTC) - datetime.now(UTC)).total_seconds() * 1000
+            ),
+        )
     return DailyQuizPreparationResponse(
         status="preparing",
         prepared_count=len(draft.bank_ids) + len(draft.questions),
-        retry_after_ms=2000 if waiting else 0,
+        retry_after_ms=retry_ms,
+        phase="waiting" if waiting else "checking" if draft.pending_questions else "generating",
+        message=(
+            "The question service is busy. Your checked questions are saved; "
+            "we'll try again shortly."
+            if draft.failure_count
+            else None
+        ),
     )
 
 
 async def choose_bank(db: AsyncSession, user_id: str, task) -> list[Question]:
-    topics = [task.topic_slug]
-    if task.subject_slug == "english" and task.topic_slug in {"grammar", "error-spotting"}:
-        topics = ["grammar", "error-spotting"]
-    rows = await db.scalars(
-        select(Question)
-        .join(Topic)
-        .where(
-            Topic.subject.has(slug=task.subject_slug),
-            Topic.slug.in_(topics),
-            Question.owner_user_id.is_(None),
-            Question.is_active.is_(True),
-            ~Question.id.in_(
-                select(PracticeAnswer.question_id)
-                .join(PracticeAttempt)
-                .where(PracticeAttempt.user_id == user_id)
-            ),
-        )
-        .order_by(Question.id)
-    )
-    unit, bank, seen = find_unit(task.curriculum_key), [], set()
-    for question in rows:
-        source = question.provenance or {}
-        key = fingerprint(question.prompt)
-        if (
-            source.get("kind") == "pyq"
-            and source.get("paper_question_id")
-            and source.get("source_url")
-            and 0 <= question.correct_index < len(question.options)
-            and (not unit or matches_lesson(question, unit))
-            and key not in seen
-        ):
-            bank.append(question)
-            seen.add(key)
-            if len(bank) == 20:
-                break
-    return bank
+    return await choose_prepared_questions(db, user_id, task)
 
 
-async def reviewed_batch(rag: RagService, task, count: int, avoid: list[str]) -> list[dict]:
+async def generate_batch(rag: RagService, task, count: int, avoid: list[str]) -> list[dict]:
     focus = task.topic_name + ". Focus only on: " + "; ".join(task.focus_points or [])
     prompt = f"""Create exactly {count} ORIGINAL CDS/OTA exam-level multiple-choice questions.
 Subject: {task.subject_name}. Lesson: {focus}.
@@ -127,8 +110,11 @@ Do not repeat these questions: {json.dumps(avoid[-100:], ensure_ascii=False)}
             continue
         seen.add(key)
         candidates.append(question)
-    if not candidates:
-        return []
+    return candidates
+
+
+async def review_batch(rag: RagService, task, candidates: list[dict]) -> list[dict]:
+    focus = task.topic_name + ". Focus only on: " + "; ".join(task.focus_points or [])
     review = await rag.review_similar_questions(candidates, focus_detail=focus)
     judgments = {}
     for judgment in review.get("reviews", []) if isinstance(review.get("reviews"), list) else []:
@@ -179,7 +165,12 @@ async def finish_draft(db: AsyncSession, user: User, task, draft: DailyQuizPrepa
             explanation=item["explanation"],
             difficulty="cds",
             source_label="AI-created CDS-style practice",
-            provenance={"kind": "generated", "answer_verified": False},
+            provenance={
+                "kind": "generated",
+                "answer_verified": False,
+                "curriculum_key": task.curriculum_key,
+                "review_status": "independent_ai_checked",
+            },
         )
         db.add(question)
         ids.append(question.id)
@@ -259,9 +250,12 @@ async def prepare_step(db: AsyncSession, user: User, task_id: str, rag: RagServi
             draft = DailyQuizPreparation(task_id=task_id)
             db.add(draft)
         draft.bank_ids, draft.questions, draft.attempt_id = [q.id for q in bank], [], None
+        draft.pending_questions, draft.failure_count, draft.next_retry_at = [], 0, None
         draft.lease_token = draft.lease_until = None
         draft.created_at = now
         profile.requests_in_window += 1
+        if len(bank) == 50:
+            return await finish_draft(db, user, task, draft)
         await db.commit()
         return progress(draft)
 
@@ -269,16 +263,20 @@ async def prepare_step(db: AsyncSession, user: User, task_id: str, rag: RagServi
         return await finish_draft(db, user, task, draft)
     if draft.lease_until and draft.lease_until.replace(tzinfo=UTC) > now:
         return progress(draft, waiting=True)
+    topped_up = await top_up_prepared_bank(db, user_id, task, draft)
+    if topped_up and len(draft.bank_ids) + len(draft.questions) == 50:
+        return await finish_draft(db, user, task, draft)
+    if draft.next_retry_at and draft.next_retry_at.replace(tzinfo=UTC) > now:
+        if topped_up:
+            await db.commit()
+        return progress(draft, waiting=True)
     profile = await locked_profile(db, user.id)
     if profile.busy_until and profile.busy_until.replace(tzinfo=UTC) > now:
+        if topped_up:
+            await db.commit()
         return progress(draft, waiting=True)
-    if not profile.request_window_started or now - profile.request_window_started.replace(
-        tzinfo=UTC
-    ) >= timedelta(minutes=1):
-        profile.request_window_started, profile.requests_in_window = now, 0
-    if profile.requests_in_window >= 4:
-        return progress(draft, waiting=True)
-    profile.requests_in_window += 1
+    # The creation quota was charged when this draft was reserved. Advancing its
+    # phases is not a new set and must not consume the four-new-sets rate limit.
     lease = new_id()
     lease_until = now + timedelta(seconds=LEASE_SECONDS)
     draft.lease_token, draft.lease_until = lease, lease_until
@@ -301,18 +299,39 @@ async def prepare_step(db: AsyncSession, user: User, task_id: str, rag: RagServi
     )
     avoid += [q["prompt"] for q in draft.questions]
     count = min(BATCH_SIZE, 50 - len(draft.bank_ids) - len(draft.questions))
+    checking = bool(draft.pending_questions)
+    pending = list(draft.pending_questions)
     await db.commit()  # Release locks and the connection before calling the AI.
+    review_rejected = False
     try:
         async with asyncio.timeout(STEP_SECONDS):
-            items = await reviewed_batch(rag, task, count, avoid)
-        if not items:
-            raise RagUnavailableError("No checked questions in this batch")
-        await db.execute(select(User.id).where(User.id == user.id).with_for_update())
-        task = await ready_task(db, user.id, task_id)
+            items = (
+                await review_batch(rag, task, pending)
+                if checking
+                else await generate_batch(rag, task, count, avoid)
+            )
+        if not items and not checking:
+            raise RagUnavailableError("No valid candidate questions in this batch")
+        if checking and not items:
+            review_rejected = True
+            raise RagUnavailableError("No reliable questions passed independent review")
+        await db.execute(select(User.id).where(User.id == user_id).with_for_update())
+        task = await ready_task(db, user_id, task_id)
         draft = await db.get(DailyQuizPreparation, task_id, populate_existing=True)
         if draft.lease_token != lease:
             return progress(draft, waiting=True)
-        draft.questions = [*draft.questions, *items]
+        if checking:
+            draft.questions = [*draft.questions, *items]
+            draft.pending_questions = []
+        else:
+            # Commit this provider result before making any review request. A
+            # later timeout or another server instance resumes review, not generation.
+            draft.pending_questions = items
+        # Only checked progress proves recovery. A provider that generates valid
+        # JSON but repeatedly fails review must not reset this bounded retry count.
+        if checking:
+            draft.failure_count = 0
+        draft.next_retry_at = None
         draft.lease_token = draft.lease_until = None
         await db.execute(
             update(DoubtStudyProfile)
@@ -324,11 +343,38 @@ async def prepare_step(db: AsyncSession, user: User, task_id: str, rag: RagServi
         await db.commit()
         return progress(draft)
     except (TimeoutError, RagUnavailableError) as exc:
-        raise HTTPException(
-            503,
-            "We couldn't check the next questions right now. "
-            "Your prepared questions are saved — retry to continue.",
-        ) from exc
+        await db.rollback()
+        await db.execute(select(User.id).where(User.id == user_id).with_for_update())
+        draft = await db.get(DailyQuizPreparation, task_id, populate_existing=True)
+        if draft.lease_token != lease:
+            return progress(draft, waiting=True)
+        if review_rejected:
+            # This review completed and rejected every candidate. Do not endlessly
+            # re-review known unusable questions; replace them after bounded backoff.
+            draft.pending_questions = []
+        draft.failure_count += 1
+        draft.next_retry_at = datetime.now(UTC) + timedelta(
+            seconds=min(30, 5 * 2 ** min(draft.failure_count - 1, 3))
+        )
+        draft.lease_token = draft.lease_until = None
+        await db.commit()
+        logger.warning(
+            "Daily quiz %s phase unavailable: %s", "review" if checking else "generation", exc
+        )
+        if draft.failure_count >= MAX_PHASE_FAILURES:
+            detail = (
+                "Reliable questions aren't available for this lesson right now. "
+                "Your checked questions are saved. Please try again later."
+                if review_rejected
+                else "The question service is busy, not your connection. Your prepared questions "
+                "are saved. Please try again later."
+            )
+            raise HTTPException(
+                503,
+                detail,
+                headers={"Retry-After": "30"},
+            ) from exc
+        return progress(draft)
     finally:
         # Conditional release cannot unlock a newer worker after this lease expires.
         await db.rollback()

@@ -46,6 +46,23 @@ listening instead of starting a duplicate process.
 
 ## Included now
 
+### Daily quizzes
+
+Daily quizzes use checked, chapter-matched questions first. Subject–verb
+agreement now has a ready 50-question original-practice bank, so opening it
+does not depend on the AI service being available. Real PYQs keep their source
+links. Earlier questions can be used for revision, with a clear label.
+
+For lessons without enough ready questions, generation and checking are separate,
+saved steps. A failed check resumes the saved candidates rather than generating
+them again. Unchecked questions never enter a scored quiz.
+
+Ready banks live in `data/lesson_banks/`. Review their questions and answers,
+then publish a new, immutable version through a migration using
+`app.services.lesson_bank_publication.publish`. Never label original practice as
+official exam questions. The first bank is `agreement-v1`; other lessons still
+use the checked-generation fallback when their pool is short.
+
 ### Full-paper solutions in the doubt solver
 
 Requests such as `Solve CDS I 2026 English full paper` go directly to the stored

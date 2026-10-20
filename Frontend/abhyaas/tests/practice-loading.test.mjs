@@ -68,7 +68,7 @@ function workspaceHost() {
     addEventListener() {}, removeEventListener() {},
   };
   const planApi = {
-    startDailyQuiz(token, id, signal) { const request = deferred(); requests.push({ ...request, token, id, signal }); return request.promise; },
+    startDailyQuiz(token, id, signal, onProgress) { const request = deferred(); requests.push({ ...request, token, id, signal, onProgress }); return request.promise; },
   };
   const studyApi = {
     getSubjects: () => { catalogueCalls.push("subjects"); return new Promise(() => {}); },
@@ -161,6 +161,50 @@ test("failed preparation removes the skeleton, keeps retry available and does no
   host.cleanup();
 });
 
+test("daily preparation keeps saved counts after failure and offers one recovery action", async () => {
+  const host = workspaceHost();
+  host.render(); host.runEffects(); await flush();
+  host.requests[0].onProgress(20);
+  host.render(); host.runEffects();
+  host.requests[0].reject(new Error("We couldn't check the next questions right now.")); await flush();
+  const tree = host.render(), html = renderToStaticMarkup(tree);
+  assert.match(html, /20 of 50 questions ready/);
+  assert.match(html, /Your prepared questions stay saved/);
+  assert.match(html, /Your quiz hasn’t opened yet/);
+  assert.match(html, /role="alert"/);
+  assert.equal((html.match(/Retry quiz/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /Start 50-question quiz|aria-busy="true"/);
+  host.runEffects(); await flush();
+  assert.equal(host.requests.length, 1);
+  button(tree, "Retry quiz")();
+  const retried = renderToStaticMarkup(host.render());
+  assert.match(retried, /20 of 50 questions ready/);
+  assert.match(retried, /aria-busy="true"/);
+  assert.doesNotMatch(retried, /role="alert"/);
+  assert.equal(host.requests.length, 2);
+  host.cleanup();
+});
+
+test("progress updates do not restart the elapsed slow-preparation warning", async () => {
+  const host = workspaceHost();
+  host.render(); host.runEffects(); await flush();
+  const delayedEntry = [...host.timers.entries()].find(([, timer]) => timer.ms === 25_000);
+  assert.ok(delayedEntry);
+  const [timerId, delayed] = delayedEntry;
+  for (const prepared of [10, 20, 30]) {
+    host.requests[0].onProgress(prepared);
+    host.render(); host.runEffects(); await flush();
+    assert.equal(host.timers.get(timerId), delayed);
+    assert.equal([...host.timers.values()].filter(timer => timer.ms === 25_000).length, 1);
+  }
+  delayed.fn();
+  assert.match(renderToStaticMarkup(host.render()), /Still preparing your questions/);
+  host.requests[0].onProgress(40);
+  host.render(); host.runEffects();
+  assert.match(renderToStaticMarkup(host.render()), /Still preparing your questions/);
+  host.cleanup();
+});
+
 test("slow preparation is bounded, abortable and has reduced-motion styling", async () => {
   const host = workspaceHost();
   host.render(); host.runEffects(); await flush();
@@ -232,4 +276,16 @@ test("Save & next advances immediately on a slow connection and submission waits
   assert.equal(host.completions[0].input[1], "saved-quiz");
   host.completions[0].resolve({review:[]}); await flush();
   host.cleanup();
+});
+
+test("daily quizzes disclose revision questions without adding a banner for fresh sets", async () => {
+  for (const repeated_questions of [0, 1, 5]) {
+    const host = workspaceHost();
+    host.render(); host.runEffects(); await flush();
+    host.requests[0].resolve(attempt({ repeated_questions })); await flush();
+    const html = renderToStaticMarkup(host.render());
+    if (repeated_questions === 0) assert.doesNotMatch(html, /from earlier practice/);
+    else assert.match(html, new RegExp(`${repeated_questions} ${repeated_questions === 1 ? "question from earlier practice is" : "questions from earlier practice are"} included for revision\\.`));
+    host.cleanup();
+  }
 });

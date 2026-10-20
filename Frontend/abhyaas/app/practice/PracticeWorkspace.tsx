@@ -38,6 +38,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const [busy, setBusy] = useState(false);
   const [openingSet, setOpeningSet] = useState<{ count: number; subject?: string; topic?: string; prepared?: number } | null>(dailyTask ? { count: 50, subject: dailyTask.subject_name, topic: dailyTask.topic_name } : null);
   const [openingDelayed, setOpeningDelayed] = useState(false);
+  const [quizPrepared, setQuizPrepared] = useState<number>();
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [tab, setTab] = useState<"practice" | "history">(initialView);
@@ -64,14 +65,16 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const pool = availability?.key === availabilityKey ? availability.data : undefined;
   const setSize = practiceSetSize(mode, count, pool);
   const active = !!attempt && !summary && !preview;
+  const isOpening = openingSet !== null;
+  const quizOpeningFailed = !!dailyTask && !!error && !attempt && !summary;
   const question = attempt?.questions[current];
   const answerInput = useCallback(() => Object.entries(answers).map(([question_id, selected_index]) => ({ question_id, selected_index, marked_for_review: !!marked[question_id] })), [answers, marked]);
 
   useEffect(() => {
-    if (!openingSet) return;
+    if (!isOpening) return;
     const timer = window.setTimeout(() => setOpeningDelayed(true), 25_000);
     return () => window.clearTimeout(timer);
-  }, [openingSet]);
+  }, [isOpening]);
 
   useEffect(() => { if (dailyTask) return; let alive = true; getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(message(e)); }); return () => { alive = false; }; }, [catalogVersion, dailyTask]);
   useEffect(() => {
@@ -168,13 +171,16 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     const controller = new AbortController();
     generation.current = controller;
     mutation.current = true; setBusy(true); setError(""); setOpeningDelayed(false);
-    setOpeningSet({ count: size, subject: dailyTask?.subject_name ?? subject?.name, topic: dailyTask?.topic_name ?? topic?.name });
+    setOpeningSet({ count: size, subject: dailyTask?.subject_name ?? subject?.name, topic: dailyTask?.topic_name ?? topic?.name, prepared: dailyTask ? quizPrepared : undefined });
     const timeout = window.setTimeout(() => controller.abort(), dailyTask ? 360_000 : 165_000);
     try {
       setMode(choice);
       if (choice === "similar") setCount(size);
       const data = dailyTask ? await startDailyQuiz(accessToken, dailyTask.id, controller.signal, (prepared) => {
-        if (generation.current === controller && !controller.signal.aborted) setOpeningSet((state) => state ? { ...state, prepared } : state);
+        if (generation.current === controller && !controller.signal.aborted) {
+          setQuizPrepared(prepared);
+          setOpeningSet((state) => state ? { ...state, prepared } : state);
+        }
       }) : choice === "similar"
         ? await startSimilarAttempt(accessToken, { subject_slug: subject!.slug, topic_slug: topic?.slug, question_count: size }, controller.signal)
         : await startPracticeAttempt(accessToken, { subject_slug: subject!.slug, topic_slug: topic?.slug, question_count: size, allow_repeats: choice === "mixed" }, controller.signal);
@@ -192,7 +198,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
       window.clearTimeout(timeout);
       if (generation.current === controller) { generation.current = null; mutation.current = false; setBusy(false); setOpeningSet(null); }
     }
-  }, [accessToken, dailyTask, subject, topic, mode, count, pool]);
+  }, [accessToken, dailyTask, subject, topic, mode, count, pool, quizPrepared]);
   useEffect(() => {
     if (!dailyTask || !accessToken || dailyStarted.current) return;
     let alive = true;
@@ -252,7 +258,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     </header>
     {openingSet ? <><PracticeQuestionSkeleton {...openingSet} delayed={openingDelayed} /><div className={s.openingActions}><button className={s.secondary} onClick={cancelOpening}>Cancel preparation</button><span>Your timer starts only when the questions are ready.</span></div></> : <>
     {!dailyTask && !attempt && !summary && tab === "practice" && <PreparationTarget />}
-    {error && <div role="alert" className={s.error}>{error} <button className={s.secondary} disabled={busy} onClick={() => { if (!attempt && !summary && tab === "practice" && (dailyTask || subject && mode === "similar")) void start(); else { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); } }}>Retry</button></div>}
+    {error && !quizOpeningFailed && <div role="alert" className={s.error}>{error} <button className={s.secondary} disabled={busy} onClick={() => { if (!attempt && !summary && tab === "practice" && (dailyTask || subject && mode === "similar")) void start(); else { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); } }}>Retry</button></div>}
     {tab === "history" ? <section className={s.panel} aria-label="Practice history">
       <div className={s.sectionTitle}><h2>Your saved sets</h2><button disabled={historyLoading} onClick={() => setHistoryVersion((v) => v + 1)}>Refresh</button></div>
       <p className={s.muted}>Open the entire set to review your progress. Timers stay stopped until you choose Resume.</p>
@@ -298,7 +304,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
         </article>)}
       </section>
     </> : <>
-      {dailyTask ? <div className={s.dailyQuizContext}><span><Sparkles size={14} /> Today’s target</span><strong>{dailyTask.subject_name} · {dailyTask.topic_name}</strong><small>Answer this topic’s questions to update your daily plan.</small></div> : <div className={s.filters}>
+      {dailyTask ? <div className={s.dailyQuizContext}><span><Sparkles size={14} /> Today’s target</span><strong>{dailyTask.subject_name} · {dailyTask.topic_name}</strong><small>Answer this topic’s questions to update your daily plan.</small>{active && attempt.repeated_questions > 0 && <small>{attempt.repeated_questions} {attempt.repeated_questions === 1 ? "question from earlier practice is" : "questions from earlier practice are"} included for revision.</small>}</div> : <div className={s.filters}>
         <label>Subject<select value={subject?.slug ?? ""} disabled={busy || !subjects.length} onChange={(e) => void leave(e.target.value)}>{!subjects.length && <option>Loading subjects…</option>}{target ? <><optgroup label={`${target.code} written subjects`}>{subjectGroups.required.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</optgroup>{subjectGroups.optional.length > 0 && <optgroup label={`Extra practice · not required for ${target.code}`}>{subjectGroups.optional.map((item) => <option key={item.id} value={item.slug}>{item.name} (optional)</option>)}</optgroup>}</> : subjects.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>
         <label>Topic<select value={topic?.slug ?? ""} disabled={busy || !subject} onChange={(e) => void leave(subject?.slug, e.target.value)}><option value="">All topics</option>{subject?.topics.filter((item) => mode === "similar" ? !item.slug.startsWith("current") : item.question_count > 0).map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}</select></label>
         {!active && <><label>Set size<select value={mode === "similar" ? Math.min(count, 50) : count} disabled={busy} onChange={(e) => setCount(Number(e.target.value))}>{practiceChoices(mode).map((n) => <option value={n} key={n}>{n} questions</option>)}</select></label><label>Practice type<select value={mode} disabled={busy} onChange={(e) => { const choice = e.target.value as PracticeMode; setMode(choice); setError(""); if (choice === "similar") { setCount((n) => Math.min(n, 50)); if (topicSlug.startsWith("current")) setTopicSlug(""); } }}><option value="fresh">Unanswered questions</option><option value="mixed">Mixed revision</option><option value="similar">Similar practice · AI</option></select></label></>}
@@ -316,7 +322,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
           <p className={s.muted}>Answers are evaluated after submission. {attempt.negative_mark_fraction ? "+1 correct · −⅓ incorrect · 0 skipped." : "Legacy set: no negative marking."}</p>
         </>}</div>
         <footer className={s.footer}><button className={s.secondary} disabled={busy || paused || current === 0} onClick={() => setCurrent((i) => i - 1)}><ArrowLeft size={15} /> Previous</button><span className={s.saveStatus} role="status">{busy ? "Saving…" : saveStatus}</span><button className={current === attempt.questions.length - 1 || remaining === 0 ? s.primary : s.secondary} disabled={busy} onClick={() => void finish()}>Submit set</button>{current < attempt.questions.length - 1 && remaining > 0 && <button className={s.primary} disabled={busy || paused} onClick={() => void next()}>{answers[question.id] !== undefined ? "Save & next" : "Skip & next"}<ArrowRight size={15} /></button>}</footer>
-      </section> : dailyTask ? <section className={[s.panel,s.start].join(" ")}><span className={s.startIcon}><Target size={28}/></span><h2>Check today’s topic.</h2><p>{dailyTask.topic_name} · 50 questions · {clock(50 * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</p><p className={s.muted}>CDS-style practice with relevant PYQs when available. Your answers and result stay saved.</p><button className={s.primary} disabled={busy || !accessToken} onClick={()=>void start()}>{dailyTask.quiz_status === "in_progress" ? "Resume quiz" : "Start 50-question quiz"}<ArrowRight size={16}/></button></section> : <section className={[s.panel, s.start].join(" ")}>
+      </section> : dailyTask ? <section className={[s.panel,s.start].join(" ")}><span className={s.startIcon}><Target size={28}/></span><h2>{quizOpeningFailed ? "Your quiz hasn’t opened yet." : "Check today’s topic."}</h2><p>{dailyTask.topic_name} · 50 questions · {clock(50 * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</p>{quizOpeningFailed ? <><p role="alert">{error}</p>{quizPrepared !== undefined && <p className={s.muted}>{quizPrepared} of 50 questions ready.{quizPrepared > 0 ? " Your prepared questions stay saved." : ""}</p>}</> : <p className={s.muted}>CDS-style practice with relevant PYQs when available. Your answers and result stay saved.</p>}<button className={s.primary} disabled={busy || !accessToken} onClick={()=>void start()}>{quizOpeningFailed ? "Retry quiz" : dailyTask.quiz_status === "in_progress" ? "Resume quiz" : "Start 50-question quiz"}<ArrowRight size={16}/></button></section> : <section className={[s.panel, s.start].join(" ")}>
         <span className={s.startIcon}><Target size={28} /></span><h2>Ready to practise?</h2>
         <p>{topic?.name || subject?.name || "Choose a subject"} · {target ? isExtraPractice ? `Extra practice · not required for ${target.code}` : `${target.code} preparation` : subjectSlug === "elementary-mathematics" ? "CDS Maths · not required for OTA" : "CDS / OTA"}</p>
         {pool || mode === "similar" ? <><div className={s.setFacts}><span><strong>{setSize}</strong> questions in this set</span><span><strong>{clock(setSize * (subjectSlug === "elementary-mathematics" ? 72 : 60))}</strong> practice time</span>{mode !== "similar" && <span><strong>{pool?.unseen}</strong> not yet answered</span>}</div>
