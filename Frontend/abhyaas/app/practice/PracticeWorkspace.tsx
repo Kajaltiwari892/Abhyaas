@@ -3,8 +3,9 @@
 import { ArrowLeft, ArrowRight, Bookmark, BookOpen, Check, Clock3, GraduationCap, History, Pause, Play, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { checkpointPracticeAttempt, completePracticeAttempt, getPracticeAttempt, getPracticeHistory, getPracticeResult, getPracticeAvailability, getSubjects, startPracticeAttempt, startSimilarAttempt, type AttemptSummary, type PracticeAttempt, type PracticeHistoryItem, type PracticeAvailability, type PracticeProvenance, type Subject } from "@/lib/study-api";
+import { checkpointPracticeAttempt, completePracticeAttempt, getPracticeAttempt, practiceHistoryInfiniteQuery, getPracticeResult, getPracticeAvailability, subjectsQuery, startPracticeAttempt, startSimilarAttempt, type AttemptSummary, type PracticeAttempt, type PracticeHistoryItem, type PracticeAvailability, type PracticeProvenance } from "@/lib/study-api";
 import { practiceChoices, practiceSetSize, type PracticeMode } from "@/lib/practice-plan";
 import { useAuth } from "../components/AuthProvider";
 import PreparationTarget from "../components/PreparationTarget";
@@ -20,8 +21,8 @@ const message = (error: unknown) => error instanceof Error ? error.message : "So
 export default function PracticeWorkspace({ initialSubject, initialTopic = "", initialView = "practice", dailyTask }: { initialSubject: string; initialTopic?: string; initialView?: "practice" | "history"; dailyTask?: StudyTask }) {
   const { accessToken, user } = useAuth();
   const router = useRouter();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [catalogVersion, setCatalogVersion] = useState(0);
+  const catalogue = useQuery({ ...subjectsQuery(), enabled: !dailyTask });
+  const subjects = catalogue.data ?? [];
   const [subjectSlug, setSubjectSlug] = useState(initialSubject);
   const [topicSlug, setTopicSlug] = useState(initialTopic);
   const [count, setCount] = useState(dailyTask ? dailyTask.quiz_remaining || dailyTask.question_count : 50);
@@ -39,13 +40,15 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
   const [openingSet, setOpeningSet] = useState<{ count: number; subject?: string; topic?: string; prepared?: number } | null>(dailyTask ? { count: 50, subject: dailyTask.subject_name, topic: dailyTask.topic_name } : null);
   const [openingDelayed, setOpeningDelayed] = useState(false);
   const [quizPrepared, setQuizPrepared] = useState<number>();
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
+  const error = actionError || catalogue.error?.message || "";
   const [saveStatus, setSaveStatus] = useState("");
   const [tab, setTab] = useState<"practice" | "history">(initialView);
-  const [history, setHistory] = useState<PracticeHistoryItem[]>([]);
-  const [historyMore, setHistoryMore] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState("");
+  const historyQuery = useInfiniteQuery({ ...practiceHistoryInfiniteQuery(accessToken), enabled: !!accessToken && tab === "history" });
+  const history = historyQuery.data?.pages.flatMap(page => page.items) ?? [];
+  const historyMore = historyQuery.hasNextPage;
+  const historyLoading = historyQuery.isFetching;
+  const historyError = historyQuery.error?.message ?? "";
   const [historyVersion, setHistoryVersion] = useState(0);
   const mutation = useRef(false);
   const saveQueue = useRef(createLatestSaveQueue<Parameters<typeof checkpointPracticeAttempt>>(
@@ -76,21 +79,13 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     return () => window.clearTimeout(timer);
   }, [isOpening]);
 
-  useEffect(() => { if (dailyTask) return; let alive = true; getSubjects().then((data) => { if (alive) { setSubjects(data); setError(""); } }).catch((e) => { if (alive) setError(message(e)); }); return () => { alive = false; }; }, [catalogVersion, dailyTask]);
+
   useEffect(() => {
     if (!accessToken || dailyTask) return;
     let alive = true;
     getPracticeAvailability(accessToken, subjectSlug, topicSlug).then((data) => { if (alive) setAvailability({ key: availabilityKey, data }); }).catch((e) => { if (alive) setError(message(e)); });
     return () => { alive = false; };
   }, [accessToken, subjectSlug, topicSlug, availabilityKey, dailyTask]);
-  useEffect(() => {
-    if (!accessToken || tab !== "history") return;
-    let alive = true;
-    queueMicrotask(() => { if (alive) { setHistoryLoading(true); setHistoryError(""); } });
-    getPracticeHistory(accessToken).then((data) => { if (alive) { setHistory(data.items); setHistoryMore(data.has_more); } })
-      .catch((e) => { if (alive) setHistoryError(message(e)); }).finally(() => { if (alive) setHistoryLoading(false); });
-    return () => { alive = false; };
-  }, [accessToken, tab, historyVersion]);
   useEffect(() => {
     if (!active || paused) return;
     let last = Date.now();
@@ -241,12 +236,7 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     void persist(false, position).then(() => setSaveStatus("Answers saved"))
       .catch(() => setSaveStatus("Not saved yet — reconnect to retry"));
   };
-  const moreHistory = async () => {
-    if (!accessToken || historyLoading) return;
-    setHistoryLoading(true); setHistoryError("");
-    try { const data = await getPracticeHistory(accessToken, history.length); setHistory((items) => [...items, ...data.items.filter((item) => !items.some((existing) => existing.id === item.id))]); setHistoryMore(data.has_more); }
-    catch (e) { setHistoryError(message(e)); } finally { setHistoryLoading(false); }
-  };
+  const moreHistory = async () => { await historyQuery.fetchNextPage(); };
 
   return <main className={[s.workspace, active || openingSet ? s.live : ""].join(" ")}>
     <header className={s.header}>
@@ -258,9 +248,9 @@ export default function PracticeWorkspace({ initialSubject, initialTopic = "", i
     </header>
     {openingSet ? <><PracticeQuestionSkeleton {...openingSet} delayed={openingDelayed} /><div className={s.openingActions}><button className={s.secondary} onClick={cancelOpening}>Cancel preparation</button><span>Your timer starts only when the questions are ready.</span></div></> : <>
     {!dailyTask && !attempt && !summary && tab === "practice" && <PreparationTarget />}
-    {error && !quizOpeningFailed && <div role="alert" className={s.error}>{error} <button className={s.secondary} disabled={busy} onClick={() => { if (!attempt && !summary && tab === "practice" && (dailyTask || subject && mode === "similar")) void start(); else { setCatalogVersion((v) => v + 1); setHistoryVersion((v) => v + 1); } }}>Retry</button></div>}
+    {error && !quizOpeningFailed && <div role="alert" className={s.error}>{error} <button className={s.secondary} disabled={busy} onClick={() => { if (!attempt && !summary && tab === "practice" && (dailyTask || subject && mode === "similar")) void start(); else { void catalogue.refetch(); void historyQuery.refetch(); setHistoryVersion((v) => v + 1); } }}>Retry</button></div>}
     {tab === "history" ? <section className={s.panel} aria-label="Practice history">
-      <div className={s.sectionTitle}><h2>Your saved sets</h2><button disabled={historyLoading} onClick={() => setHistoryVersion((v) => v + 1)}>Refresh</button></div>
+      <div className={s.sectionTitle}><h2>Your saved sets</h2><button disabled={historyLoading} onClick={() => void historyQuery.refetch()}>Refresh</button></div>
       <p className={s.muted}>Open the entire set to review your progress. Timers stay stopped until you choose Resume.</p>
       {historyError && <p role="alert" className={s.error}>{historyError}</p>}
       {!history.length && !historyLoading && !historyError && <div className={s.empty}>Your practice sessions will appear here.</div>}

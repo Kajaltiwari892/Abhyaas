@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Bookmark, Calendar, Check, Clock3, ExternalLink, FileCheck2, FileText, ShieldCheck, Sparkles, Square, Volume2, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
@@ -13,7 +14,7 @@ import { ApiError } from "@/lib/auth-api";
 import { formatPaperText } from "@/lib/paper-format";
 import { hasStoredAnswer, paperScoreDescription } from "@/lib/paper-answer";
 import { filterPaperArchive, paperArchiveYears, paperAvailability, paperOpeningMode } from "@/lib/paper-archive";
-import { completePaperAttempt, generatePaperExplanation, getPaper, getPaperAttemptResult, getPapers, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
+import { completePaperAttempt, generatePaperExplanation, getPaper, getPaperAttemptResult, papersQuery, savePaperAnswer, startPaperAttempt, type PaperAIExplanation, type PaperAttempt, type PaperAttemptSummary, type PaperDetail, type PaperListItem } from "@/lib/study-api";
 
 type PaperMode = "review" | "mock" | "summary" | null;
 type PaperSection = { from: number; to: number; title: string; directions: string; passage?: string };
@@ -43,8 +44,9 @@ const messageFor = (reason: unknown, fallback: string) => reason instanceof ApiE
 
 export default function PapersPage() {
   const { accessToken } = useAuth();
-  const [papers, setPapers] = useState<PaperListItem[]>([]);
-  const [listingLoading, setListingLoading] = useState(true);
+  const listing = useQuery(papersQuery());
+  const papers = listing.data ?? [];
+  const listingLoading = listing.isPending;
   const [year, setYear] = useState("");
   const [cycle, setCycle] = useState("");
   const [subject, setSubject] = useState("");
@@ -64,20 +66,11 @@ export default function PapersPage() {
   const [speakingQuestion, setSpeakingQuestion] = useState("");
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
+  const error = actionError || listing.error?.message || "";
   const questionPanelRef = useRef<HTMLDivElement>(null);
   const closePaperRef = useRef<HTMLButtonElement>(null);
   const workspaceOpen = Boolean(mode || openingPaper);
-
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => { if (!cancelled) setListingLoading(true); });
-    getPapers()
-      .then(data => { if (!cancelled) { setPapers(data); setError(""); } })
-      .catch((reason: unknown) => { if (!cancelled) setError(messageFor(reason, "The paper archive could not be loaded.")); })
-      .finally(() => { if (!cancelled) setListingLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
 
   const closeWorkspace = useCallback(() => {
     if (busy && !openingRequest.current) return;
@@ -331,6 +324,7 @@ export default function PapersPage() {
         {paper.available_question_count > 0 && <a className="paper-source-link" href={paper.source_url} target="_blank" rel="noreferrer">View UPSC source <ExternalLink size={12} /></a>}
       </article>)}</div>
     </section>)}</div>
+    {listing.isError && <section className="paper-empty" role="alert"><p>{listing.error.message}</p><button onClick={() => void listing.refetch()}>Retry loading papers</button></section>}
     {!papers.length && listingLoading && <PaperArchiveSkeleton />}
     {!filteredPapers.length && !listingLoading && !error && <section className="paper-empty"><FileText size={25} /><h2>{year ? `No ${year} paper matches these filters.` : "No paper matches these filters."}</h2><p>This combination is not in the available official archive. Try another year, cycle, or subject.</p><button onClick={() => { setYear(""); setCycle(""); setSubject(""); }}>Clear filters</button></section>}
     <section className="paper-method"><div><span className="workspace-kicker">Previous papers</span><h2>Practise. Review. Improve.</h2></div><div><article><strong>Original papers</strong><p>Read the full paper whenever you need it. <a href="https://www.upsc.gov.in/examinations/previous-question-papers/archives" target="_blank" rel="noreferrer">Browse the UPSC archive.</a></p></article><article><strong>Saved results</strong><p>Submit to see your score and review mistakes. Checked practice answers let you study before the final answer key is available.</p></article></div></section>

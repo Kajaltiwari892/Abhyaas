@@ -5,8 +5,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import { createRequestCache } from "../lib/request-cache.ts";
-import { createSessionController } from "../lib/session-controller.ts";
+import { queryHarness } from "./helpers/query-harness.mjs";
 import { createLatestSaveQueue } from "../lib/latest-save-queue.ts";
 
 const require = createRequire(import.meta.url);
@@ -71,6 +70,8 @@ function workspaceHost() {
     startDailyQuiz(token, id, signal, onProgress) { const request = deferred(); requests.push({ ...request, token, id, signal, onProgress }); return request.promise; },
   };
   const studyApi = {
+    subjectsQuery: () => ({}),
+    practiceHistoryInfiniteQuery: () => ({}),
     getSubjects: () => { catalogueCalls.push("subjects"); return new Promise(() => {}); },
     getPracticeAvailability: async () => { catalogueCalls.push("availability"); return { total: 80, unseen: 80 }; },
     checkpointPracticeAttempt(...input) { const result = deferred(); saves.push({ ...result, input }); return result.promise; },
@@ -80,6 +81,7 @@ function workspaceHost() {
   const academy = load("../lib/academy-preference.ts");
   const Workspace = load("../app/practice/PracticeWorkspace.tsx", id => {
     if (id === "react") return hooks;
+    if (id === "@tanstack/react-query") return { useQuery: () => ({}), useInfiniteQuery: () => ({}) };
     if (id.endsWith(".css")) return css;
     if (id === "./PracticeQuestionSkeleton") return { default: Skeleton };
     if (id === "@/lib/study-api") return studyApi;
@@ -235,11 +237,9 @@ test("route navigation, topic lookup and starting focus time all provide pending
 });
 
 test("all quiz and focus APIs forward abort signals without changing saved-answer payloads", async () => {
-  const calls = [];
-  const resolve = id => id === "./request-cache" ? { createRequestCache }
-    : id === "./study-plan-api" ? { invalidateTodayPlan() {} }
-    : { sessionController: createSessionController(async () => null), apiRequest: async (path, init) => { calls.push({ path, init }); return {status:"ready",attempt:{questions:[{}]}}; } };
-  const plan = load("../lib/study-plan-api.ts", resolve), study = load("../lib/study-api.ts", resolve);
+  const host = queryHarness(() => ({status:"ready",attempt:{questions:[{}]}}));
+  const calls = host.calls;
+  const plan = host.api("study-plan-api"), study = host.api("study-api");
   const signal = new AbortController().signal;
   await plan.getStudyTask("token", "one&two", signal);
   await plan.changeStudyTask("token", "one&two", "start", signal);

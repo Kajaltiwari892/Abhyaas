@@ -2,14 +2,14 @@
 
 import { ArrowRight, BarChart3, BookOpen, CalendarDays, Clock3, Target } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import PreparationTarget from "../components/PreparationTarget";
 import { useAuth } from "../components/AuthProvider";
 import PrimaryButton from "@/components/ui/primary-button";
-import { ApiError } from "@/lib/auth-api";
-import { getProgressDashboard, type ProgressDashboard } from "@/lib/study-api";
+import { progressQuery } from "@/lib/study-api";
 import TodayPlan from "./TodayPlan";
 import planStyles from "./today-plan.module.css";
 
@@ -30,39 +30,10 @@ export default function ProgressPage() {
 
 function ProgressContent() {
   const { user, accessToken } = useAuth();
-  const userId = user?.id;
-  const [dashboard, setDashboard] = useState<ProgressDashboard | null>(null);
-  const [error, setError] = useState("");
+  const query = useQuery(progressQuery(accessToken));
+  const dashboard = query.data;
+  const error = query.error?.message ?? "";
   const firstName = user?.name.trim().split(/\s+/)[0];
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    try {
-      const cached = window.localStorage.getItem(`abhyaas-progress-v1:${userId}`);
-      if (cached) {
-        const parsed = JSON.parse(cached) as ProgressDashboard;
-        queueMicrotask(() => { if (!cancelled) setDashboard(parsed); });
-      }
-    } catch {
-      // A corrupt or unavailable cache should never block a fresh request.
-    }
-    return () => { cancelled = true; };
-  }, [userId]);
-
-  useEffect(() => {
-    if (!accessToken || !userId) return;
-    let cancelled = false;
-    getProgressDashboard(accessToken).then(data => {
-      if (cancelled) return;
-      setDashboard(data);
-      setError("");
-      try { window.localStorage.setItem(`abhyaas-progress-v1:${userId}`, JSON.stringify(data)); } catch { /* storage can be unavailable */ }
-    }).catch((reason: unknown) => {
-      if (!cancelled) setError(reason instanceof ApiError ? reason.message : "Progress could not be loaded.");
-    });
-    return () => { cancelled = true; };
-  }, [accessToken, userId]);
 
   useEffect(() => { if (error) toast.error("Progress could not be loaded", { description: error, id: "progress-error" }); }, [error]);
 
@@ -72,6 +43,7 @@ function ProgressContent() {
     <header className={planStyles.pageHeader}><div><h1>{firstName ? `Welcome, ${firstName}.` : "Your study space"}</h1><p>Your plan for today. Your progress over time.</p></div><a href="#stats">View progress <ArrowRight size={14} /></a></header>
     <TodayPlan key={user?.id ?? "guest"} />
     <section id="stats" className={planStyles.statsHeading}><h2>Your progress</h2><span>{dashboard ? `${dashboard.completed_sets} completed sets` : "Loading activity"}</span></section>
+    {error && <p role="alert">{error} <button onClick={() => void query.refetch()}>Retry</button></p>}
     <PreparationTarget />
     <div className="mistake-notebook-shortcut"><BookOpen size={18} /><div><strong>Mistake notebook</strong><span>Turn wrong and skipped answers into quick revision.</span></div><PrimaryButton href="/mistake-notebook" size="sm">Open notebook <ArrowRight size={14} /></PrimaryButton></div>
     <section className="progress-stat-grid" aria-label="All-time progress across all subjects">

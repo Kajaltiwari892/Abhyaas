@@ -1890,3 +1890,16 @@ html[data-theme="light"] .sidebar-account-name { color: #35432d; }
 .paper-original-figure img { display: block; width: 100%; height: auto; border-radius: 8px; background: #fff; }
 .paper-original-figure figcaption { margin-top: 7px; color: #99a38f; font-size: 12px; }
 .paper-sheet u { text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+/* Keep compact navigation spaced and allow keyboard users to reach the form. */
+@media (max-width: 760px) {
+  .site-header { gap: 12px; }
+  .site-header > .brand { flex-shrink: 0; }
+  .site-header > .exam-switcher { margin-left: auto; }
+  .site-header > .primary-button.nav-cta { display: none; }
+  .site-header > .menu-button { flex-shrink: 0; min-width: 40px; min-height: 44px; }
+  .auth-page { height: auto; min-height: 100dvh; overflow: visible; }
+  .auth-form-panel { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+  .auth-form input:not([type="checkbox"]) { font-size: 16px; scroll-margin-block: 90px; }
+  .scroll-hero-actions { flex-wrap: wrap; gap: 14px; }
+}

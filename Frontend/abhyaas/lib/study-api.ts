@@ -1,6 +1,6 @@
 import { apiRequest } from "./auth-api";
-import { createRequestCache } from "./request-cache";
-import { invalidateTodayPlan } from "./study-plan-api";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { assertSession, fetchCached, privateKey, privateQuery, studyMutation } from "./query-client";
 
 export type Topic = { id: string; slug: string; name: string; question_count: number };
 export type Subject = {
@@ -276,24 +276,25 @@ const authorized = (token: string, init: RequestInit = {}): RequestInit => ({
   headers: { Authorization: `Bearer ${token}`, ...init.headers },
 });
 
-const subjectCache = createRequestCache<Subject[]>(300_000, 1);
-const paperListCache = createRequestCache<PaperListItem[]>(60_000);
-export const getSubjects = () => subjectCache.get("subjects", () =>
-  apiRequest<Subject[]>("/catalog/subjects", { signal: AbortSignal.timeout(20_000) }));
+export const subjectsQuery = () => queryOptions({
+  queryKey: ["public", "subjects"], staleTime: 5 * 60_000,
+  queryFn: ({ signal }) => apiRequest<Subject[]>("/catalog/subjects", { signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) }),
+});
+export const getSubjects = () => fetchCached(subjectsQuery());
 
 export const startPracticeAttempt = (
   token: string,
   input: { subject_slug: string; topic_slug?: string; question_count?: number; allow_repeats?: boolean },
   signal?: AbortSignal,
-) => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input), signal }));
+) => studyMutation(["practice-history", "availability"], () => apiRequest<PracticeAttempt>("/practice/attempts", authorized(token, { method: "POST", body: JSON.stringify(input), signal })));
 
 export const startSimilarAttempt = (
   token: string,
   input: { subject_slug: string; topic_slug?: string; question_count: number },
   signal?: AbortSignal,
-) => apiRequest<PracticeAttempt>("/practice/attempts/similar", authorized(token, {
+) => studyMutation(["practice-history", "availability"], () => apiRequest<PracticeAttempt>("/practice/attempts/similar", authorized(token, {
   method: "POST", body: JSON.stringify(input), signal,
-}));
+})));
 
 export const savePracticeAnswer = (
   token: string,
@@ -302,22 +303,35 @@ export const savePracticeAnswer = (
   input: { selected_index: number; marked_for_review: boolean },
 ) => apiRequest(`/practice/attempts/${attemptId}/answers/${questionId}`, authorized(token, { method: "PUT", body: JSON.stringify(input) }));
 
-export const completePracticeAttempt = async (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[] = []) => {
-  const result = await apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }));
-  invalidateTodayPlan();
-  return result;
-};
+export const completePracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[] = []) =>
+  studyMutation(["today-plan", "roadmap", "progress", "practice-history", "availability", "notebook"], () =>
+    apiRequest<AttemptSummary>(`/practice/attempts/${attemptId}/complete`, authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) })));
 
 export const checkpointPracticeAttempt = (token: string, attemptId: string, durationSeconds: number, answers: PracticeAnswerInput[], currentPosition?: number, keepalive = false) =>
-  apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, signal: AbortSignal.timeout(20_000), body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) }));
+  studyMutation(["practice-history"], () => apiRequest<null>(`/practice/attempts/${attemptId}`, authorized(token, { method: "PATCH", keepalive, signal: AbortSignal.timeout(20_000), body: JSON.stringify({ duration_seconds: durationSeconds, answers, current_position: currentPosition }) })));
 export type PracticeAvailability = { total: number; unseen: number; seen: number };
 export const getPracticeAvailability = (token: string, subject: string, topic = "") => {
   const params = new URLSearchParams({ subject_slug: subject });
   if (topic) params.set("topic_slug", topic);
   return apiRequest<PracticeAvailability>(`/practice/availability?${params}`, authorized(token));
 };
-export const getPracticeHistory = (token: string, offset = 0) =>
-  apiRequest<PageResult<PracticeHistoryItem>>(`/practice/attempts?offset=${offset}&limit=20`, authorized(token));
+export const practiceHistoryQuery = (token: string | null, offset = 0) => privateQuery("practice-history", token,
+  signal => apiRequest<PageResult<PracticeHistoryItem>>(`/practice/attempts?offset=${offset}&limit=20`, authorized(token!, { signal })), [offset]);
+export const practiceHistoryInfiniteQuery = (token: string | null) => {
+  const key = privateKey("practice-history", "pages");
+  return infiniteQueryOptions({
+    queryKey: key, enabled: !!token, initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
+      assertSession(token, key[1]);
+      const result = await apiRequest<PageResult<PracticeHistoryItem>>(`/practice/attempts?offset=${pageParam}&limit=20`,
+        authorized(token!, { signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]) }));
+      assertSession(token, key[1]);
+      return result;
+    },
+    getNextPageParam: (last, pages) => last.has_more && last.items.length ? pages.reduce((count, page) => count + page.items.length, 0) : undefined,
+  });
+};
+export const getPracticeHistory = (token: string, offset = 0) => fetchCached(practiceHistoryQuery(token, offset));
 export const getPracticeAttempt = (token: string, id: string) => apiRequest<PracticeAttempt>(`/practice/attempts/${id}`, authorized(token));
 export const getPracticeResult = (token: string, id: string) => apiRequest<AttemptSummary>(`/practice/attempts/${id}/result`, authorized(token));
 export const getCatalogQuestions = (subject: string, topic = "", offset = 0) => {
@@ -334,18 +348,21 @@ export type SavedConversation = ConversationItem & { messages: Array<{
 export const getConversations = (token: string, offset = 0) => apiRequest<PageResult<ConversationItem>>(`/doubts/conversations?offset=${offset}&limit=20`, authorized(token));
 export const getConversation = (token: string, id: string) => apiRequest<SavedConversation>(`/doubts/conversations/${id}`, authorized(token));
 
-export const getProgressDashboard = (token: string) =>
-  apiRequest<ProgressDashboard>("/progress/dashboard", authorized(token));
+export const progressQuery = (token: string | null) => privateQuery("progress", token,
+  signal => apiRequest<ProgressDashboard>("/progress/dashboard", authorized(token!, { signal })));
+export const getProgressDashboard = (token: string) => fetchCached(progressQuery(token));
 
-export const getPapers = (filters: { year?: number; cycle?: string; subject?: string } = {}) => {
+export const papersQuery = (filters: { year?: number; cycle?: string; subject?: string } = {}) => {
   const params = new URLSearchParams();
   if (filters.year) params.set("year", String(filters.year));
   if (filters.cycle) params.set("cycle", filters.cycle);
   if (filters.subject) params.set("subject", filters.subject);
   const query = params.size ? `?${params.toString()}` : "";
-  return paperListCache.get(query, () =>
-    apiRequest<PaperListItem[]>(`/papers${query}`, { signal: AbortSignal.timeout(20_000) }));
+  return queryOptions({ queryKey: ["public", "papers", filters], staleTime: 5 * 60_000,
+    queryFn: ({ signal }) => apiRequest<PaperListItem[]>(`/papers${query}`, { signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) }),
+  });
 };
+export const getPapers = (filters: { year?: number; cycle?: string; subject?: string } = {}) => fetchCached(papersQuery(filters));
 
 export const getPaper = (token: string, paperId: string, signal?: AbortSignal) =>
   apiRequest<PaperDetail>(`/papers/${paperId}`, authorized(token, { signal }));
@@ -372,10 +389,10 @@ export const completePaperAttempt = (
   durationSeconds: number,
   answers: Array<{ question_id: string; selected_index: number; marked_for_review: boolean }> = [],
 ) =>
-  apiRequest<PaperAttemptSummary>(
+  studyMutation(["notebook", "progress"], () => apiRequest<PaperAttemptSummary>(
     `/paper-attempts/${attemptId}/complete`,
     authorized(token, { method: "POST", body: JSON.stringify({ duration_seconds: durationSeconds, answers }) }),
-  );
+  ));
 
 export const getPaperAttemptResult = (token: string, attemptId: string) =>
   apiRequest<PaperAttemptSummary>(

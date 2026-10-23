@@ -1,12 +1,13 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, ExternalLink, RotateCcw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../components/AuthProvider";
-import { getSubjects, type Subject } from "@/lib/study-api";
-import { finishRevision, getNotebook, getRevision, getRevisionResult, saveRevision, startRevision, type NotebookFilters, type NotebookPage, type RevisionQuestion, type RevisionResult, type RevisionReview, type RevisionSession } from "@/lib/notebook-api";
+import { subjectsQuery } from "@/lib/study-api";
+import { finishRevision, notebookQuery, getRevision, getRevisionResult, saveRevision, startRevision, type NotebookFilters, type RevisionQuestion, type RevisionResult, type RevisionReview, type RevisionSession } from "@/lib/notebook-api";
 import QuestionText from "./NotebookText";
 import MistakeNote from "./MistakeNote";
 import s from "./notebook.module.css";
@@ -18,10 +19,10 @@ const message = (error: unknown) => error instanceof Error ? error.message : "Co
 export default function MistakeNotebook({ revisionId = "" }: { revisionId?: string }) {
   const { accessToken } = useAuth();
   const router = useRouter();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const { data: subjects = [] } = useQuery(subjectsQuery());
   const [filters, setFilters] = useState<NotebookFilters>({ subject: "", reason: "all", state: "pending", offset: 0 });
   const [version, setVersion] = useState(0);
-  const [loaded, setLoaded] = useState<{ key: string; page: NotebookPage }>();
+  const notebook = useQuery({ ...notebookQuery(accessToken, filters), enabled: !!accessToken && !revisionId });
   const [opened, setOpened] = useState<{ id: string; session: RevisionSession; result?: RevisionResult }>();
   const [loadError, setLoadError] = useState<{ key: string; message: string }>();
   const [error, setError] = useState("");
@@ -29,22 +30,16 @@ export default function MistakeNotebook({ revisionId = "" }: { revisionId?: stri
   const [count, setCount] = useState(5);
   const mutation = useRef(false);
   const loadKey = `${revisionId}:${JSON.stringify(filters)}:${version}`;
-  const page = loaded?.key === loadKey ? loaded.page : undefined;
+  const page = notebook.data;
   const open = opened?.id === revisionId ? opened : undefined;
-  const failed = loadError?.key === loadKey ? loadError.message : "";
+  const failed = revisionId ? (loadError?.key === loadKey ? loadError.message : "") : notebook.error?.message ?? "";
   const loading = revisionId ? !open && !failed : !page && !failed;
   const revisionCount = Math.min(count, page?.revision_available ?? count);
   const revisionSizes = [...new Set([5, 10, 20].map((size) => Math.min(size, page?.revision_available ?? size)))].filter((size) => size > 0);
   const filtered = !!filters.subject || filters.reason !== "all";
 
   useEffect(() => {
-    let alive = true;
-    getSubjects().then((data) => { if (alive) setSubjects(data); }).catch(() => {});
-    return () => { alive = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !revisionId) return;
     const controller = new AbortController();
     const load = async () => {
       try {
@@ -52,9 +47,6 @@ export default function MistakeNotebook({ revisionId = "" }: { revisionId?: stri
           const session = await getRevision(accessToken, revisionId, controller.signal);
           const result = session.status === "completed" ? await getRevisionResult(accessToken, revisionId, controller.signal) : undefined;
           if (!controller.signal.aborted) setOpened((old) => old?.id === revisionId && old.result && !result ? old : { id: revisionId, session, result });
-        } else {
-          const data = await getNotebook(accessToken, filters, controller.signal);
-          if (!controller.signal.aborted) setLoaded({ key: loadKey, page: data });
         }
       } catch (reason) {
         if (!controller.signal.aborted) setLoadError({ key: loadKey, message: message(reason) });
@@ -87,7 +79,7 @@ export default function MistakeNotebook({ revisionId = "" }: { revisionId?: stri
       </section>
       <h2 className={s.reviewHeading}>Your answers</h2>
       {open.result.review.map((item, i) => <ReviewCard key={item.question_key} question={item} number={i + 1} />)}
-    </> : <RevisionWorkspace key={open.session.id} session={open.session} onComplete={(result) => { setOpened({ ...open, result }); setLoaded(undefined); }} />}
+    </> : <RevisionWorkspace key={open.session.id} session={open.session} onComplete={(result) => { setOpened({ ...open, result });  }} />}
   </main>;
 
   return <main className={`${s.workspace} ${s.notesWorkspace}`}>
@@ -101,7 +93,7 @@ export default function MistakeNotebook({ revisionId = "" }: { revisionId?: stri
       </div>
     </>}
     {loading && <div className={s.skeleton} role="status" aria-live="polite"><span className={s.srOnly}>Opening your revision notes…</span><div aria-hidden="true" /><div aria-hidden="true" /></div>}
-    {failed && <div className={s.error} role="alert">{failed}<button className={s.secondary} onClick={() => setVersion((v) => v + 1)}>Retry</button></div>}
+    {failed && <div className={s.error} role="alert">{failed}<button className={s.secondary} onClick={() => revisionId ? setVersion((v) => v + 1) : void notebook.refetch()}>Retry</button></div>}
     {error && <p className={s.error} role="alert">{error}</p>}
     {!revisionId && page && <>
       {(page.active_session || filters.state === "pending" && page.revision_available > 0) && <section className={s.revisionBar} aria-label="Try your notebook questions again"><span className={s.revisionIcon}><RotateCcw size={18} /></span><div><h2>{page.active_session ? "Continue your revision" : "Ready to try again?"}</h2><p>{page.active_session ? "Your answers are saved. Pick up where you left off." : "A short, untimed quiz from your notebook."}</p></div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -67,6 +68,7 @@ export default function ScrollExpand({
   const overlayRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
+  const mobileRef = useRef(false);
   const configRef = useRef({ startWidth, startHeight, startRadius, endRadius, mediaZoom, scrollDistance, holdDistance, smoothing, overlayScrim, useWindowScroll, enabled });
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function ScrollExpand({
     if (!frame || !media) return;
     const config = configRef.current;
     const eased = smoothstep(0, 1, progress);
-    const mobile = (rootRef.current?.clientWidth ?? 0) < 640;
+    const mobile = mobileRef.current;
     const initialWidth = mobile ? Math.max(config.startWidth, 78) : config.startWidth;
     const initialHeight = mobile ? Math.max(config.startHeight, 50) : config.startHeight;
     const width = initialWidth + (100 - initialWidth) * eased;
@@ -129,6 +131,7 @@ export default function ScrollExpand({
       stage.style.height = `${stageHeight}px`;
       track.style.height = `${stageHeight * (1 + Math.max(0, config.scrollDistance) + Math.max(0, config.holdDistance))}px`;
       const width = root.clientWidth || stageHeight;
+      mobileRef.current = width < 640;
       stage.style.setProperty("--se-title-size", `${clamp(width * 0.066, 30, 78)}px`);
     };
     const readProgress = () => {
@@ -175,8 +178,7 @@ export default function ScrollExpand({
             {mediaType === "video" ? (
               <video ref={mediaRef as React.RefObject<HTMLVideoElement>} className="absolute inset-0 h-full w-full origin-center select-none object-cover [will-change:transform]" src={src} poster={poster} autoPlay muted loop playsInline />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img ref={mediaRef as React.RefObject<HTMLImageElement>} className="absolute inset-0 h-full w-full origin-center select-none object-cover [will-change:transform]" src={src} alt={alt} draggable={false} />
+              <Image fill sizes="100vw" preload ref={mediaRef as React.RefObject<HTMLImageElement>} className="absolute inset-0 h-full w-full origin-center select-none object-cover [will-change:transform]" src={src} alt={alt} draggable={false} />
             )}
             <div ref={scrimRef} className="scroll-expand-scrim pointer-events-none absolute inset-0 opacity-0" />
             {title ? <div ref={titleRef} className="scroll-expand-title pointer-events-auto absolute inset-0 z-10 flex items-center justify-center px-[8%] text-center [font-size:var(--se-title-size)] [will-change:opacity,transform]">{title}</div> : null}

@@ -1,4 +1,5 @@
 import { apiRequest } from "./auth-api";
+import { fetchCached, privateQuery, invalidateStudyQueries, studyMutation } from "./query-client";
 
 export type RevisionQuestion = {
   question_key: string;
@@ -67,19 +68,24 @@ export type NotebookFilters = {
   offset: number;
 };
 
+export const invalidateNotebook = () => invalidateStudyQueries(["notebook"]);
 const authorized = (token: string) => ({ Authorization: `Bearer ${token}` });
 
-export function getNotebook(token: string, filters: NotebookFilters, signal?: AbortSignal) {
+export function notebookQuery(token: string | null, filters: NotebookFilters) {
   const query = new URLSearchParams({ reason: filters.reason, state: filters.state, offset: String(filters.offset) });
   if (filters.subject) query.set("subject", filters.subject);
-  return apiRequest<NotebookPage>(`/notebook?${query}`, { headers: authorized(token), signal });
+  return privateQuery("notebook", token, signal =>
+    apiRequest<NotebookPage>(`/notebook?${query}`, { headers: authorized(token!), signal }), [filters], 60_000);
+}
+export function getNotebook(token: string, filters: NotebookFilters, signal?: AbortSignal) {
+  return fetchCached(notebookQuery(token, filters), signal);
 }
 
 export function startRevision(token: string, subject: string, reason: NotebookFilters["reason"], count: number) {
-  return apiRequest<RevisionSession>("/notebook/sessions", {
+  return studyMutation(["notebook"], () => apiRequest<RevisionSession>("/notebook/sessions", {
     method: "POST", headers: authorized(token),
     body: JSON.stringify({ subject: subject || null, reason, question_count: count }),
-  });
+  }));
 }
 
 export function getRevision(token: string, id: string, signal?: AbortSignal) {
@@ -95,13 +101,13 @@ function checkpoint(current: number, answers: RevisionSession["answers"]) {
 }
 
 export function saveRevision(token: string, id: string, current: number, answers: RevisionSession["answers"], keepalive = false) {
-  return apiRequest<RevisionSession>(`/notebook/sessions/${encodeURIComponent(id)}`, {
+  return studyMutation(["notebook"], () => apiRequest<RevisionSession>(`/notebook/sessions/${encodeURIComponent(id)}`, {
     method: "PATCH", headers: authorized(token), body: checkpoint(current, answers), keepalive,
-  });
+  }));
 }
 
 export function finishRevision(token: string, id: string, current: number, answers: RevisionSession["answers"]) {
-  return apiRequest<RevisionResult>(`/notebook/sessions/${encodeURIComponent(id)}/complete`, {
+  return studyMutation(["notebook"], () => apiRequest<RevisionResult>(`/notebook/sessions/${encodeURIComponent(id)}/complete`, {
     method: "POST", headers: authorized(token), body: checkpoint(current, answers),
-  });
+  }));
 }

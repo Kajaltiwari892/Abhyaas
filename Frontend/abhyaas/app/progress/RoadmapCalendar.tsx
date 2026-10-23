@@ -1,23 +1,25 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getStudyRoadmap, type StudyRoadmap } from "@/lib/study-plan-api";
+import { roadmapQuery } from "@/lib/study-plan-api";
 import { calendarCells, roadmapDate, shiftMonth } from "@/lib/roadmap-calendar";
 import s from "./today-plan.module.css";
 
 export default function RoadmapCalendar({token,today,onClose}:{token:string;today:string;onClose:()=>void}) {
   const dialog=useRef<HTMLDialogElement>(null);
-  const [data,setData]=useState<StudyRoadmap>();
-  const [error,setError]=useState("");
+  const query=useQuery(roadmapQuery(token));
+  const data=query.data;
+  const error=query.error?.message;
   const [month,setMonth]=useState(today.slice(0,7));
   const [selected,setSelected]=useState(today);
-  useEffect(()=>{dialog.current?.showModal();const controller=new AbortController();void getStudyRoadmap(token,controller.signal).then(setData).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Couldn't open your calendar.");});return()=>controller.abort();},[token]);
+  useEffect(()=>{dialog.current?.showModal();},[]);
   const day=data?.days.find(d=>d.date===selected);
   const phase=(value:string)=>({learn:"Study",revision:"Revision", "catch-up":"Catch-up",completed:"Complete",unfinished:"Unfinished"}[value]??"Study");
   return <dialog ref={dialog} className={`${s.dialog} ${s.calendarDialog}`} aria-labelledby="roadmap-title" onCancel={onClose} onClose={onClose}>
     <header><div><span className={s.eyebrow}><CalendarDays size={14}/> Your study roadmap</span><h3 id="roadmap-title">Small steps. A clear finish line.</h3></div><button aria-label="Close study calendar" onClick={onClose}><X size={20}/></button></header>
-    {!data ? <p role={error?"alert":"status"}>{error || <><LoaderCircle size={16} className={s.spin}/> Opening your calendar…</>}</p> : <>
+    {!data ? <p role={error?"alert":"status"}>{error ? <>{error} <button onClick={()=>void query.refetch()}>Retry</button></> : <><LoaderCircle size={16} className={s.spin}/> Opening your calendar…</>}</p> : <>
       <div className={s.calendarFacts}><span>First pass by <strong>{roadmapDate(data.coverage_deadline,{day:"numeric",month:"short",year:"numeric"})}</strong></span><span>Exam date <strong>{roadmapDate(data.exam_date,{day:"numeric",month:"short",year:"numeric"})}</strong></span><span>Daily time <strong>{data.daily_minutes} minutes</strong></span></div>
       {!data.feasible && <p className={s.warning} role="status">Your current pace is too tight for the first-pass deadline. Increase your daily time or adjust the exam date in Edit plan.{data.projected_finish && ` At this pace, the first pass finishes around ${roadmapDate(data.projected_finish)}.`}</p>}
       <div className={s.calendarLayout}><div><div className={s.monthHeading}><button aria-label="Previous month" disabled={month<=data.start_date.slice(0,7)} onClick={()=>setMonth(shiftMonth(month,-1))}><ChevronLeft size={18}/></button><strong>{roadmapDate(`${month}-01`,{month:"long",year:"numeric"})}</strong><button aria-label="Next month" disabled={month>=data.exam_date.slice(0,7)} onClick={()=>setMonth(shiftMonth(month,1))}><ChevronRight size={18}/></button></div><div className={s.calendarGrid}>

@@ -3,10 +3,11 @@
 import { ArrowRight, BookOpen, CalendarDays, Check, Clock3, LoaderCircle, Pause, Play, RotateCcw, Settings2, Sparkles, Target, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type CSSProperties } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type FormEvent, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../components/AuthProvider";
-import { changeStudyTask, getReadyTodayPlan, planReceivedAt, saveStudyPreferences, type StudyPlanDashboard, type StudyPreferences, type StudyPreferencesInput, type StudyTask } from "@/lib/study-plan-api";
+import { changeStudyTask, todayPlanQuery, planReceivedAt, saveStudyPreferences, type StudyPreferences, type StudyPreferencesInput, type StudyTask } from "@/lib/study-plan-api";
 import { dailyQuizHref, focusRemaining, nextStudyTask, quizAction, timetableTime, topicHelpHref } from "@/lib/daily-plan";
 import { roadmapDate } from "@/lib/roadmap-calendar";
 import RoadmapCalendar from "./RoadmapCalendar";
@@ -17,10 +18,12 @@ const errorMessage=(error:unknown)=>error instanceof Error?error.message:"Couldn
 
 export default function TodayPlan() {
   const {user,accessToken}=useAuth();
-  const [data,setData]=useState<StudyPlanDashboard>();
-  const [receivedAt,setReceivedAt]=useState(0);
+  const query=useQuery(todayPlanQuery(accessToken));
+  const data=query.data;
+  const receivedAt=data?planReceivedAt(data):0;
   const [now,setNow]=useState(0);
-  const [error,setError]=useState("");
+  const [saveError,setError]=useState("");
+  const error=saveError || query.error?.message || "";
   const [busy,setBusy]=useState(false);
   const [pendingTaskAction,setPendingTaskAction]=useState<string|null>(null);
   const [editing,setEditing]=useState(false);
@@ -30,38 +33,23 @@ export default function TodayPlan() {
   const calendarTrigger=useRef<HTMLButtonElement>(null);
   const inFlight=useRef(false);
   const taskRequest=useRef<AbortController|null>(null);
-  const loadVersion=useRef(0);
   const name=user?.name.trim().split(/\s+/)[0]??"";
-  const accept=useCallback((result:StudyPlanDashboard)=>{setData(result);setReceivedAt(planReceivedAt(result));setNow(Date.now());setError("");},[]);
-  const load=useCallback(async(signal?:AbortSignal)=>{
-    if(!accessToken)return;
-    const version=++loadVersion.current;
-    const result=await getReadyTodayPlan(accessToken,signal);
-    if(!signal?.aborted&&version===loadVersion.current)accept(result);
-  },[accessToken,accept]);
-  useEffect(()=>{const controller=new AbortController();void load(controller.signal).catch(e=>{if(!controller.signal.aborted)setError(errorMessage(e));});return()=>controller.abort();},[load]);
-  useEffect(()=>{
-    const controller=new AbortController();const tick=window.setInterval(()=>setNow(Date.now()),1000);
-    const refresh=()=>{if(!inFlight.current&&!document.hidden)void load(controller.signal).catch(()=>{});};
-    const interval=window.setInterval(refresh,60_000);
-    window.addEventListener("focus",refresh);document.addEventListener("visibilitychange",refresh);window.addEventListener("abhyaas:plan-updated",refresh);
-    return()=>{controller.abort();window.clearInterval(tick);window.clearInterval(interval);window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh);window.removeEventListener("abhyaas:plan-updated",refresh);};
-  },[load]);
+  useEffect(()=>{const tick=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(tick);},[]);
   useEffect(()=>{if(editing)dialog.current?.showModal();else if(dialog.current?.open)dialog.current.close();},[editing]);
   useEffect(()=>()=>{taskRequest.current?.abort();taskRequest.current=null;},[]);
   const updateTask=async(task:StudyTask,action:"start"|"pause"|"complete"|"defer"|"restore")=>{
     if(!accessToken||inFlight.current)return;
     const controller=new AbortController();taskRequest.current=controller;
-    loadVersion.current++;inFlight.current=true;setBusy(true);setPendingTaskAction(action);setError("");
+    inFlight.current=true;setBusy(true);setPendingTaskAction(action);setError("");
     const timeout=window.setTimeout(()=>controller.abort(),30_000);
-    try{const result=await changeStudyTask(accessToken,task.id,action,controller.signal);if(taskRequest.current===controller&&!controller.signal.aborted)accept(result);}
+    try{await changeStudyTask(accessToken,task.id,action,controller.signal);}
     catch(e){if(taskRequest.current===controller)setError(controller.signal.aborted?"Saving your study progress took too long. Refresh your plan to check it, or try again.":errorMessage(e));}
     finally{window.clearTimeout(timeout);if(taskRequest.current===controller){taskRequest.current=null;inFlight.current=false;setBusy(false);setPendingTaskAction(null);}}
   };
   const save=async(preferences:StudyPreferencesInput)=>{
     if(!accessToken||inFlight.current)return;
-    loadVersion.current++;inFlight.current=true;setBusy(true);setError("");
-    try{const result=await saveStudyPreferences(accessToken,preferences);accept(result);setEditing(false);if(result.settings_apply_tomorrow)toast.success("Plan settings saved",{description:"They apply tomorrow. Today's progress stays saved."});}
+    inFlight.current=true;setBusy(true);setError("");
+    try{const result=await saveStudyPreferences(accessToken,preferences);setEditing(false);if(result.settings_apply_tomorrow)toast.success("Plan settings saved",{description:"They apply tomorrow. Today's progress stays saved."});}
     catch(e){setError(errorMessage(e));}finally{inFlight.current=false;setBusy(false);}
   };
   const plan=data?.plan;
@@ -72,7 +60,7 @@ export default function TodayPlan() {
   const coverage=roadmap?Math.round(100*roadmap.completed_sessions/Math.max(1,roadmap.total_sessions)):0;
   return <section id="today" className={s.panel} aria-label="Today's study plan">
     <header className={s.header}><div><span className={s.eyebrow}><Sparkles size={14}/> Your study companion</span><h2>A little progress, every day.</h2><p>{data?roadmapDate(data.today,{weekday:"long",day:"numeric",month:"long"}):"A clear plan. A calmer day."}{name&&` · Let’s do this, ${name}.`}</p></div>{plan&&<button ref={editTrigger} className={s.editButton} onClick={()=>setEditing(true)}><Settings2 size={15}/> Edit plan</button>}</header>
-    {error&&!editing&&<div className={s.error} role="alert">{error}<button onClick={()=>void load().catch(e=>setError(errorMessage(e)))}>Retry</button></div>}
+    {error&&!editing&&<div className={s.error} role="alert">{error}<button onClick={()=>{setError("");void query.refetch();}}>Retry</button></div>}
     {!data?!error&&<div className={s.skeleton} role="status" aria-label="Loading today's plan"><span/><span/><span/></div>:!plan?<div className={s.setup}><div><h3>Your goal. Your pace.</h3><p>Choose your subjects and time. We’ll turn them into a dated plan, with a 50-question quiz after each study session.</p><Image src="/study-plan/companion.png" width={130} height={195} alt="Your smiling defence-themed study companion"/></div><PlanSettings initial={data.preferences} busy={busy} onSave={save}/></div>:<>
       {plan.daily_minutes>data.preferences.daily_minutes&&<p className={s.warning}>Today keeps your earlier study targets and saved time, with longer quizzes. Allow up to {plan.daily_minutes} minutes today; tomorrow’s plan uses your {data.preferences.daily_minutes}-minute daily budget.</p>}
       <div className={s.mainGrid}><article className={s.mission}>

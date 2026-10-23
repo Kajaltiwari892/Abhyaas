@@ -5,8 +5,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import { createRequestCache } from "../lib/request-cache.ts";
-import { createSessionController } from "../lib/session-controller.ts";
+import { queryHarness } from "./helpers/query-harness.mjs";
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -14,68 +13,15 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 function load(path, resolve) {
   const compiled = ts.transpileModule(read(path), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const module = { exports: {} };
-  new Function("require", "module", "exports", compiled)(resolve, module, module.exports);
-  return module.exports;
+  const loaded = { exports: {} };
+  new Function("require", "module", "exports", compiled)(resolve, loaded, loaded.exports);
+  return loaded.exports;
 }
 const session = (id, token = id) => ({ access_token: token, user: { id }, expires_at: new Date(Date.now() + 900_000).toISOString() });
 
-test("simultaneous readers share one request and the cache expires", async () => {
-  let now = 0, calls = 0;
-  const cache = createRequestCache(100, 2, () => now);
-  const pending = deferred();
-  const fetch = () => { calls++; return pending.promise; };
-  const one = cache.get("public", fetch), two = cache.get("public", fetch);
-  pending.resolve("data");
-  assert.deepEqual(await Promise.all([one, two]), ["data", "data"]);
-  assert.equal(await cache.get("public", fetch), "data");
-  assert.equal(calls, 1);
-  now = 100;
-  await cache.get("public", fetch);
-  assert.equal(calls, 2);
-});
-
-test("one cancelled subscriber cannot cancel another subscriber", async () => {
-  const cache = createRequestCache(100), pending = deferred(), controller = new AbortController();
-  let calls = 0;
-  const fetch = () => { calls++; return pending.promise; };
-  const one = cache.get("plan", fetch, controller.signal), two = cache.get("plan", fetch);
-  controller.abort();
-  await assert.rejects(one, { name: "AbortError" });
-  pending.resolve({ done: false });
-  assert.deepEqual(await two, { done: false });
-  assert.equal(calls, 1);
-  await assert.rejects(cache.get("plan", fetch, controller.signal), { name: "AbortError" });
-});
-
-test("failures retry and old requests cannot overwrite mutations or resurrect a cleared cache", async () => {
-  const cache = createRequestCache(100), old = deferred();
-  const request = cache.get("plan", () => old.promise);
-  await flush();
-  cache.set("plan", "updated");
-  old.resolve("stale"); await request;
-  assert.equal(await cache.get("plan", async () => "wrong"), "updated");
-  const other = deferred();
-  const signedOutRequest = cache.get("private", () => other.promise);
-  await flush(); cache.clear(); other.resolve("old account"); await signedOutRequest;
-  assert.equal(await cache.get("private", async () => "new account"), "new account");
-  await assert.rejects(cache.get("failed", async () => { throw Error("offline"); }));
-  assert.equal(await cache.get("failed", async () => "recovered"), "recovered");
-});
-
-test("cache storage is bounded", async () => {
-  const cache = createRequestCache(100, 1);
-  cache.set("first", 1); cache.set("second", 2);
-  assert.equal(await cache.get("first", async () => 3), 3);
-});
-
 function planApi(handler) {
-  const controller = createSessionController(async () => null);
-  controller.completeAuthentication(session("student", "token"));
-  const calls = [];
-  const api = load("../lib/study-plan-api.ts", id => id === "./request-cache" ? { createRequestCache }
-    : { ApiError: Error, sessionController: controller, apiRequest: async (path, init) => { calls.push({ path, init }); return handler(path, init); } });
-  return { api, controller, calls };
+  const host = queryHarness(handler);
+  return { ...host, api: host.api("study-plan-api") };
 }
 
 test("planner and companion share both the read and required creation; timers retain the original receive time", async () => {
@@ -117,20 +63,20 @@ test("sign-out during a pending read cannot create a plan with the previous acco
   const read = api.getReadyTodayPlan("token");
   await flush(); controller.endSession();
   pending.resolve({ preferences: { configured: true }, plan: null });
-  await assert.rejects(read, /session has changed/);
+  await assert.rejects(read, error => /CancelledError|session has changed/.test(error.message));
   assert.equal(calls.length, 1);
 });
 
-test("public catalogues reuse requests without mixing paper filters or caching private progress", async () => {
-  const calls = [];
-  const api = load("../lib/study-api.ts", id => id === "./request-cache" ? { createRequestCache }
-    : id === "./study-plan-api" ? { invalidateTodayPlan() {} }
-    : { apiRequest: async path => { calls.push(path); return []; } });
+test("public catalogues share queries while private progress is scoped to each login", async () => {
+  const host = queryHarness(() => []);
+  const api = host.api("study-api");
   await Promise.all([api.getSubjects(), api.getSubjects()]); await api.getSubjects();
   await Promise.all([api.getPapers({ year: 2026 }), api.getPapers({ year: 2026 })]);
   await api.getPapers({ year: 2025 });
-  await api.getProgressDashboard("a"); await api.getProgressDashboard("b");
-  assert.deepEqual(calls, ["/catalog/subjects", "/papers?year=2026", "/papers?year=2025", "/progress/dashboard", "/progress/dashboard"]);
+  await api.getProgressDashboard("token"); await api.getProgressDashboard("token");
+  host.controller.completeAuthentication(session("other", "other-token"));
+  await api.getProgressDashboard("other-token");
+  assert.deepEqual(host.calls.map(call => call.path), ["/catalog/subjects", "/papers?year=2026", "/papers?year=2025", "/progress/dashboard", "/progress/dashboard"]);
 });
 
 test("initial session loading renders a public skeleton, never private data or protected children", () => {

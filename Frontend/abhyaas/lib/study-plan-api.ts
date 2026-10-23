@@ -1,5 +1,5 @@
 import { ApiError, apiRequest, sessionController } from "./auth-api";
-import { createRequestCache } from "./request-cache";
+import { assertSession, fetchCached, getQueryClient, invalidateStudyQueries, privateKey, privateQuery } from "./query-client";
 import type { PracticeAttempt } from "./study-api";
 
 export type StudyPreferences = {
@@ -30,52 +30,62 @@ export type StudyPlanDashboard = {
 const auth = (token: string, init: RequestInit = {}) => ({
   ...init, headers: { Authorization: `Bearer ${token}` },
 });
-const planCache = createRequestCache<StudyPlanDashboard>(10_000, 1);
 const receivedTimes = new WeakMap<StudyPlanDashboard, number>();
 export const planReceivedAt = (plan: StudyPlanDashboard) => receivedTimes.get(plan) ?? Date.now();
-export const invalidateTodayPlan = () => planCache.clear();
-let planGeneration = sessionController.getGeneration();
-sessionController.subscribe(() => {
-  const generation = sessionController.getGeneration();
-  if (generation !== planGeneration) { planCache.clear(); planGeneration = generation; }
-});
-const planKey = (token: string) => {
-  const session = sessionController.getSnapshot().session;
-  return session && sessionController.ownsToken(token) ? session.user.id : token;
-};
-// Coalesce both the GET and any required plan creation, not just the first read.
-export const getReadyTodayPlan = (token: string, signal?: AbortSignal) => {
-  const generation = sessionController.getGeneration();
-  return planCache.get(planKey(token), async () => {
-    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
-    const requestSignal = AbortSignal.timeout(30_000);
-    const result = await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { signal: requestSignal }));
-    if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
+export const invalidateTodayPlan = () => invalidateStudyQueries(["today-plan", "roadmap"]);
+// The read and any required creation are one shared operation. Never automatically
+// replay a query containing a write after an ambiguous connection failure.
+export const todayPlanQuery = (token: string | null) => ({
+  ...privateQuery("today-plan", token, async signal => {
+    const generation = sessionController.getGeneration();
+    const result = await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token!, { signal }));
+    assertSession(token, generation);
+    signal.throwIfAborted();
     const ready = result.preferences.configured && (!result.plan || result.plan.version < 2)
-      ? await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal: requestSignal }))
+      ? await apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token!, { method: "POST", signal }))
       : result;
     receivedTimes.set(ready, Date.now());
     return ready;
-  }, signal);
-};
-const savePlan = async (token: string, request: Promise<StudyPlanDashboard>) => {
-  // Invalidate reads before a write; an older GET must not overwrite this result.
-  const generation = sessionController.getGeneration();
-  const key = planKey(token);
-  planCache.clear();
-  const result = await request;
-  receivedTimes.set(result, Date.now());
-  if (generation === sessionController.getGeneration()) planCache.set(key, result);
-  return result;
+  }, [], 30_000),
+  retry: false,
+  structuralSharing: false, // Timer baselines belong to this exact server response.
+  refetchInterval: 60_000,
+});
+export const getReadyTodayPlan = (token: string, signal?: AbortSignal) => fetchCached(todayPlanQuery(token), signal);
+const savePlan = (token: string, request: () => Promise<StudyPlanDashboard>) => {
+  const client = getQueryClient();
+  const key = privateKey("today-plan");
+  // Check-in and task writes affect the same dashboard; serialize their responses.
+  return client.getMutationCache().build(client, {
+    mutationKey: key, scope: { id: JSON.stringify(key) }, retry: false,
+    mutationFn: async () => {
+      assertSession(token, key[1]);
+      await client.cancelQueries({ queryKey: key });
+      assertSession(token, key[1]);
+      try {
+        const result = await request();
+        assertSession(token, key[1]);
+        await client.cancelQueries({ queryKey: key });
+        assertSession(token, key[1]);
+        receivedTimes.set(result, Date.now());
+        client.setQueryData(key, result, { updatedAt: Date.now() });
+        invalidateStudyQueries(["roadmap"], key);
+        return result;
+      } catch (error) {
+        invalidateStudyQueries(["today-plan"], key);
+        throw error;
+      }
+    },
+  }).execute(undefined);
 };
 export const getTodayPlan = (token: string, signal?: AbortSignal) =>
   apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { signal }));
 export const createTodayPlan = (token: string, signal?: AbortSignal) =>
-  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal })));
+  savePlan(token, () => apiRequest<StudyPlanDashboard>("/study-plan/today", auth(token, { method: "POST", signal })));
 export const saveStudyPreferences = (token: string, input: StudyPreferencesInput) =>
-  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/preferences", auth(token, {method:"PUT",body:JSON.stringify(input)})));
+  savePlan(token, () => apiRequest<StudyPlanDashboard>("/study-plan/preferences", auth(token, {method:"PUT",body:JSON.stringify(input)})));
 export const changeStudyTask = (token: string, id: string, action: "start" | "pause" | "complete" | "defer" | "restore", signal?: AbortSignal) =>
-  savePlan(token, apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal})));
+  savePlan(token, () => apiRequest<StudyPlanDashboard>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {method:"PATCH",body:JSON.stringify({action}),signal})));
 export const getStudyTask = (token: string, id: string, signal?: AbortSignal) =>
   apiRequest<StudyTask>(`/study-plan/tasks/${encodeURIComponent(id)}`, auth(token, {signal}));
 export type QuizPreparation = {
@@ -89,7 +99,7 @@ const waitForQuiz = (delay: number, signal?: AbortSignal) => new Promise<void>((
   signal?.addEventListener("abort", abort, { once: true });
 });
 export const startDailyQuiz = async (token: string, id: string, signal?: AbortSignal, onProgress?: (prepared: number) => void) => {
-  planCache.clear();
+  invalidateTodayPlan();
   const generation = sessionController.getGeneration();
   let failures = 0;
   // Every POST advances a durable draft by at most one short batch. Replaying
@@ -113,7 +123,7 @@ export const startDailyQuiz = async (token: string, id: string, signal?: AbortSi
     }
     if (generation !== sessionController.getGeneration()) throw new ApiError("Your session has changed. Please try again.", 401);
     if (result.status === "ready" && result.attempt?.questions.length) {
-      planCache.clear();
+      invalidateStudyQueries(["today-plan", "practice-history"]);
       return result.attempt;
     }
     if (result.status !== "preparing" || !Number.isInteger(result.prepared_count)
@@ -139,7 +149,8 @@ export type RoadmapSummary = {
   units: Array<{key: string; subject_name: string; title: string; focus_points: string[]}>;
 };
 export type StudyRoadmap = RoadmapSummary & {days: RoadmapDay[]};
-export const getStudyRoadmap = (token: string, signal?: AbortSignal) =>
-  apiRequest<StudyRoadmap>("/study-plan/roadmap", auth(token, {signal}));
+export const roadmapQuery = (token: string | null) => privateQuery("roadmap", token,
+  signal => apiRequest<StudyRoadmap>("/study-plan/roadmap", auth(token!, { signal })), [], 60_000);
+export const getStudyRoadmap = (token: string, signal?: AbortSignal) => fetchCached(roadmapQuery(token), signal);
 export const sendStudyCheckin = (token: string, task_id: string, answer: "yes" | "not-yet" | "dismiss") =>
-  savePlan(token, apiRequest<StudyPlanDashboard>("/study-plan/checkin", auth(token, {method:"POST", body:JSON.stringify({task_id, answer})})));
+  savePlan(token, () => apiRequest<StudyPlanDashboard>("/study-plan/checkin", auth(token, {method:"POST", body:JSON.stringify({task_id, answer})})));

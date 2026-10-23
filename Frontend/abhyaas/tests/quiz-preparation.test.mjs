@@ -1,19 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
-import { createRequestCache } from "../lib/request-cache.ts";
-import { createSessionController } from "../lib/session-controller.ts";
-
-class ApiError extends Error { constructor(message,status) {super(message);this.status=status;} }
+import { queryHarness, ApiError } from "./helpers/query-harness.mjs";
 function apiHost(step) {
-  const controller=createSessionController(async()=>null),calls=[];
-  const loaded={exports:{}};
-  const source=readFileSync(new URL("../lib/study-plan-api.ts",import.meta.url),"utf8");
-  const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  new Function("require","module","exports","setTimeout","clearTimeout",compiled)(id=>id==="./request-cache"?{createRequestCache}:{ApiError,sessionController:controller,apiRequest:async(path,init)=>{calls.push({path,init});return step(calls.length);}},loaded,loaded.exports,
-    (fn)=>setTimeout(fn,0),clearTimeout); // No real wait needed in protocol tests.
-  return {api:loaded.exports,calls,controller};
+  const host = queryHarness((path, init, count) => step(count), {setTimeout: fn => setTimeout(fn, 0), clearTimeout});
+  return { ...host, api: host.api("study-plan-api") };
 }
 const preparing=n=>({status:"preparing",prepared_count:n,total:50,retry_after_ms:0,attempt:null});
 const ready={status:"ready",prepared_count:50,total:50,attempt:{id:"quiz",questions:Array(50).fill({})}};

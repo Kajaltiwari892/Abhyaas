@@ -1,21 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import ts from "typescript";
+import { queryHarness, session } from "./helpers/query-harness.mjs";
 import { formatPaperText } from "../lib/paper-format.ts";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 function loadApi() {
-  const calls = [];
-  const exports = {};
-  const compiled = ts.transpileModule(read("../lib/notebook-api.ts"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
-  new Function("exports", "require", compiled)(exports, () => ({ apiRequest: (path, init) => {
-    calls.push({ path, init });
-    return Promise.resolve({});
-  } }));
-  return { api: exports, calls };
+  const host = queryHarness();
+  host.controller.completeAuthentication(session("student", "student-token"));
+  return { ...host, api: host.api("notebook-api") };
 }
 
 test("notebook filters and account authorization reach the API", async () => {
@@ -29,7 +22,8 @@ test("notebook filters and account authorization reach the API", async () => {
   assert.equal(query.get("state"), "resolved");
   assert.equal(query.get("offset"), "20");
   assert.equal(request.init.headers.Authorization, "Bearer student-token");
-  assert.equal(request.init.signal, signal);
+  assert.notEqual(request.init.signal, signal); // Shared fetch outlives an individual reader.
+  assert.equal(request.init.signal.aborted, false);
 });
 
 test("revision checkpoints preserve option zero and cleared answers without sending keys", async () => {
@@ -69,8 +63,22 @@ test("notebook is reachable from practice, progress and submitted papers", () =>
   assert.ok(component.includes("await queue.current.catch"));
   assert.ok(component.includes("controller.abort()"));
   assert.ok(component.includes("old.result && !result ? old"));
-  assert.ok(component.includes("setLoaded(undefined)"));
   assert.ok(component.includes("aria-pressed={answers[question.question_key] === i}"));
   assert.ok(!component.includes("dangerouslySetInnerHTML"));
   assert.ok(read("../app/practice/notebook.module.css").includes("prefers-reduced-motion:reduce"));
 });
+
+ test("notebook revisits share data and revision writes invalidate it", async () => {
+  const { api, calls, controller } = loadApi();
+  controller.completeAuthentication(session("one", "one"));
+  const filters = { subject: "", reason: "all", state: "pending", offset: 0 };
+  await Promise.all([api.getNotebook("one", filters), api.getNotebook("one", filters)]);
+  await api.getNotebook("one", filters);
+  assert.equal(calls.length, 1);
+  controller.completeAuthentication(session("two", "two"));
+  await api.getNotebook("two", filters);
+  assert.equal(calls.length, 2);
+  await api.finishRevision("two", "revision", 0, {});
+  await api.getNotebook("two", filters);
+  assert.equal(calls.length, 4);
+ });

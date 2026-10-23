@@ -4,6 +4,7 @@ import "./globals.css";
 import MotionLayer from "./components/MotionLayer";
 import AuthProvider from "./components/AuthProvider";
 import AppToaster from "./components/AppToaster";
+import QueryProvider from "./components/QueryProvider";
 
 // Bundle the same Latin font files as production. A failed Google Fonts download
 // in development otherwise substitutes enlarged Arial for the compact labels.
@@ -48,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       style={{ colorScheme: "dark" }}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AuthProvider><MotionLayer>{children}</MotionLayer><AppToaster /></AuthProvider></body>
+      <body className="min-h-full flex flex-col"><QueryProvider><AuthProvider><MotionLayer>{children}</MotionLayer><AppToaster /></AuthProvider></QueryProvider></body>
     </html>
   );
 }
